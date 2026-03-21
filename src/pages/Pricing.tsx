@@ -2,22 +2,37 @@ import { Check } from "lucide-react";
 import { motion } from "motion/react";
 import { usePaystackPayment } from "react-paystack";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { db } from "../firebase";
+import { doc, updateDoc, addDoc, collection } from "firebase/firestore";
 
 export default function Pricing() {
   const navigate = useNavigate();
-  const userId = localStorage.getItem("chip_user_id");
-  const userEmail = localStorage.getItem("chip_user_email") || "customer@example.com";
+  const { user, profile } = useAuth();
+  const userEmail = user?.email || "customer@example.com";
 
   const handlePaymentSuccess = async (reference: any, plan: string) => {
+    if (!user) return;
+
     try {
-      const res = await fetch("/api/payments/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reference: reference.reference, plan, userId })
+      // 1. Update user plan in Firestore
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        plan: plan
       });
-      if (res.ok) {
-        navigate("/dashboard");
-      }
+
+      // 2. Record payment
+      await addDoc(collection(db, "payments"), {
+        user_id: user.uid,
+        reference: reference.reference,
+        plan: plan,
+        amount: plan === 'pro' ? 5000 : 10000,
+        email: userEmail,
+        type: "subscription",
+        created_at: new Date().toISOString()
+      });
+
+      navigate("/dashboard");
     } catch (err) {
       console.error("Payment verification failed", err);
     }

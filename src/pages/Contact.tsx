@@ -1,11 +1,15 @@
 import React, { useState } from "react";
-import { Mail, Phone, MessageCircle, MapPin, Send, CheckCircle2 } from "lucide-react";
+import { Mail, Phone, MapPin, Send, CheckCircle2 } from "lucide-react";
+import { WhatsAppIcon } from "../components/Icons";
 import { motion } from "motion/react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { db } from "../firebase";
+import { collection, addDoc } from "firebase/firestore";
 
 export default function Contact() {
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -13,13 +17,24 @@ export default function Contact() {
     message: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate form submission
-    console.log("Form submitted:", formData);
-    setIsSubmitted(true);
-    setTimeout(() => setIsSubmitted(false), 5000);
-    setFormData({ name: "", email: "", subject: "", message: "" });
+    setLoading(true);
+    
+    try {
+      await addDoc(collection(db, "contact_messages"), {
+        ...formData,
+        created_at: new Date().toISOString()
+      });
+      setIsSubmitted(true);
+      setTimeout(() => setIsSubmitted(false), 5000);
+      setFormData({ name: "", email: "", subject: "", message: "" });
+    } catch (err) {
+      console.error("Failed to send message", err);
+      alert("Failed to send message. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -81,7 +96,7 @@ export default function Contact() {
 
                 <a href="https://wa.me/2348100764154" target="_blank" rel="noopener noreferrer" className="flex items-start gap-4 group">
                   <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-xl flex items-center justify-center text-zinc-600 dark:text-zinc-400 group-hover:bg-zinc-900 dark:group-hover:bg-white group-hover:text-white dark:group-hover:text-zinc-900 transition-all">
-                    <MessageCircle size={20} />
+                    <WhatsAppIcon size={20} />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-zinc-900 dark:text-white">WhatsApp</p>
@@ -194,10 +209,11 @@ export default function Contact() {
                     </div>
                     <button 
                       type="submit"
-                      className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold py-4 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-zinc-900/10 dark:shadow-white/5"
+                      disabled={loading}
+                      className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold py-4 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-zinc-900/10 dark:shadow-white/5 disabled:opacity-50"
                     >
                       <Send size={18} />
-                      Send Message
+                      {loading ? "Sending..." : "Send Message"}
                     </button>
                   </form>
                 </>

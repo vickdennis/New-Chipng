@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
-import { Link2, Mail, Phone, MessageCircle } from "lucide-react";
+import { Mail, Phone } from "lucide-react";
+import { WhatsAppIcon } from "./Icons";
+import Logo from "./Logo";
 
 export default function Footer() {
   return (
@@ -7,11 +9,8 @@ export default function Footer() {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
-            <Link to="/" className="flex items-center gap-2 text-xl font-bold tracking-tight text-zinc-900 dark:text-white mb-4">
-              <div className="w-8 h-8 bg-zinc-900 dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-zinc-900">
-                <Link2 size={20} />
-              </div>
-              Chip NG
+            <Link to="/" className="mb-4 inline-block">
+              <Logo />
             </Link>
             <p className="text-zinc-600 dark:text-zinc-400 max-w-xs mb-6">
               The ultimate link-in-bio tool for creators and professionals in Nigeria. 
@@ -47,7 +46,7 @@ export default function Footer() {
               </li>
               <li>
                 <a href="https://wa.me/2348100764154" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">
-                  <MessageCircle size={18} />
+                  <WhatsAppIcon size={18} />
                   WhatsApp Support
                 </a>
               </li>

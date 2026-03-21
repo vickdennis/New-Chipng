@@ -38,7 +38,8 @@ import {
   Coffee,
   FlaskConical,
   Nut,
-  Sparkles
+  Sparkles,
+  Lock
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { 
@@ -58,12 +59,30 @@ import {
   useSortable
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Profile, Link as LinkType, SocialFeed, THEMES, FONTS } from "../types";
+import { Profile, Link as LinkType, SocialFeed, THEMES, FONTS, User } from "../types";
 import { downloadVCard } from "../utils/vcard";
 import { IconPicker, IconRenderer } from "../components/IconPicker";
 import { SUGGESTED_INGREDIENTS } from "../data/ingredients";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { useAuth } from "../context/AuthContext";
+import { db, auth, OperationType, handleFirestoreError } from "../firebase";
+import { 
+  collection, 
+  query, 
+  where, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  orderBy,
+  writeBatch,
+  getDocs,
+  getDoc,
+  serverTimestamp
+} from "firebase/firestore";
+import { signOut } from "firebase/auth";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -76,9 +95,9 @@ function SortableLink({
   onPickIcon 
 }: { 
   link: LinkType, 
-  onUpdate: (id: number, updates: Partial<LinkType>) => Promise<void>,
-  onDelete: (id: number) => Promise<void>,
-  onPickIcon: (id: number) => void,
+  onUpdate: (id: string | number, updates: Partial<LinkType>) => Promise<void>,
+  onDelete: (id: string | number) => Promise<void>,
+  onPickIcon: (id: string | number) => void,
   key?: any
 }) {
   const {
@@ -155,7 +174,7 @@ function SortableLink({
           <label className="flex items-center gap-2 cursor-pointer">
             <input 
               type="checkbox" 
-              checked={link.active === 1}
+              checked={Boolean(link.active)}
               onChange={(e) => onUpdate(link.id, { active: e.target.checked ? 1 : 0 })}
               className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-white focus:ring-zinc-900 dark:focus:ring-white bg-transparent"
             />
@@ -178,13 +197,13 @@ function SortableLink({
             <label className="flex items-center gap-2 cursor-pointer">
               <input 
                 type="checkbox" 
-                checked={link.is_product === 1}
+                checked={Boolean(link.is_product)}
                 onChange={(e) => onUpdate(link.id, { is_product: e.target.checked ? 1 : 0 })}
                 className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-white focus:ring-zinc-900 dark:focus:ring-white bg-transparent"
               />
               <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Product</span>
             </label>
-            {link.is_product === 1 && (
+            {Boolean(link.is_product) && (
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">₦</span>
                 <input 
@@ -221,15 +240,15 @@ interface SubscriptionData {
 }
 
 export default function Dashboard() {
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { user, profile, loading: authLoading } = useAuth();
   const [links, setLinks] = useState<LinkType[]>([]);
   const [feeds, setFeeds] = useState<SocialFeed[]>([]);
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
-  const [apiKeys, setApiKeys] = useState<Array<{ id: number, name: string, created_at: string, partial_key: string }>>([]);
+  const [apiKeys, setApiKeys] = useState<Array<{ id: string, name: string, created_at: any, partial_key: string }>>([]);
   const [adminStats, setAdminStats] = useState<{ totalUsers: number, proUsers: number, totalClicks: number, totalRevenue: number } | null>(null);
-  const [adminUsers, setAdminUsers] = useState<Array<{ id: number, username: string, email: string, plan: string, role: string, is_verified: number, is_featured: number, display_name: string }>>([]);
-  const [adminLinks, setAdminLinks] = useState<Array<{ id: number, title: string, url: string, username: string, email: string, clicks: number, active: number }>>([]);
-  const [adminBlogs, setAdminBlogs] = useState<Array<{ id: number, title: string, slug: string, is_published: number, author_name: string, published_at: string, category?: string, scheduled_at?: string }>>([]);
+  const [adminUsers, setAdminUsers] = useState<Array<Profile & { id: string }>>([]);
+  const [adminLinks, setAdminLinks] = useState<Array<LinkType & { id: string, username?: string, email?: string }>>([]);
+  const [adminBlogs, setAdminBlogs] = useState<Array<{ id: string, title: string, slug: string, is_published: boolean, author_name: string, published_at: any, category?: string, scheduled_at?: string }>>([]);
   const [isCreatingBlog, setIsCreatingBlog] = useState(false);
   const [editingBlog, setEditingBlog] = useState<any>(null);
   const [blogForm, setBlogForm] = useState({
@@ -251,7 +270,7 @@ export default function Dashboard() {
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [newUser, setNewUser] = useState({ username: "", email: "", password: "", plan: "free", role: "user" });
   const [isSaving, setIsSaving] = useState(false);
-  const [pickingIconFor, setPickingIconFor] = useState<number | null>(null);
+  const [pickingIconFor, setPickingIconFor] = useState<string | number | null>(null);
   const [copied, setCopied] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isUploadingBg, setIsUploadingBg] = useState(false);
@@ -266,96 +285,135 @@ export default function Dashboard() {
     })
   );
 
-  const getAuthHeaders = () => {
-    const userId = localStorage.getItem("chip_user_id");
-    if (!userId) {
+  useEffect(() => {
+    if (!authLoading && !user) {
       navigate("/login");
-      return {};
     }
-    return { "x-user-id": userId };
-  };
+  }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (!user) return;
 
-  const fetchData = async () => {
-    const headers = getAuthHeaders();
-    if (Object.keys(headers).length === 0) return;
+    // Real-time links
+    const linksQuery = query(collection(db, "links"), where("user_id", "==", user.uid), orderBy("position", "asc"));
+    const unsubLinks = onSnapshot(linksQuery, (snapshot) => {
+      setLinks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
+    });
 
-    const [profileRes, linksRes, feedsRes, subRes, keysRes] = await Promise.all([
-      fetch("/api/profile", { headers }),
-      fetch("/api/links", { headers }),
-      fetch("/api/feeds", { headers }),
-      fetch("/api/subscription", { headers }),
-      fetch("/api/keys", { headers })
-    ]);
+    // Real-time feeds
+    const feedsQuery = query(collection(db, "social_feeds"), where("user_id", "==", user.uid), orderBy("position", "asc"));
+    const unsubFeeds = onSnapshot(feedsQuery, (snapshot) => {
+      setFeeds(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
+    });
 
-    if (profileRes.status === 401) {
-      navigate("/login");
+    // Real-time payments/subscription
+    const paymentsQuery = query(collection(db, "payments"), where("user_id", "==", user.uid), orderBy("date", "desc"));
+    const unsubPayments = onSnapshot(paymentsQuery, (snapshot) => {
+      const payments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      setSubscription({
+        plan: profile?.plan || 'free',
+        subscription_status: profile?.subscription_status || 'active',
+        next_billing_date: profile?.next_billing_date || null,
+        payments
+      });
+    });
+
+    // Admin data
+    let unsubAdminStats: () => void = () => {};
+    let unsubAdminUsers: () => void = () => {};
+    let unsubAdminLinks: () => void = () => {};
+    let unsubAdminBlogs: () => void = () => {};
+    let unsubAdminKeys: () => void = () => {};
+
+    if (profile?.role === 'admin') {
+      // Stats (simplified for Firestore)
+      const usersQuery = collection(db, "users");
+      unsubAdminStats = onSnapshot(usersQuery, (snapshot) => {
+        const totalUsers = snapshot.size;
+        const proUsers = snapshot.docs.filter(d => d.data().plan !== 'free').length;
+        setAdminStats({ totalUsers, proUsers, totalClicks: 0, totalRevenue: 0 });
+      });
+
+      unsubAdminUsers = onSnapshot(usersQuery, (snapshot) => {
+        setAdminUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
+      });
+
+      unsubAdminLinks = onSnapshot(collection(db, "links"), (snapshot) => {
+        setAdminLinks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
+      });
+
+      unsubAdminBlogs = onSnapshot(collection(db, "blogs"), (snapshot) => {
+        setAdminBlogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
+      });
+
+      // API Keys for admin
+      const keysQuery = query(collection(db, "api_keys"), where("user_id", "==", user.uid));
+      unsubAdminKeys = onSnapshot(keysQuery, (snapshot) => {
+        setApiKeys(snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            name: data.name,
+            created_at: data.created_at,
+            partial_key: data.key.substring(0, 8) + '...'
+          };
+        }));
+      });
+    }
+
+    return () => {
+      unsubLinks();
+      unsubFeeds();
+      unsubPayments();
+      unsubAdminStats();
+      unsubAdminUsers();
+      unsubAdminLinks();
+      unsubAdminBlogs();
+      unsubAdminKeys();
+    };
+  }, [user, profile]);
+
+  const handleAddLink = async () => {
+    if (!user) return;
+    
+    // Pricing check: Free users limited to 5 links
+    if (profile?.plan === 'free' && links.length >= 5) {
+      alert("Free plan is limited to 5 links. Upgrade to Pro for unlimited links!");
       return;
     }
 
-    const profileData = await profileRes.json();
-    const linksData = await linksRes.json();
-    const feedsData = await feedsRes.json();
-    const subData = await subRes.json();
-    
-    setProfile(profileData);
-    setLinks(linksData);
-    setFeeds(feedsData);
-    setSubscription(subData);
-
-    if (keysRes.ok) {
-      const keysData = await keysRes.json();
-      setApiKeys(keysData);
-    }
-
-    if (profileData.role === 'admin') {
-      const [statsRes, adminUsersRes, adminLinksRes, adminBlogsRes] = await Promise.all([
-        fetch("/api/admin/stats", { headers }),
-        fetch("/api/admin/users", { headers }),
-        fetch("/api/admin/content", { headers }),
-        fetch("/api/admin/blogs", { headers })
-      ]);
-      if (statsRes.ok) setAdminStats(await statsRes.json());
-      if (adminUsersRes.ok) setAdminUsers(await adminUsersRes.json());
-      if (adminLinksRes.ok) setAdminLinks(await adminLinksRes.json());
-      if (adminBlogsRes.ok) setAdminBlogs(await adminBlogsRes.json());
-    }
-  };
-
-  const handleAddLink = async () => {
-    const headers = getAuthHeaders();
-    const res = await fetch("/api/links", {
-      method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ title: "New Link", url: "https://", icon: "" })
+    await addDoc(collection(db, "links"), {
+      user_id: user.uid,
+      title: "New Link",
+      url: "https://",
+      icon: "",
+      position: links.length,
+      clicks: 0,
+      active: true
     });
-    if (res.ok) fetchData();
   };
 
   const handleAddSuggestedIngredients = async () => {
-    const headers = getAuthHeaders();
+    if (!user) return;
     setIsSaving(true);
     try {
-      const res = await fetch("/api/links/bulk", {
-        method: "POST",
-        headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          links: SUGGESTED_INGREDIENTS.map(ingredient => ({
-            title: ingredient.title,
-            url: ingredient.url,
-            icon: ingredient.icon,
-            color: ingredient.color,
-            is_product: 1,
-            price: ingredient.price
-          }))
-        })
+      const batch = writeBatch(db);
+      SUGGESTED_INGREDIENTS.forEach((ingredient, index) => {
+        const newDocRef = doc(collection(db, "links"));
+        batch.set(newDocRef, {
+          user_id: user.uid,
+          title: ingredient.title,
+          url: ingredient.url,
+          icon: ingredient.icon,
+          color: ingredient.color,
+          is_product: true,
+          price: ingredient.price,
+          position: links.length + index,
+          clicks: 0,
+          active: true
+        });
       });
-      if (res.ok) {
-        fetchData();
-      }
+      await batch.commit();
     } catch (error) {
       console.error("Failed to add ingredients", error);
     } finally {
@@ -363,81 +421,61 @@ export default function Dashboard() {
     }
   };
 
-  const handleUpdateLink = async (id: number, updates: Partial<LinkType>) => {
-    const headers = getAuthHeaders();
-    const link = links.find(l => l.id === id);
-    if (!link) return;
-    const res = await fetch(`/api/links/${id}`, {
-      method: "PUT",
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ ...link, ...updates })
-    });
-    if (res.ok) fetchData();
+  const handleUpdateLink = async (id: string | number, updates: Partial<LinkType>) => {
+    const linkRef = doc(db, "links", id.toString());
+    await updateDoc(linkRef, updates);
   };
 
-  const handleDeleteLink = async (id: number) => {
-    const headers = getAuthHeaders();
-    const res = await fetch(`/api/links/${id}`, { 
-      method: "DELETE",
-      headers 
-    });
-    if (res.ok) fetchData();
+  const handleDeleteLink = async (id: string | number) => {
+    if (!confirm("Are you sure you want to delete this link?")) return;
+    await deleteDoc(doc(db, "links", id.toString()));
   };
 
   const handleAddFeed = async () => {
-    const headers = getAuthHeaders();
-    const res = await fetch("/api/feeds", {
-      method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "instagram", url: "" })
+    if (!user) return;
+    
+    // Pricing check: Pro feature
+    if (profile?.plan === 'free') {
+      alert("Social feeds are a Pro feature. Upgrade to enable!");
+      return;
+    }
+
+    await addDoc(collection(db, "social_feeds"), {
+      user_id: user.uid,
+      type: "instagram",
+      url: "",
+      position: feeds.length,
+      active: true
     });
-    if (res.ok) fetchData();
   };
 
-  const handleUpdateFeed = async (id: number, updates: Partial<SocialFeed>) => {
-    const headers = getAuthHeaders();
-    const feed = feeds.find(f => f.id === id);
-    if (!feed) return;
-
-    const res = await fetch(`/api/feeds/${id}`, {
-      method: "PUT",
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ ...feed, ...updates })
-    });
-    if (res.ok) fetchData();
+  const handleUpdateFeed = async (id: string | number, updates: Partial<SocialFeed>) => {
+    await updateDoc(doc(db, "social_feeds", id.toString()), updates);
   };
 
-  const handleDeleteFeed = async (id: number) => {
+  const handleDeleteFeed = async (id: string | number) => {
     if (!confirm("Are you sure you want to delete this feed?")) return;
-    const headers = getAuthHeaders();
-    const res = await fetch(`/api/feeds/${id}`, {
-      method: "DELETE",
-      headers
-    });
-    if (res.ok) fetchData();
+    await deleteDoc(doc(db, "social_feeds", id.toString()));
   };
 
   const handleUpdateProfile = async (updates: Partial<Profile>) => {
-    if (!profile) return;
-    const headers = getAuthHeaders();
+    if (!user) return;
     setIsSaving(true);
-    const res = await fetch("/api/profile", {
-      method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ ...profile, ...updates })
-    });
-    if (res.ok) {
-      setProfile({ ...profile, ...updates });
+    try {
+      await updateDoc(doc(db, "users", user.uid), updates as any);
+    } catch (error) {
+      console.error("Update profile failed", error);
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   const handleDragEnd = async (event: any) => {
     if (event['over'] && event['active']['id'] !== event['over']['id']) {
-      const activeId = Number(event['active']['id']);
-      const overId = Number(event['over']['id']);
+      const activeId = event['active']['id'];
+      const overId = event['over']['id'];
       
-      const headers = getAuthHeaders();
+      const batch = writeBatch(db);
 
       if (activeTab === 'links') {
         const oldIndex = links.findIndex(l => l.id === activeId);
@@ -447,15 +485,8 @@ export default function Dashboard() {
           const newLinks = arrayMove(links, oldIndex, newIndex) as LinkType[];
           setLinks(newLinks);
           
-          const updates = newLinks.map((link, index) => ({
-            id: link.id,
-            position: index
-          }));
-          
-          await fetch("/api/links/reorder", {
-            method: "PUT",
-            headers: { ...headers, "Content-Type": "application/json" },
-            body: JSON.stringify({ links: updates })
+          newLinks.forEach((link, index) => {
+            batch.update(doc(db, "links", link.id as any), { position: index });
           });
         }
       } else if (activeTab === 'feeds') {
@@ -466,72 +497,32 @@ export default function Dashboard() {
           const newFeeds = arrayMove(feeds, oldIndex, newIndex) as SocialFeed[];
           setFeeds(newFeeds);
           
-          const updates = newFeeds.map((feed, index) => ({
-            id: feed.id,
-            position: index
-          }));
-          
-          await fetch("/api/feeds/reorder", {
-            method: "PUT",
-            headers: { ...headers, "Content-Type": "application/json" },
-            body: JSON.stringify({ feeds: updates })
+          newFeeds.forEach((feed, index) => {
+            batch.update(doc(db, "social_feeds", feed.id as any), { position: index });
           });
         }
       }
+      await batch.commit();
     }
   };
 
   const handleAvatarUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const headers = getAuthHeaders();
-    const formData = new FormData();
-    formData.append("avatar", file);
-
-    setIsUploading(true);
-    try {
-      const res = await fetch("/api/profile/avatar", {
-        method: "POST",
-        headers: { "x-user-id": headers["x-user-id"] },
-        body: formData,
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(prev => prev ? { ...prev, avatar_url: data.avatarUrl } : null);
-      }
-    } catch (err) {
-      console.error("Upload failed", err);
-    } finally {
-      setIsUploading(false);
+    // For now, we'll use a placeholder or let user provide URL
+    // Real storage would use Firebase Storage
+    const url = prompt("Enter Image URL for Avatar:");
+    if (url) {
+      handleUpdateProfile({ avatar_url: url });
     }
   };
 
   const handleBackgroundUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const headers = getAuthHeaders();
-    const formData = new FormData();
-    formData.append("background", file);
-
-    setIsUploadingBg(true);
-    try {
-      const res = await fetch("/api/profile/background", {
-        method: "POST",
-        headers: { "x-user-id": headers["x-user-id"] },
-        body: formData,
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setProfile(prev => prev ? { ...prev, bg_image_url: data.bgImageUrl } : null);
-      }
-    } catch (err) {
-      console.error("Upload failed", err);
-    } finally {
-      setIsUploadingBg(false);
+    if (profile?.plan === 'free') {
+      alert("Custom background images are a Pro feature. Upgrade to enable!");
+      return;
+    }
+    const url = prompt("Enter Image URL for Background:");
+    if (url) {
+      handleUpdateProfile({ bg_image_url: url });
     }
   };
 
@@ -543,161 +534,109 @@ export default function Dashboard() {
   };
 
   const handleGenerateKey = async () => {
-    if (!newKeyName) return;
-    const headers = getAuthHeaders();
-    const res = await fetch("/api/keys", {
-      method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newKeyName })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setGeneratedKey(data.key);
-      setNewKeyName("");
-      fetchData();
+    if (!user) return;
+    const name = prompt("Enter a name for this API key:");
+    if (!name) return;
+
+    const key = `chip_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+    
+    try {
+      await addDoc(collection(db, "api_keys"), {
+        user_id: user.uid,
+        key,
+        name,
+        created_at: new Date().toISOString()
+      });
+      setGeneratedKey(key);
+    } catch (err) {
+      console.error("Failed to generate API key", err);
+      alert("Failed to generate API key. Please try again.");
     }
   };
 
-  const handleDeleteKey = async (id: number) => {
-    const headers = getAuthHeaders();
-    const res = await fetch(`/api/keys/${id}`, {
-      method: "DELETE",
-      headers
-    });
-    if (res.ok) fetchData();
+  const handleDeleteKey = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this API key?")) return;
+    try {
+      await deleteDoc(doc(db, "api_keys", id));
+    } catch (err) {
+      console.error("Failed to delete API key", err);
+    }
   };
 
   const handleCreateUser = async () => {
-    const headers = getAuthHeaders();
-    const res = await fetch("/api/admin/users", {
-      method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify(newUser)
-    });
-    if (res.ok) {
-      setIsCreatingUser(false);
-      setNewUser({ username: "", email: "", password: "", plan: "free", role: "user" });
-      fetchData();
-    }
+    alert("Admin user creation is disabled in this demo. Use SignUp for new users.");
   };
 
-  const handleUpdateUserRole = async (id: number, role: string) => {
-    const headers = getAuthHeaders();
+  const handleUpdateUserRole = async (id: string, role: string) => {
+    await updateDoc(doc(db, "users", id), { role });
+  };
+
+  const handleUpdateUserPlan = async (id: string, plan: string) => {
+    await updateDoc(doc(db, "users", id), { plan });
+  };
+
+  const handleToggleFeatured = async (id: string) => {
     const user = adminUsers.find(u => u.id === id);
     if (!user) return;
-    const res = await fetch(`/api/admin/users/${id}`, {
-      method: "PUT",
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ plan: user.plan, role, is_verified: user.is_verified })
-    });
-    if (res.ok) fetchData();
+    await updateDoc(doc(db, "users", id), { is_featured: !Boolean(user.is_featured) });
   };
 
-  const handleUpdateUserPlan = async (id: number, plan: string) => {
-    const headers = getAuthHeaders();
-    const user = adminUsers.find(u => u.id === id);
-    if (!user) return;
-    const res = await fetch(`/api/admin/users/${id}`, {
-      method: "PUT",
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ plan, role: user.role, is_verified: user.is_verified, is_featured: user.is_featured })
-    });
-    if (res.ok) fetchData();
-  };
-
-  const handleToggleFeatured = async (id: number) => {
-    const headers = getAuthHeaders();
-    const user = adminUsers.find(u => u.id === id);
-    if (!user) return;
-    const res = await fetch(`/api/admin/users/${id}`, {
-      method: "PUT",
-      headers: { ...headers, "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        plan: user.plan, 
-        role: user.role, 
-        is_verified: user.is_verified, 
-        is_featured: user.is_featured === 1 ? 0 : 1 
-      })
-    });
-    if (res.ok) fetchData();
-  };
-
-  const handleDeleteAdminLink = async (id: number) => {
+  const handleDeleteAdminLink = async (id: string) => {
     if (!confirm("Are you sure you want to delete this link?")) return;
-    const headers = getAuthHeaders();
-    const res = await fetch(`/api/admin/links/${id}`, {
-      method: "DELETE",
-      headers
-    });
-    if (res.ok) fetchData();
+    await deleteDoc(doc(db, "links", id));
   };
 
-  const handleDeleteUser = async (id: number) => {
+  const handleDeleteUser = async (id: string) => {
     if (!confirm("Are you sure you want to delete this user? This action is irreversible.")) return;
-    const headers = getAuthHeaders();
-    const res = await fetch(`/api/admin/users/${id}`, {
-      method: "DELETE",
-      headers
-    });
-    if (res.ok) fetchData();
+    await deleteDoc(doc(db, "users", id));
   };
 
   const handleSaveBlog = async () => {
-    const headers = getAuthHeaders();
-    const url = editingBlog ? `/api/admin/blogs/${editingBlog.id}` : '/api/admin/blogs';
-    const method = editingBlog ? 'PUT' : 'POST';
+    if (!user) return;
+    const blogData = {
+      ...blogForm,
+      author_id: user.uid,
+      published_at: blogForm.is_published ? serverTimestamp() : null
+    };
 
-    const res = await fetch(url, {
-      method,
-      headers: { ...headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify(blogForm)
-    });
-
-    if (res.ok) {
-      setIsCreatingBlog(false);
-      setEditingBlog(null);
-      setBlogForm({
-        title: '',
-        slug: '',
-        content: '',
-        excerpt: '',
-        is_published: false,
-        image_url: '',
-        meta_title: '',
-        meta_description: '',
-        meta_keywords: '',
-        category: '',
-        scheduled_at: ''
-      });
-      fetchData();
+    if (editingBlog) {
+      await updateDoc(doc(db, "blogs", editingBlog.id), blogData);
+    } else {
+      await addDoc(collection(db, "blogs"), blogData);
     }
+
+    setIsCreatingBlog(false);
+    setEditingBlog(null);
+    setBlogForm({
+      title: '',
+      slug: '',
+      content: '',
+      excerpt: '',
+      is_published: false,
+      image_url: '',
+      meta_title: '',
+      meta_description: '',
+      meta_keywords: '',
+      category: '',
+      scheduled_at: ''
+    });
   };
 
-  const handleDeleteBlog = async (id: number) => {
+  const handleDeleteBlog = async (id: string) => {
     if (!confirm('Are you sure you want to delete this blog post?')) return;
-    const headers = getAuthHeaders();
-    const res = await fetch(`/api/admin/blogs/${id}`, { method: 'DELETE', headers });
-    if (res.ok) fetchData();
+    await deleteDoc(doc(db, "blogs", id));
   };
 
   const handleBlogImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('image', file);
-
-    const headers = getAuthHeaders();
-    const res = await fetch('/api/admin/blogs/upload', {
-      method: 'POST',
-      headers: { 'x-user-id': headers['x-user-id'] },
-      body: formData
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      setBlogForm(prev => ({ ...prev, image_url: data.imageUrl }));
+    const url = prompt("Enter Image URL for Blog Post:");
+    if (url) {
+      setBlogForm(prev => ({ ...prev, image_url: url }));
     }
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    navigate("/login");
   };
 
   if (!profile) return <div className="flex items-center justify-center h-64">Loading...</div>;
@@ -964,8 +903,8 @@ export default function Dashboard() {
                     <label className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">First Name</label>
                     <input 
                       type="text" 
-                      value={profile.contact_first_name || ""} 
-                      onChange={(e) => setProfile(prev => prev ? { ...prev, contact_first_name: e.target.value } : null)}
+                      value={profile?.contact_first_name || ""} 
+                      onChange={(e) => handleUpdateProfile({ contact_first_name: e.target.value })}
                       className="bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl px-4 py-3 text-zinc-900 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all"
                       placeholder="John"
                     />
@@ -974,8 +913,8 @@ export default function Dashboard() {
                     <label className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Last Name</label>
                     <input 
                       type="text" 
-                      value={profile.contact_last_name || ""} 
-                      onChange={(e) => setProfile(prev => prev ? { ...prev, contact_last_name: e.target.value } : null)}
+                      value={profile?.contact_last_name || ""} 
+                      onChange={(e) => handleUpdateProfile({ contact_last_name: e.target.value })}
                       className="bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl px-4 py-3 text-zinc-900 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all"
                       placeholder="Doe"
                     />
@@ -984,8 +923,8 @@ export default function Dashboard() {
                     <label className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Email</label>
                     <input 
                       type="email" 
-                      value={profile.contact_email || ""} 
-                      onChange={(e) => setProfile(prev => prev ? { ...prev, contact_email: e.target.value } : null)}
+                      value={profile?.contact_email || ""} 
+                      onChange={(e) => handleUpdateProfile({ contact_email: e.target.value })}
                       className="bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl px-4 py-3 text-zinc-900 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all"
                       placeholder="john@example.com"
                     />
@@ -994,8 +933,8 @@ export default function Dashboard() {
                     <label className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Phone</label>
                     <input 
                       type="tel" 
-                      value={profile.contact_phone || ""} 
-                      onChange={(e) => setProfile(prev => prev ? { ...prev, contact_phone: e.target.value } : null)}
+                      value={profile?.contact_phone || ""} 
+                      onChange={(e) => handleUpdateProfile({ contact_phone: e.target.value })}
                       className="bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl px-4 py-3 text-zinc-900 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all"
                       placeholder="+234..."
                     />
@@ -1004,8 +943,8 @@ export default function Dashboard() {
                     <label className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Organization</label>
                     <input 
                       type="text" 
-                      value={profile.contact_organization || ""} 
-                      onChange={(e) => setProfile(prev => prev ? { ...prev, contact_organization: e.target.value } : null)}
+                      value={profile?.contact_organization || ""} 
+                      onChange={(e) => handleUpdateProfile({ contact_organization: e.target.value })}
                       className="bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl px-4 py-3 text-zinc-900 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all"
                       placeholder="Company Name"
                     />
@@ -1014,8 +953,8 @@ export default function Dashboard() {
                     <label className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Job Title</label>
                     <input 
                       type="text" 
-                      value={profile.contact_job_title || ""} 
-                      onChange={(e) => setProfile(prev => prev ? { ...prev, contact_job_title: e.target.value } : null)}
+                      value={profile?.contact_job_title || ""} 
+                      onChange={(e) => handleUpdateProfile({ contact_job_title: e.target.value })}
                       className="bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl px-4 py-3 text-zinc-900 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all"
                       placeholder="CEO"
                     />
@@ -1024,8 +963,8 @@ export default function Dashboard() {
                     <label className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Website</label>
                     <input 
                       type="url" 
-                      value={profile.contact_website || ""} 
-                      onChange={(e) => setProfile(prev => prev ? { ...prev, contact_website: e.target.value } : null)}
+                      value={profile?.contact_website || ""} 
+                      onChange={(e) => handleUpdateProfile({ contact_website: e.target.value })}
                       className="bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl px-4 py-3 text-zinc-900 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white transition-all"
                       placeholder="https://..."
                     />
@@ -1106,12 +1045,23 @@ export default function Dashboard() {
                   {THEMES.map((theme) => (
                     <button 
                       key={theme.id}
-                      onClick={() => handleUpdateProfile({ theme: theme.id })}
+                      onClick={() => {
+                        if (theme.is_premium && profile?.plan === 'free') {
+                          alert(`${theme.name} is a Pro theme. Upgrade to enable!`);
+                          return;
+                        }
+                        handleUpdateProfile({ theme: theme.id });
+                      }}
                       className={cn(
-                        "p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-2",
+                        "p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-2 relative overflow-hidden",
                         profile.theme === theme.id ? "border-zinc-900 dark:border-white" : "border-zinc-100 dark:border-zinc-800 hover:border-zinc-200 dark:hover:border-zinc-700"
                       )}
                     >
+                      {theme.is_premium && profile?.plan === 'free' && (
+                        <div className="absolute top-2 right-2 text-zinc-400">
+                          <Lock size={14} />
+                        </div>
+                      )}
                       <div className={cn("w-full h-12 rounded-lg", theme.bg)} />
                       <span className="text-sm font-bold text-zinc-900 dark:text-white">{theme.name}</span>
                     </button>
@@ -1120,7 +1070,10 @@ export default function Dashboard() {
               </section>
 
               <section className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
-                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Background</h2>
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                  Background
+                  {profile?.plan === 'free' && <Lock size={16} className="text-zinc-400" />}
+                </h2>
                 <div className="flex flex-col gap-4">
                   <div className="relative w-full h-32 bg-zinc-100 dark:bg-zinc-800 rounded-2xl overflow-hidden border-2 border-zinc-200 dark:border-zinc-700 group">
                     {profile.bg_image_url ? (
@@ -1164,16 +1117,27 @@ export default function Dashboard() {
 
               <section className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Fonts</h2>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {FONTS.map((font) => (
                     <button 
                       key={font.id}
-                      onClick={() => handleUpdateProfile({ font_family: font.id })}
+                      onClick={() => {
+                        if (font.is_premium && profile?.plan === 'free') {
+                          alert(`${font.name} is a Pro font. Upgrade to enable!`);
+                          return;
+                        }
+                        handleUpdateProfile({ font_family: font.id });
+                      }}
                       className={cn(
-                        "p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-1",
+                        "p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-1 relative overflow-hidden",
                         profile.font_family === font.id ? "border-zinc-900 dark:border-white" : "border-zinc-100 dark:border-zinc-800 hover:border-zinc-200 dark:hover:border-zinc-700"
                       )}
                     >
+                      {font.is_premium && profile?.plan === 'free' && (
+                        <div className="absolute top-2 right-2 text-zinc-400">
+                          <Lock size={14} />
+                        </div>
+                      )}
                       <span className={cn("text-lg text-zinc-900 dark:text-white", font.family)}>Abc</span>
                       <span className="text-sm font-bold text-zinc-900 dark:text-white">{font.name}</span>
                     </button>
@@ -1185,7 +1149,7 @@ export default function Dashboard() {
 
           {activeTab === 'analytics' && (
             <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-8 transition-colors">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-zinc-50 dark:bg-zinc-800 p-6 rounded-2xl border border-zinc-100 dark:border-zinc-700">
                   <div className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Total Clicks</div>
                   <div className="text-3xl font-bold text-zinc-900 dark:text-white">{links.reduce((acc, curr) => acc + curr.clicks, 0)}</div>
@@ -1275,35 +1239,61 @@ export default function Dashboard() {
                 </div>
 
                 {subscription.payments.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                      <thead>
-                        <tr className="border-b border-zinc-100 dark:border-zinc-800">
-                          <th className="pb-4 text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Date</th>
-                          <th className="pb-4 text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Plan</th>
-                          <th className="pb-4 text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Amount</th>
-                          <th className="pb-4 text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
-                        {subscription.payments.map((payment) => (
-                          <tr key={payment.id}>
-                            <td className="py-4 text-sm text-zinc-600 dark:text-zinc-400">{new Date(payment.date).toLocaleDateString()}</td>
-                            <td className="py-4 text-sm font-bold text-zinc-900 dark:text-white capitalize">{payment.plan}</td>
-                            <td className="py-4 text-sm text-zinc-600 dark:text-zinc-400">{payment.currency} {payment.amount.toLocaleString()}</td>
-                            <td className="py-4">
-                              <span className={cn(
-                                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                                payment.status === 'success' ? "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" : "bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400"
-                              )}>
-                                {payment.status}
-                              </span>
-                            </td>
+                  <>
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="border-b border-zinc-100 dark:border-zinc-800">
+                            <th className="pb-4 text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Date</th>
+                            <th className="pb-4 text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Plan</th>
+                            <th className="pb-4 text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Amount</th>
+                            <th className="pb-4 text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Status</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
+                          {subscription.payments.map((payment) => (
+                            <tr key={payment.id}>
+                              <td className="py-4 text-sm text-zinc-600 dark:text-zinc-400">{new Date(payment.date).toLocaleDateString()}</td>
+                              <td className="py-4 text-sm font-bold text-zinc-900 dark:text-white capitalize">{payment.plan}</td>
+                              <td className="py-4 text-sm text-zinc-600 dark:text-zinc-400">{payment.currency} {payment.amount.toLocaleString()}</td>
+                              <td className="py-4">
+                                <span className={cn(
+                                  "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                                  payment.status === 'success' ? "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" : "bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400"
+                                )}>
+                                  {payment.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Card View */}
+                    <div className="md:hidden flex flex-col gap-4">
+                      {subscription.payments.map((payment) => (
+                        <div key={payment.id} className="bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex flex-col gap-3">
+                          <div className="flex justify-between items-start">
+                            <div className="flex flex-col">
+                              <span className="text-xs text-zinc-500 dark:text-zinc-400">{new Date(payment.date).toLocaleDateString()}</span>
+                              <span className="font-bold text-zinc-900 dark:text-white capitalize">{payment.plan} Plan</span>
+                            </div>
+                            <span className={cn(
+                              "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                              payment.status === 'success' ? "bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400" : "bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400"
+                            )}>
+                              {payment.status}
+                            </span>
+                          </div>
+                          <div className="text-sm font-bold text-zinc-900 dark:text-white">
+                            {payment.currency} {payment.amount.toLocaleString()}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 ) : (
                   <div className="text-center py-12 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700">
                     <div className="text-zinc-400 dark:text-zinc-500 mb-2">No payments found</div>
@@ -1359,14 +1349,14 @@ export default function Dashboard() {
                 <div className="flex flex-col gap-4">
                   {apiKeys.length > 0 ? (
                     apiKeys.map((key) => (
-                      <div key={key.id} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700 gap-4">
+                      <div key={key.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700 gap-4">
                         <div className="flex flex-col gap-1 min-w-0">
                           <div className="font-bold text-zinc-900 dark:text-white truncate">{key.name}</div>
                           <div className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400 font-mono truncate">{key.partial_key} • {new Date(key.created_at).toLocaleDateString()}</div>
                         </div>
                         <button 
                           onClick={() => handleDeleteKey(key.id)}
-                          className="p-2 text-zinc-400 hover:text-red-500 transition-colors shrink-0"
+                          className="p-2 text-zinc-400 hover:text-red-500 transition-colors shrink-0 self-end sm:self-center"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -1563,12 +1553,12 @@ export default function Dashboard() {
                               onClick={() => handleToggleFeatured(user.id)}
                               className={cn(
                                 "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all",
-                                user.is_featured === 1 
+                                Boolean(user.is_featured)
                                   ? "bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400" 
                                   : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                               )}
                             >
-                              {user.is_featured === 1 ? "Featured" : "Promote"}
+                              {Boolean(user.is_featured) ? "Featured" : "Promote"}
                             </button>
                           </td>
                           <td className="py-4 text-right">
@@ -1650,12 +1640,12 @@ export default function Dashboard() {
                         onClick={() => handleToggleFeatured(user.id)}
                         className={cn(
                           "w-full py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border",
-                          user.is_featured === 1 
+                          Boolean(user.is_featured)
                             ? "bg-amber-100 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-900/30" 
                             : "bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700"
                         )}
                       >
-                        {user.is_featured === 1 ? "Featured User" : "Promote to Featured"}
+                        {Boolean(user.is_featured) ? "Featured User" : "Promote to Featured"}
                       </button>
                     </div>
                   ))}
@@ -1688,7 +1678,7 @@ export default function Dashboard() {
                           <td className="py-4">
                             <div className="flex flex-col">
                               <span className="text-sm font-medium text-zinc-900 dark:text-white">@{link.username}</span>
-                              <span className="text-[10px] text-zinc-400 dark:text-zinc-500">{link.email}</span>
+                              <span className="text-[10px] text-zinc-400 dark:text-zinc-500">{link.email || 'N/A'}</span>
                             </div>
                           </td>
                           <td className="py-4">
@@ -1931,7 +1921,7 @@ export default function Dashboard() {
                         <div className="flex flex-col gap-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-zinc-900 dark:text-white truncate">{blog.title}</span>
-                            {blog.is_published === 1 ? (
+                            {Boolean(blog.is_published) ? (
                               <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase rounded-full">Published</span>
                             ) : (
                               <span className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400 text-[10px] font-bold uppercase rounded-full">Draft</span>
@@ -1955,7 +1945,7 @@ export default function Dashboard() {
                                 slug: blog.slug,
                                 content: (blog as any).content || '',
                                 excerpt: (blog as any).excerpt || '',
-                                is_published: blog.is_published === 1,
+                                is_published: Boolean(blog.is_published),
                                 image_url: (blog as any).image_url || '',
                                 meta_title: (blog as any).meta_title || '',
                                 meta_description: (blog as any).meta_description || '',
@@ -1964,20 +1954,22 @@ export default function Dashboard() {
                                 scheduled_at: (blog as any).scheduled_at || ''
                               });
                               // We need to fetch the full blog content if it's not in the list
-                              fetch(`/api/admin/blogs/${blog.id}`, { headers: getAuthHeaders() })
-                                .then(res => res.json())
-                                .then(data => {
-                                  setBlogForm(prev => ({
-                                    ...prev,
-                                    content: data.content,
-                                    excerpt: data.excerpt,
-                                    image_url: data.image_url,
-                                    meta_title: data.meta_title,
-                                    meta_description: data.meta_description,
-                                    meta_keywords: data.meta_keywords,
-                                    category: data.category,
-                                    scheduled_at: data.scheduled_at
-                                  }));
+                              getDoc(doc(db, "blogs", blog.id as string))
+                                .then(docSnap => {
+                                  if (docSnap.exists()) {
+                                    const data = docSnap.data();
+                                    setBlogForm(prev => ({
+                                      ...prev,
+                                      content: data.content,
+                                      excerpt: data.excerpt,
+                                      image_url: data.image_url,
+                                      meta_title: data.meta_title,
+                                      meta_description: data.meta_description,
+                                      meta_keywords: data.meta_keywords,
+                                      category: data.category,
+                                      scheduled_at: data.scheduled_at
+                                    }));
+                                  }
                                 });
                               setIsCreatingBlog(true);
                             }}
@@ -2055,8 +2047,8 @@ function SortableFeed({
   onDelete 
 }: { 
   feed: SocialFeed, 
-  onUpdate: (id: number, updates: Partial<SocialFeed>) => Promise<void>,
-  onDelete: (id: number) => Promise<void>,
+  onUpdate: (id: string | number, updates: Partial<SocialFeed>) => Promise<void>,
+  onDelete: (id: string | number) => Promise<void>,
   key?: any
 }) {
   const {
@@ -2131,8 +2123,8 @@ function SortableFeed({
         <label className="flex items-center gap-2 cursor-pointer">
           <input 
             type="checkbox" 
-            checked={feed.active === 1}
-            onChange={(e) => onUpdate(feed.id, { active: e.target.checked ? 1 : 0 })}
+            checked={Boolean(feed.active)}
+            onChange={(e) => onUpdate(feed.id, { active: e.target.checked })}
             className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-white focus:ring-zinc-900 dark:focus:ring-white bg-transparent"
           />
           <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Active</span>

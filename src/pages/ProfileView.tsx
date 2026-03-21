@@ -7,6 +7,8 @@ import { twMerge } from "tailwind-merge";
 import { ExternalLink, Image as ImageIcon, ShoppingBag, UserPlus } from "lucide-react";
 import { usePaystackPayment } from "react-paystack";
 import { downloadVCard } from "../utils/vcard";
+import { db } from "../firebase";
+import { collection, query, where, getDocs, doc, updateDoc, increment, orderBy, addDoc } from "firebase/firestore";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -22,11 +24,41 @@ export default function ProfileView() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const res = await fetch(`/api/profile/${username}`);
-        if (!res.ok) throw new Error("Profile not found");
-        const data = await res.json();
-        setProfile(data);
+        // 1. Find user by username
+        const usersQuery = query(collection(db, "users"), where("username", "==", username));
+        const userSnapshot = await getDocs(usersQuery);
+        
+        if (userSnapshot.empty) {
+          throw new Error("Profile not found");
+        }
+
+        const userDoc = userSnapshot.docs[0];
+        const userData = userDoc.data() as Profile;
+        const userId = userDoc.id;
+
+        // 2. Fetch links
+        const linksQuery = query(
+          collection(db, "links"), 
+          where("user_id", "==", userId), 
+          where("active", "==", true),
+          orderBy("position", "asc")
+        );
+        const linksSnapshot = await getDocs(linksQuery);
+        const links = linksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+
+        // 3. Fetch feeds
+        const feedsQuery = query(
+          collection(db, "social_feeds"), 
+          where("user_id", "==", userId), 
+          where("active", "==", true),
+          orderBy("position", "asc")
+        );
+        const feedsSnapshot = await getDocs(feedsQuery);
+        const feeds = feedsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+
+        setProfile({ ...userData, id: userId, links, feeds } as any);
       } catch (err) {
+        console.error("Fetch profile error:", err);
         setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
         setLoading(false);
@@ -36,8 +68,17 @@ export default function ProfileView() {
   }, [username]);
 
   const handleLinkClick = async (link: LinkType) => {
-    await fetch(`/api/links/${link.id}/click`, { method: "POST" });
-    if (link.is_product === 1) {
+    // Increment click count in Firestore
+    try {
+      const linkRef = doc(db, "links", link.id as string);
+      await updateDoc(linkRef, {
+        clicks: increment(1)
+      });
+    } catch (err) {
+      console.error("Failed to increment clicks", err);
+    }
+
+    if (Boolean(link.is_product)) {
       setPayingFor(link);
     } else {
       window.open(link.url, "_blank", "noopener,noreferrer");
@@ -131,16 +172,16 @@ export default function ProfileView() {
               )}
             >
               <div className="w-6 h-6 flex items-center justify-center shrink-0">
-                {link.icon ? <IconRenderer name={link.icon} size={24} /> : (link.is_product === 1 ? <ShoppingBag size={24} /> : null)}
+                {link.icon ? <IconRenderer name={link.icon} size={24} /> : (Boolean(link.is_product) ? <ShoppingBag size={24} /> : null)}
               </div>
               <div className="flex-1 flex flex-col items-center">
                 <span>{link.title}</span>
-                {link.is_product === 1 && (
+                {Boolean(link.is_product) && (
                   <span className="text-xs opacity-60">₦{(link.price || 0).toLocaleString()}</span>
                 )}
               </div>
               <div className="w-6 h-6 flex items-center justify-center shrink-0">
-                {link.is_product === 1 ? (
+                {Boolean(link.is_product) ? (
                   <ShoppingBag size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                 ) : (
                   <ExternalLink size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -180,6 +221,7 @@ export default function ProfileView() {
         <PaymentModal 
           link={payingFor} 
           onClose={() => setPayingFor(null)} 
+          userId={profile.id as string}
         />
       )}
     </div>
@@ -257,7 +299,7 @@ function SocialEmbed({ feed }: { feed: SocialFeed }) {
   );
 }
 
-function PaymentModal({ link, onClose }: { link: LinkType, onClose: () => void }) {
+function PaymentModal({ link, onClose, userId }: { link: LinkType, onClose: () => void, userId: string }) {
   const [email, setEmail] = useState("");
   const config = {
     reference: (new Date()).getTime().toString(),
@@ -270,15 +312,14 @@ function PaymentModal({ link, onClose }: { link: LinkType, onClose: () => void }
 
   const handleSuccess = async (reference: any) => {
     try {
-      await fetch("/api/payments/product", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reference: reference.reference,
-          linkId: link.id,
-          amount: link.price,
-          email: email
-        })
+      await addDoc(collection(db, "payments"), {
+        user_id: userId,
+        link_id: link.id,
+        reference: reference.reference,
+        amount: link.price,
+        email: email,
+        type: "product",
+        created_at: new Date().toISOString()
       });
       alert("Payment successful! Thank you for your purchase.");
       onClose();

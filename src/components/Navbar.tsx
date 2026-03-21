@@ -1,8 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Link2, LayoutDashboard, CreditCard, Home, LogOut, User, Menu, X, Mail, HelpCircle, FileText } from "lucide-react";
+import { LayoutDashboard, CreditCard, Home, LogOut, User, Menu, X, Mail, HelpCircle, FileText } from "lucide-react";
 import { useEffect, useState } from "react";
 import ThemeToggle from "./ThemeToggle";
 import { motion, AnimatePresence } from "motion/react";
+import Logo from "./Logo";
 
 export default function Navbar() {
   const [username, setUsername] = useState<string | null>(null);
@@ -27,11 +28,8 @@ export default function Navbar() {
   return (
     <nav className="bg-white/80 dark:bg-zinc-950/80 border-b border-zinc-200 dark:border-zinc-800 sticky top-0 z-50 backdrop-blur-md transition-colors duration-300">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <Link to="/" onClick={closeMenu} className="flex items-center gap-2 text-xl font-bold tracking-tight text-zinc-900 dark:text-white">
-          <div className="w-8 h-8 bg-zinc-900 dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-zinc-900">
-            <Link2 size={20} />
-          </div>
-          Chip NG
+        <Link to="/" onClick={closeMenu}>
+          <Logo />
         </Link>
         
         {/* Desktop Menu */}

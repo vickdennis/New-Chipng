@@ -1,22 +1,22 @@
 export interface User {
-  id: number;
+  id: string | number;
   username: string;
   email: string;
   plan: 'free' | 'pro' | 'business';
   role: 'user' | 'admin';
+  subscription_status?: string;
+  next_billing_date?: string | null;
+  is_featured?: boolean | number;
 }
 
-export interface Profile {
-  user_id: number;
-  username: string;
+export interface Profile extends User {
+  user_id: string | number;
   display_name: string;
   bio: string;
   avatar_url: string;
   theme: string;
   font_family: string;
   bg_image_url: string;
-  plan: string;
-  role: 'user' | 'admin';
   // Contact Info
   contact_first_name?: string;
   contact_last_name?: string;
@@ -28,26 +28,26 @@ export interface Profile {
 }
 
 export interface Link {
-  id: number;
-  user_id: number;
+  id: string | number;
+  user_id: string | number;
   title: string;
   url: string;
   icon: string;
   position: number;
   clicks: number;
-  active: number;
+  active: number | boolean;
   color?: string;
   price?: number;
-  is_product?: number;
+  is_product?: number | boolean;
 }
 
 export interface SocialFeed {
-  id: number;
-  user_id: number;
+  id: string | number;
+  user_id: string | number;
   type: 'instagram' | 'twitter' | 'tiktok' | 'youtube';
   url: string;
   position: number;
-  active: number;
+  active: number | boolean;
 }
 
 export interface Theme {
@@ -58,6 +58,7 @@ export interface Theme {
   card: string;
   button: string;
   buttonText: string;
+  is_premium?: boolean;
 }
 
 export const THEMES: Theme[] = [
@@ -68,7 +69,8 @@ export const THEMES: Theme[] = [
     text: 'text-zinc-900',
     card: 'bg-zinc-50',
     button: 'bg-zinc-900',
-    buttonText: 'text-white'
+    buttonText: 'text-white',
+    is_premium: false
   },
   {
     id: 'dark',
@@ -77,7 +79,8 @@ export const THEMES: Theme[] = [
     text: 'text-zinc-50',
     card: 'bg-zinc-900',
     button: 'bg-zinc-50',
-    buttonText: 'text-zinc-950'
+    buttonText: 'text-zinc-950',
+    is_premium: false
   },
   {
     id: 'sunset',
@@ -86,7 +89,8 @@ export const THEMES: Theme[] = [
     text: 'text-orange-950',
     card: 'bg-orange-100',
     button: 'bg-orange-600',
-    buttonText: 'text-white'
+    buttonText: 'text-white',
+    is_premium: true
   },
   {
     id: 'forest',
@@ -95,7 +99,8 @@ export const THEMES: Theme[] = [
     text: 'text-emerald-50',
     card: 'bg-emerald-900',
     button: 'bg-emerald-500',
-    buttonText: 'text-white'
+    buttonText: 'text-white',
+    is_premium: true
   }
 ];
 
@@ -103,11 +108,12 @@ export interface Font {
   id: string;
   name: string;
   family: string;
+  is_premium?: boolean;
 }
 
 export const FONTS: Font[] = [
-  { id: 'sans', name: 'Modern Sans', family: 'font-sans' },
-  { id: 'serif', name: 'Elegant Serif', family: 'font-serif' },
-  { id: 'mono', name: 'Technical Mono', family: 'font-mono' },
-  { id: 'display', name: 'Bold Display', family: 'font-display' },
+  { id: 'sans', name: 'Modern Sans', family: 'font-sans', is_premium: false },
+  { id: 'serif', name: 'Elegant Serif', family: 'font-serif', is_premium: true },
+  { id: 'mono', name: 'Technical Mono', family: 'font-mono', is_premium: true },
+  { id: 'display', name: 'Bold Display', family: 'font-display', is_premium: true },
 ];

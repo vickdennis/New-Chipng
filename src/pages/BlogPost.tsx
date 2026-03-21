@@ -4,9 +4,11 @@ import { motion } from 'motion/react';
 import { Calendar, User, ArrowLeft, Share2 } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import ReactMarkdown from 'react-markdown';
+import { db } from '../firebase';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 
 interface BlogPost {
-  id: number;
+  id: string;
   title: string;
   slug: string;
   content: string;
@@ -29,20 +31,25 @@ export default function BlogPost() {
   useEffect(() => {
     if (!slug) return;
     
-    fetch(`/api/blogs/${slug}`)
-      .then(res => {
-        if (!res.ok) throw new Error('Post not found');
-        return res.json();
-      })
-      .then(data => {
-        setPost(data);
-        setLoading(false);
-      })
-      .catch(err => {
+    const fetchPost = async () => {
+      try {
+        const q = query(collection(db, "blogs"), where("slug", "==", slug), limit(1));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          throw new Error('Post not found');
+        }
+
+        const doc = querySnapshot.docs[0];
+        setPost({ id: doc.id, ...doc.data() } as BlogPost);
+      } catch (err: any) {
         console.error('Error fetching blog post:', err);
         setError(err.message);
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+    fetchPost();
   }, [slug]);
 
   const handleShare = () => {

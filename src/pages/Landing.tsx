@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import { motion } from "motion/react";
-import { Link2, Zap, BarChart3, Palette, CheckCircle2, User, ArrowRight } from "lucide-react";
+import { Link2, Zap, BarChart3, Palette, CheckCircle2, User, ArrowRight, MessageCircle, CreditCard, BookOpen, Instagram, Twitter, Youtube } from "lucide-react";
 import { ReactNode, useEffect, useState } from "react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { db } from "../firebase";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -13,10 +15,21 @@ export default function Landing() {
   const [featured, setFeatured] = useState<Array<{ username: string, display_name: string, avatar_url: string, bio: string }>>([]);
 
   useEffect(() => {
-    fetch("/api/featured")
-      .then(res => res.json())
-      .then(data => setFeatured(data))
-      .catch(err => console.error("Failed to fetch featured creators", err));
+    const fetchFeatured = async () => {
+      try {
+        const q = query(
+          collection(db, "users"), 
+          where("is_featured", "==", true),
+          limit(4)
+        );
+        const querySnapshot = await getDocs(q);
+        const creators = querySnapshot.docs.map(doc => doc.data() as any);
+        setFeatured(creators);
+      } catch (err) {
+        console.error("Failed to fetch featured creators", err);
+      }
+    };
+    fetchFeatured();
   }, []);
 
   return (
@@ -170,42 +183,55 @@ export default function Landing() {
           {/* Mock Profile Header */}
           <div className="flex flex-col items-center gap-4 mb-10">
             <div className="relative">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 p-1 shadow-lg">
-                <div className="w-full h-full rounded-full bg-zinc-800 flex items-center justify-center overflow-hidden">
-                  <img src="https://picsum.photos/seed/creator/200" alt="Mock" className="w-full h-full object-cover opacity-80" referrerPolicy="no-referrer" />
+              <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-zinc-900 via-zinc-500 to-zinc-900 p-1 shadow-lg dark:from-white dark:via-zinc-400 dark:to-white">
+                <div className="w-full h-full rounded-full bg-zinc-900 flex items-center justify-center overflow-hidden p-3">
+                  <img src="/favicon.svg" alt="Chip NG" className="w-full h-full object-contain" />
                 </div>
               </div>
               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full border-4 border-white dark:border-zinc-900 flex items-center justify-center">
                 <CheckCircle2 size={12} className="text-white" />
               </div>
             </div>
-            <div className="flex flex-col items-center gap-2">
-              <div className="h-5 w-32 bg-zinc-200 dark:bg-zinc-800 rounded-full" />
-              <div className="h-3 w-48 bg-zinc-100 dark:bg-zinc-800/50 rounded-full" />
+            <div className="flex flex-col items-center gap-1">
+              <h3 className="font-bold text-zinc-900 dark:text-white">Chip NG Official</h3>
+              <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium text-center px-4">One link for everything you create. 🇳🇬</p>
             </div>
           </div>
 
           {/* Mock Links */}
           <div className="flex flex-col gap-3">
             {[
-              { color: 'bg-zinc-900 dark:bg-white', text: 'bg-white/20 dark:bg-zinc-200' },
-              { color: 'bg-indigo-500', text: 'bg-white/20' },
-              { color: 'bg-emerald-500', text: 'bg-white/20' }
+              { color: 'bg-zinc-900 dark:bg-white', text: 'Join our Community', icon: <MessageCircle size={18} className="text-white dark:text-zinc-900" />, textColor: 'text-white dark:text-zinc-900' },
+              { color: 'bg-zinc-100 dark:bg-zinc-800', text: 'View Pricing', icon: <CreditCard size={18} className="text-zinc-900 dark:text-white" />, textColor: 'text-zinc-900 dark:text-white' },
+              { color: 'bg-zinc-100 dark:bg-zinc-800', text: 'Read our Blog', icon: <BookOpen size={18} className="text-zinc-900 dark:text-white" />, textColor: 'text-zinc-900 dark:text-white' }
             ].map((link, i) => (
               <motion.div 
                 key={i}
                 initial={{ x: -10, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.5 + (i * 0.1) }}
-                className={cn("w-full h-14 rounded-2xl flex items-center px-4 gap-3 shadow-sm", link.color)}
+                className={cn("w-full h-14 rounded-2xl flex items-center px-4 gap-3 shadow-sm border border-transparent dark:border-zinc-700", link.color)}
               >
-                <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                  <div className="w-4 h-4 bg-white/40 rounded-sm" />
+                <div className="w-8 h-8 rounded-lg bg-black/5 dark:bg-white/5 flex items-center justify-center">
+                  {link.icon}
                 </div>
-                <div className={cn("h-3 w-24 rounded-full", link.text)} />
-                <ArrowRight size={14} className="ml-auto text-white/40" />
+                <div className={cn("text-sm font-bold", link.textColor)}>{link.text}</div>
+                <ArrowRight size={14} className={cn("ml-auto opacity-40", link.textColor)} />
               </motion.div>
             ))}
+          </div>
+
+          {/* Social Icons */}
+          <div className="mt-6 flex justify-center gap-4">
+            <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500">
+              <Instagram size={16} />
+            </div>
+            <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500">
+              <Twitter size={16} />
+            </div>
+            <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-500">
+              <Youtube size={16} />
+            </div>
           </div>
 
           {/* Mock Stats/Badges */}

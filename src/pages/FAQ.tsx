@@ -1,6 +1,7 @@
 import React from "react";
 import { motion } from "motion/react";
 import { HelpCircle, ChevronDown, Plus, Minus } from "lucide-react";
+import { WhatsAppIcon } from "../components/Icons";
 import { useState } from "react";
 
 const faqs = [
@@ -142,6 +143,7 @@ export default function FAQ() {
               rel="noopener noreferrer"
               className="px-8 py-4 bg-emerald-500 text-white font-bold rounded-2xl hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"
             >
+              <WhatsAppIcon size={20} />
               Chat on WhatsApp
             </a>
           </div>

@@ -1,34 +1,46 @@
 import { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { motion } from "motion/react";
 import { CheckCircle2, XCircle, Loader2, ArrowRight } from "lucide-react";
+import { applyActionCode } from "firebase/auth";
+import { auth, db } from "../firebase";
+import { doc, updateDoc } from "firebase/firestore";
 
 export default function VerifyEmail() {
-  const { token } = useParams();
+  const [searchParams] = useSearchParams();
+  const oobCode = searchParams.get('oobCode');
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState("");
 
   useEffect(() => {
+    if (!oobCode) {
+      setStatus('error');
+      setMessage("Invalid verification link.");
+      return;
+    }
+
     const verify = async () => {
       try {
-        const res = await fetch(`/api/auth/verify/${token}`, {
-          method: "POST",
-        });
-        const data = await res.json();
-        if (res.ok) {
-          setStatus('success');
-          setMessage(data.message);
-        } else {
-          setStatus('error');
-          setMessage(data.error);
+        await applyActionCode(auth, oobCode);
+        
+        // Update is_verified in Firestore if user is logged in
+        if (auth.currentUser) {
+          const userRef = doc(db, "users", auth.currentUser.uid);
+          await updateDoc(userRef, {
+            is_verified: true
+          });
         }
-      } catch (err) {
+
+        setStatus('success');
+        setMessage("Your email has been successfully verified.");
+      } catch (err: any) {
+        console.error("Verification error:", err);
         setStatus('error');
-        setMessage("Failed to connect to server");
+        setMessage(err.message || "Failed to verify email.");
       }
     };
     verify();
-  }, [token]);
+  }, [oobCode]);
 
   return (
     <div className="min-h-[calc(100vh-64px)] flex items-center justify-center p-4">

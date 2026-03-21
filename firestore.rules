@@ -1,0 +1,198 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (matches Firebase Auth UID)
+    // Fields:
+    //   - username: string (required)
+    //   - email: string (required)
+    //   - display_name: string (optional)
+    //   - bio: string (optional)
+    //   - avatar_url: string (optional)
+    //   - bg_image_url: string (optional)
+    //   - theme: string (optional)
+    //   - font_family: string (optional)
+    //   - plan: string (required, 'free' | 'pro' | 'business')
+    //   - role: string (required, 'user' | 'admin')
+    //   - is_verified: bool (optional)
+    //   - is_featured: bool (optional)
+    //   - subscription_status: string (optional)
+    //   - next_billing_date: string (optional)
+    //   - contact_*: string (optional)
+    //
+    // Collection: links
+    // Document ID: {linkId}
+    // Fields:
+    //   - user_id: string (required)
+    //   - title: string (required)
+    //   - url: string (required)
+    //   - icon: string (optional)
+    //   - position: number (required)
+    //   - clicks: number (optional)
+    //   - active: bool (required)
+    //   - color: string (optional)
+    //   - price: number (optional)
+    //   - is_product: bool (optional)
+    //
+    // Collection: social_feeds
+    // Document ID: {feedId}
+    // Fields:
+    //   - user_id: string (required)
+    //   - type: string (required, 'instagram' | 'twitter' | 'tiktok' | 'youtube')
+    //   - url: string (required)
+    //   - position: number (required)
+    //   - active: bool (required)
+    //
+    // Collection: blogs
+    // Document ID: {blogId}
+    // Fields:
+    //   - title: string (required)
+    //   - slug: string (required)
+    //   - content: string (required)
+    //   - author_id: string (required)
+    //   - is_published: bool (required)
+    //   - published_at: string (optional)
+    //   - category: string (optional)
+    //
+    // Collection: payments
+    // Document ID: {paymentId}
+    // Fields:
+    //   - user_id: string (required)
+    //   - amount: number (required)
+    //   - currency: string (required)
+    //   - status: string (required)
+    //   - date: string (required)
+    //   - plan: string (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.user_id;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "vickthorden@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['username', 'email', 'plan', 'role']) &&
+             data.username is string && data.username.size() >= 3 && data.username.size() <= 30 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+             data.plan in ['free', 'pro', 'business'] &&
+             data.role in ['user', 'admin'];
+    }
+
+    function isValidLink(data) {
+      return data.keys().hasAll(['user_id', 'title', 'url', 'position', 'active']) &&
+             data.user_id == request.auth.uid &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
+             data.url is string && data.url.size() > 0 && data.url.size() <= 2048 &&
+             data.position is number &&
+             data.active is bool;
+    }
+
+    function isValidSocialFeed(data) {
+      return data.keys().hasAll(['user_id', 'type', 'url', 'position', 'active']) &&
+             data.user_id == request.auth.uid &&
+             data.type in ['instagram', 'twitter', 'tiktok', 'youtube'] &&
+             data.url is string && data.url.size() > 0 &&
+             data.position is number &&
+             data.active is bool;
+    }
+
+    function isValidBlog(data) {
+      return data.keys().hasAll(['title', 'slug', 'content', 'author_id', 'is_published']) &&
+             data.title is string && data.title.size() > 0 &&
+             data.slug is string && data.slug.size() > 0 &&
+             data.content is string && data.content.size() > 0 &&
+             data.author_id == request.auth.uid &&
+             data.is_published is bool;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      // Public profiles can be read by anyone
+      allow read: if true; 
+      
+      // Only the owner can create their profile. 
+      // Default users can't set themselves as admin or pro initially.
+      // The designated admin email is allowed to bootstrap their admin status.
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (
+                      (request.resource.data.role == 'user' && request.resource.data.plan == 'free') ||
+                      (request.auth.token.email == "vickthorden@gmail.com")
+                    );
+      
+      // Only the owner or admin can update. Owner cannot change their role or plan directly.
+      allow update: if isAuthenticated() && (
+        (isOwner(userId) && isValidUser(request.resource.data) && 
+         request.resource.data.role == resource.data.role && 
+         request.resource.data.plan == resource.data.plan) || 
+        isAdmin()
+      );
+      
+      // Deletion is restricted to admin or owner (manual deletion)
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+
+    match /links/{linkId} {
+      allow read: if true; // Links are public
+      allow create: if isAuthenticated() && isValidLink(request.resource.data);
+      allow update: if isDocOwner() && isValidLink(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /social_feeds/{feedId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidSocialFeed(request.resource.data);
+      allow update: if isDocOwner() && isValidSocialFeed(request.resource.data);
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /blogs/{blogId} {
+      allow read: if true; // Blog posts are public
+      allow create: if isAdmin() && isValidBlog(request.resource.data);
+      allow update: if isAdmin() && isValidBlog(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isAuthenticated() && (resource.data.user_id == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /contact_messages/{messageId} {
+      allow create: if true;
+      allow read: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /api_keys/{keyId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,154 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and account settings",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "display_name": { "type": "string" },
+        "bio": { "type": "string" },
+        "avatar_url": { "type": "string" },
+        "bg_image_url": { "type": "string" },
+        "theme": { "type": "string" },
+        "font_family": { "type": "string" },
+        "plan": { "type": "string", "enum": ["free", "pro", "business"] },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "is_verified": { "type": "boolean" },
+        "is_featured": { "type": "boolean" },
+        "subscription_status": { "type": "string" },
+        "next_billing_date": { "type": "string" },
+        "contact_first_name": { "type": "string" },
+        "contact_last_name": { "type": "string" },
+        "contact_email": { "type": "string" },
+        "contact_phone": { "type": "string" },
+        "contact_organization": { "type": "string" },
+        "contact_job_title": { "type": "string" },
+        "contact_website": { "type": "string" }
+      },
+      "required": ["username", "email", "plan", "role"]
+    },
+    "Link": {
+      "title": "Link",
+      "description": "A link on a user's profile",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "title": { "type": "string" },
+        "url": { "type": "string" },
+        "icon": { "type": "string" },
+        "position": { "type": "number" },
+        "clicks": { "type": "number" },
+        "active": { "type": "boolean" },
+        "color": { "type": "string" },
+        "price": { "type": "number" },
+        "is_product": { "type": "boolean" }
+      },
+      "required": ["user_id", "title", "url", "position"]
+    },
+    "SocialFeed": {
+      "title": "Social Feed",
+      "description": "An embedded social media feed",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "type": { "type": "string", "enum": ["instagram", "twitter", "tiktok", "youtube"] },
+        "url": { "type": "string" },
+        "position": { "type": "number" },
+        "active": { "type": "boolean" }
+      },
+      "required": ["user_id", "type", "url", "position"]
+    },
+    "Blog": {
+      "title": "Blog",
+      "description": "A blog post",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "slug": { "type": "string" },
+        "content": { "type": "string" },
+        "excerpt": { "type": "string" },
+        "author_id": { "type": "string" },
+        "published_at": { "type": "string" },
+        "is_published": { "type": "boolean" },
+        "image_url": { "type": "string" },
+        "meta_title": { "type": "string" },
+        "meta_description": { "type": "string" },
+        "meta_keywords": { "type": "string" },
+        "category": { "type": "string" },
+        "scheduled_at": { "type": "string" }
+      },
+      "required": ["title", "slug", "content", "author_id"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "A payment record",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string" },
+        "status": { "type": "string" },
+        "date": { "type": "string" },
+        "plan": { "type": "string" }
+      },
+      "required": ["user_id", "amount", "status", "date"]
+    },
+    "ContactMessage": {
+      "title": "Contact Message",
+      "description": "A message from the contact form",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["name", "email", "subject", "message", "created_at"]
+    },
+    "ApiKey": {
+      "title": "API Key",
+      "description": "An API key for developer access",
+      "type": "object",
+      "properties": {
+        "user_id": { "type": "string" },
+        "key": { "type": "string" },
+        "name": { "type": "string" },
+        "created_at": { "type": "string" }
+      },
+      "required": ["user_id", "key", "name", "created_at"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/links/{linkId}": {
+      "schema": "Link",
+      "description": "Link documents"
+    },
+    "/social_feeds/{feedId}": {
+      "schema": "SocialFeed",
+      "description": "Social feed documents"
+    },
+    "/blogs/{blogId}": {
+      "schema": "Blog",
+      "description": "Blog post documents"
+    },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Payment records"
+    },
+    "/contact_messages/{messageId}": {
+      "schema": "ContactMessage",
+      "description": "Contact form messages"
+    },
+    "/api_keys/{keyId}": {
+      "schema": "ApiKey",
+      "description": "API key documents"
+    }
+  }
+}

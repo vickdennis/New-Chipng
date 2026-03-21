@@ -4,17 +4,7 @@ import { Search, X } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 export const ICON_LIST = [
-  "Instagram", "Twitter", "Youtube", "Github", "Linkedin", "Facebook", "Globe", 
-  "Mail", "Phone", "MessageCircle", "Music", "Play", "Camera", "ShoppingBag", 
-  "Briefcase", "GraduationCap", "Heart", "Star", "Zap", "Coffee", "MapPin", 
-  "Calendar", "Clock", "Download", "ExternalLink", "FileText", "Hash", "Image", 
-  "Layers", "Layout", "LifeBuoy", "Link", "List", "Lock", "Maximize", "Mic", 
-  "Moon", "Package", "Paperclip", "PieChart", "Pocket", "Power", "Printer", 
-  "Radio", "RefreshCw", "Rss", "Save", "Search", "Send", "Settings", "Share2", 
-  "Shield", "Shuffle", "Slack", "Smartphone", "Speaker", "Sun", "Tag", "Target", 
-  "Terminal", "ThumbsUp", "ToggleLeft", "Trash2", "TrendingUp", "Truck", "Tv", 
-  "Umbrella", "User", "Video", "Watch", "Wifi", "Wind", "X", "Leaf", "Droplets", 
-  "Mountain", "Sprout", "Hexagon", "FlaskConical", "Nut", "Circle", "Grape", "Cookie"
+  "Instagram", "Twitter", "Youtube", "Github", "Linkedin", "Facebook", "Twitch", "Tiktok", "Snapchat", "Reddit", "Discord", "Telegram", "Spotify", "Apple", "Chrome", "Slack", "Figma", "Dribbble", "Behance", "Medium", "Globe", "Mail", "Phone", "MessageCircle", "MessageSquare", "Music", "Music2", "Play", "Camera", "ShoppingBag", "Briefcase", "GraduationCap", "Heart", "Star", "Zap", "Coffee", "MapPin", "Calendar", "Clock", "Download", "ExternalLink", "FileText", "Hash", "Image", "Layers", "Layout", "LifeBuoy", "Link", "List", "Lock", "Maximize", "Mic", "Mic2", "Moon", "Package", "Paperclip", "PieChart", "Pocket", "Power", "Printer", "Radio", "RefreshCw", "Rss", "Save", "Search", "Send", "Settings", "Share2", "Shield", "Shuffle", "Smartphone", "Speaker", "Sun", "Tag", "Target", "Terminal", "ThumbsUp", "ToggleLeft", "Trash2", "TrendingUp", "Truck", "Tv", "Umbrella", "User", "Video", "Watch", "Wifi", "Wind", "X", "Leaf", "Droplets", "Mountain", "Sprout", "Hexagon", "FlaskConical", "Nut", "Circle", "Grape", "Cookie", "Gamepad", "Gamepad2", "Headphones", "Headset", "Laptop", "Tablet", "Monitor", "Cpu", "HardDrive", "Database", "Server", "Cloud", "Ghost", "Skull", "Smile", "Frown", "Meh"
 ];
 
 export function IconRenderer({ name, size = 20, className }: { name: string, size?: number, className?: string }) {

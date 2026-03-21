@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Calendar, User, ArrowRight } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
+import { db } from '../firebase';
+import { collection, query, getDocs, orderBy } from 'firebase/firestore';
 
 interface BlogPost {
-  id: number;
+  id: string;
   title: string;
   slug: string;
   excerpt: string;
@@ -20,16 +22,19 @@ export default function Blog() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/blogs')
-      .then(res => res.json())
-      .then(data => {
-        setPosts(data);
-        setLoading(false);
-      })
-      .catch(err => {
+    const fetchBlogs = async () => {
+      try {
+        const q = query(collection(db, "blogs"), orderBy("published_at", "desc"));
+        const querySnapshot = await getDocs(q);
+        const blogPosts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
+        setPosts(blogPosts);
+      } catch (err) {
         console.error('Error fetching blogs:', err);
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+    fetchBlogs();
   }, []);
 
   return (
