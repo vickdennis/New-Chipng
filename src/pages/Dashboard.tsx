@@ -828,7 +828,7 @@ export default function Dashboard() {
                   exit={{ opacity: 0, y: 10 }}
                   className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl z-50 overflow-hidden"
                 >
-                  <div className="p-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
+                  <div className="p-2 flex flex-col gap-1">
                     {[
                       { id: 'links', icon: <LinkIcon size={18} />, label: 'Links' },
                       { id: 'feeds', icon: <Activity size={18} />, label: 'Feeds' },
@@ -872,7 +872,7 @@ export default function Dashboard() {
         <div className="min-h-[500px]">
           {activeTab === 'links' && (
             <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-4">
                 <button 
                   onClick={handleAddLink}
                   className="w-full bg-zinc-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-800 transition-all"
@@ -974,7 +974,7 @@ export default function Dashboard() {
                 />
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md">
+              <div className="flex flex-col gap-4 w-full max-w-md">
                 <button 
                   onClick={() => {
                     const svg = document.getElementById("profile-qrcode");
@@ -1019,7 +1019,7 @@ export default function Dashboard() {
                   <p className="text-sm text-zinc-500 dark:text-zinc-400">Add your contact details to allow visitors to save you to their phone.</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-2">
                     <label className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">First Name</label>
                     <input 
@@ -1092,7 +1092,7 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex flex-col gap-4">
                   <button 
                     onClick={() => handleUpdateProfile({})}
                     disabled={isSaving}
@@ -1268,7 +1268,7 @@ export default function Dashboard() {
 
               <section className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Fonts</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-4">
                   {FONTS.map((font) => (
                     <button 
                       key={font.id}
@@ -1300,7 +1300,7 @@ export default function Dashboard() {
 
           {activeTab === 'analytics' && (
             <div className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-8 transition-colors">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-4">
                 <div className="bg-zinc-50 dark:bg-zinc-800 p-6 rounded-2xl border border-zinc-100 dark:border-zinc-700">
                   <div className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Total Clicks</div>
                   <div className="text-3xl font-bold text-zinc-900 dark:text-white">{links.reduce((acc, curr) => acc + curr.clicks, 0)}</div>
@@ -1462,9 +1462,9 @@ export default function Dashboard() {
           {activeTab === 'developer' && profile.role === 'admin' && (
             <div className="flex flex-col gap-8">
               <section className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex flex-col justify-between gap-4">
                   <h2 className="text-xl font-bold text-zinc-900 dark:text-white">API Keys</h2>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <div className="flex flex-col items-stretch gap-2">
                     <input 
                       type="text" 
                       placeholder="Key Name (e.g. Mobile App)"
@@ -1555,7 +1555,7 @@ export default function Dashboard() {
           {activeTab === 'admin' && profile.role === 'admin' && (
             <div className="flex flex-col gap-8">
               {/* Admin Stats */}
-              <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <section className="flex flex-col gap-4">
                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 transition-colors">
                   <div className="flex items-center gap-2 text-zinc-400 dark:text-zinc-500 mb-2">
                     <Users size={16} />
@@ -1602,7 +1602,7 @@ export default function Dashboard() {
                 {isCreatingUser && (
                   <div className="bg-zinc-50 dark:bg-zinc-800 p-6 rounded-2xl border border-zinc-200 dark:border-zinc-700 flex flex-col gap-4 transition-colors">
                     <h3 className="font-bold text-sm text-zinc-900 dark:text-white">Create New User</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-4">
                       <input 
                         type="text" 
                         placeholder="Username"

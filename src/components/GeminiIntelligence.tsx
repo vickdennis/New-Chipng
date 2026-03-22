@@ -85,7 +85,7 @@ export default function GeminiIntelligence({ profile, links }: GeminiIntelligenc
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex flex-col gap-4">
             <button 
               onClick={analyzeProfile}
               disabled={loading}
@@ -168,7 +168,7 @@ export default function GeminiIntelligence({ profile, links }: GeminiIntelligenc
         </div>
       </section>
 
-      <section className="bg-zinc-900 dark:bg-white p-6 sm:p-8 rounded-[2.5rem] text-white dark:text-zinc-900 flex flex-col sm:flex-row items-center justify-between gap-6 text-center sm:text-left">
+      <section className="bg-zinc-900 dark:bg-white p-6 sm:p-8 rounded-[2.5rem] text-white dark:text-zinc-900 flex flex-col items-center justify-between gap-6 text-center">
         <div className="flex flex-col gap-1">
           <h3 className="text-xl font-bold">Need more AI power?</h3>
           <p className="text-zinc-400 dark:text-zinc-500 text-sm">Upgrade to Business for advanced content generation and analytics.</p>
