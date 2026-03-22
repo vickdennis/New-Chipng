@@ -37,7 +37,7 @@ export function IconPicker({ onSelect, onClose }: { onSelect: (name: string) => 
 
         <div className="p-6 border-b border-zinc-100">
           <div className="relative">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <img src="/logo.svg" alt="Search" className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 object-contain" />
             <input 
               type="text" 
               autoFocus

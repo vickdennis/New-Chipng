@@ -30,6 +30,7 @@ import {
   Download,
   FileText,
   PenTool,
+  ChevronDown,
   Leaf,
   Droplets,
   Mountain,
@@ -61,12 +62,13 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Profile, Link as LinkType, SocialFeed, THEMES, FONTS, User } from "../types";
 import { downloadVCard } from "../utils/vcard";
+import GeminiIntelligence from "../components/GeminiIntelligence";
 import { IconPicker, IconRenderer } from "../components/IconPicker";
 import { SUGGESTED_INGREDIENTS } from "../data/ingredients";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useAuth } from "../context/AuthContext";
-import { db, auth, OperationType, handleFirestoreError } from "../firebase";
+import { db, auth, storage, OperationType, handleFirestoreError } from "../firebase";
 import { 
   collection, 
   query, 
@@ -82,6 +84,7 @@ import {
   getDoc,
   serverTimestamp
 } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { signOut } from "firebase/auth";
 
 function cn(...inputs: ClassValue[]) {
@@ -120,28 +123,30 @@ function SortableLink({
     <div 
       ref={setNodeRef} 
       style={style}
-      className="bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col gap-4 relative group transition-colors"
+      className="bg-white dark:bg-zinc-900 p-4 sm:p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col gap-4 relative group transition-colors"
     >
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-4 flex-1">
-          <div 
-            {...attributes} 
-            {...listeners}
-            className="cursor-grab active:cursor-grabbing p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors shrink-0"
-          >
-            <GripVertical size={20} />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 flex-1">
+          <div className="flex items-center gap-4">
+            <div 
+              {...attributes} 
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors shrink-0"
+            >
+              <GripVertical size={20} />
+            </div>
+            
+            <button 
+              onClick={() => onPickIcon(link.id)}
+              className="w-12 h-12 bg-zinc-50 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all shrink-0 border border-zinc-100 dark:border-zinc-700"
+            >
+              {link.icon ? (
+                <IconRenderer name={link.icon} size={24} />
+              ) : (
+                <ImageIcon size={24} />
+              )}
+            </button>
           </div>
-          
-          <button 
-            onClick={() => onPickIcon(link.id)}
-            className="w-12 h-12 bg-zinc-50 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-400 dark:text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all shrink-0 border border-zinc-100 dark:border-zinc-700"
-          >
-            {link.icon ? (
-              <IconRenderer name={link.icon} size={24} />
-            ) : (
-              <ImageIcon size={24} />
-            )}
-          </button>
           
           <div className="flex-1 flex flex-col gap-3">
             <input 
@@ -169,8 +174,8 @@ function SortableLink({
           </button>
         </div>
       </div>
-      <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800">
-        <div className="flex items-center gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+        <div className="flex flex-wrap items-center gap-4 sm:gap-6">
           <label className="flex items-center gap-2 cursor-pointer">
             <input 
               type="checkbox" 
@@ -264,7 +269,7 @@ export default function Dashboard() {
     category: '',
     scheduled_at: ''
   });
-  const [activeTab, setActiveTab] = useState<'links' | 'feeds' | 'qrcode' | 'contact' | 'appearance' | 'analytics' | 'subscription' | 'developer' | 'admin' | 'blog'>('links');
+  const [activeTab, setActiveTab] = useState<'links' | 'feeds' | 'qrcode' | 'contact' | 'appearance' | 'analytics' | 'subscription' | 'developer' | 'admin' | 'blog' | 'gemini'>('links');
   const [newKeyName, setNewKeyName] = useState("");
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
@@ -273,6 +278,9 @@ export default function Dashboard() {
   const [pickingIconFor, setPickingIconFor] = useState<string | number | null>(null);
   const [copied, setCopied] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
+  const [isNavOpen, setIsNavOpen] = useState(false);
   const [isUploadingBg, setIsUploadingBg] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bgFileInputRef = useRef<HTMLInputElement>(null);
@@ -323,7 +331,7 @@ export default function Dashboard() {
     let unsubAdminUsers: () => void = () => {};
     let unsubAdminLinks: () => void = () => {};
     let unsubAdminBlogs: () => void = () => {};
-    let unsubAdminKeys: () => void = () => {};
+    let unsubKeys: () => void = () => {};
 
     if (profile?.role === 'admin') {
       // Stats (simplified for Firestore)
@@ -345,10 +353,12 @@ export default function Dashboard() {
       unsubAdminBlogs = onSnapshot(collection(db, "blogs"), (snapshot) => {
         setAdminBlogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
       });
+    }
 
-      // API Keys for admin
+    // API Keys for Pro/Business users or Admin
+    if (profile?.plan !== 'free' || profile?.role === 'admin') {
       const keysQuery = query(collection(db, "api_keys"), where("user_id", "==", user.uid));
-      unsubAdminKeys = onSnapshot(keysQuery, (snapshot) => {
+      unsubKeys = onSnapshot(keysQuery, (snapshot) => {
         setApiKeys(snapshot.docs.map(doc => {
           const data = doc.data();
           return {
@@ -358,6 +368,8 @@ export default function Dashboard() {
             partial_key: data.key.substring(0, 8) + '...'
           };
         }));
+      }, (error) => {
+        handleFirestoreError(error, OperationType.GET, "api_keys");
       });
     }
 
@@ -369,7 +381,7 @@ export default function Dashboard() {
       unsubAdminUsers();
       unsubAdminLinks();
       unsubAdminBlogs();
-      unsubAdminKeys();
+      unsubKeys();
     };
   }, [user, profile]);
 
@@ -458,11 +470,57 @@ export default function Dashboard() {
     await deleteDoc(doc(db, "social_feeds", id.toString()));
   };
 
+  const handleUpdateUsername = async (newUsername: string) => {
+    if (!user || !profile) return;
+    if (newUsername === profile.username) return;
+    
+    // Basic validation
+    const sanitized = newUsername.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    if (sanitized.length < 3) {
+      setUsernameError("Username must be at least 3 characters");
+      return;
+    }
+
+    setIsCheckingUsername(true);
+    setUsernameError(null);
+
+    try {
+      const q = query(collection(db, 'users_public'), where('username', '==', sanitized));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        setUsernameError("Username is already taken");
+        return;
+      }
+
+      await Promise.all([
+        updateDoc(doc(db, "users", user.uid), { username: sanitized }),
+        updateDoc(doc(db, "users_public", user.uid), { username: sanitized })
+      ]);
+    } catch (error) {
+      console.error("Update username failed", error);
+      setUsernameError("Failed to update username");
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  };
+
   const handleUpdateProfile = async (updates: Partial<Profile>) => {
     if (!user) return;
     setIsSaving(true);
     try {
-      await updateDoc(doc(db, "users", user.uid), updates as any);
+      const publicUpdates: any = {};
+      const publicFields = ['display_name', 'bio', 'avatar_url', 'bg_image_url', 'theme', 'font_family', 'is_verified', 'is_featured'];
+      Object.keys(updates).forEach(key => {
+        if (publicFields.includes(key)) {
+          publicUpdates[key] = updates[key];
+        }
+      });
+
+      await Promise.all([
+        updateDoc(doc(db, "users", user.uid), updates as any),
+        Object.keys(publicUpdates).length > 0 ? updateDoc(doc(db, "users_public", user.uid), publicUpdates) : Promise.resolve()
+      ]);
     } catch (error) {
       console.error("Update profile failed", error);
     } finally {
@@ -507,11 +565,23 @@ export default function Dashboard() {
   };
 
   const handleAvatarUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    // For now, we'll use a placeholder or let user provide URL
-    // Real storage would use Firebase Storage
-    const url = prompt("Enter Image URL for Avatar:");
-    if (url) {
-      handleUpdateProfile({ avatar_url: url });
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    try {
+      setIsUploading(true);
+      console.log("Starting avatar upload...", file.name);
+      const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
+      const storageRef = ref(storage, `avatars/${user.uid}/${Date.now()}_${safeName}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      console.log("Avatar upload successful:", url);
+      await handleUpdateProfile({ avatar_url: url });
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      alert(`Failed to upload avatar: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -520,9 +590,24 @@ export default function Dashboard() {
       alert("Custom background images are a Pro feature. Upgrade to enable!");
       return;
     }
-    const url = prompt("Enter Image URL for Background:");
-    if (url) {
-      handleUpdateProfile({ bg_image_url: url });
+
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    try {
+      setIsUploadingBg(true);
+      console.log("Starting background upload...", file.name);
+      const safeName = file.name.replace(/[^a-z0-9.]/gi, '_').toLowerCase();
+      const storageRef = ref(storage, `backgrounds/${user.uid}/${Date.now()}_${safeName}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      console.log("Background upload successful:", url);
+      await handleUpdateProfile({ bg_image_url: url });
+    } catch (error) {
+      console.error("Error uploading background:", error);
+      alert(`Failed to upload background image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsUploadingBg(false);
     }
   };
 
@@ -545,7 +630,7 @@ export default function Dashboard() {
         user_id: user.uid,
         key,
         name,
-        created_at: new Date().toISOString()
+        created_at: serverTimestamp()
       });
       setGeneratedKey(key);
     } catch (err) {
@@ -578,7 +663,10 @@ export default function Dashboard() {
   const handleToggleFeatured = async (id: string) => {
     const user = adminUsers.find(u => u.id === id);
     if (!user) return;
-    await updateDoc(doc(db, "users", id), { is_featured: !Boolean(user.is_featured) });
+    await Promise.all([
+      updateDoc(doc(db, "users", id), { is_featured: !Boolean(user.is_featured) }),
+      updateDoc(doc(db, "users_public", id), { is_featured: !Boolean(user.is_featured) })
+    ]);
   };
 
   const handleDeleteAdminLink = async (id: string) => {
@@ -592,11 +680,14 @@ export default function Dashboard() {
   };
 
   const handleSaveBlog = async () => {
-    if (!user) return;
+    if (!user || !profile) return;
     const blogData = {
       ...blogForm,
       author_id: user.uid,
-      published_at: blogForm.is_published ? serverTimestamp() : null
+      author_name: profile.display_name || profile.username,
+      published_at: blogForm.is_published 
+        ? (editingBlog?.published_at || serverTimestamp()) 
+        : null
     };
 
     if (editingBlog) {
@@ -639,10 +730,12 @@ export default function Dashboard() {
     navigate("/login");
   };
 
+  const [showMobilePreview, setShowMobilePreview] = useState(false);
+
   if (!profile) return <div className="flex items-center justify-center h-64">Loading...</div>;
 
   return (
-    <div className="grid lg:grid-cols-[1fr_400px] gap-8 px-4 sm:px-0">
+    <div className="grid lg:grid-cols-[1fr_400px] gap-8 px-4 sm:px-0 pb-24 lg:pb-0">
       {/* Editor Side */}
       <div className="flex flex-col gap-8">
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -695,56 +788,84 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-2xl w-full overflow-x-auto scrollbar-hide">
-          <div className="flex min-w-max">
-            <TabButton active={activeTab === 'links'} onClick={() => setActiveTab('links')}>
-              <LinkIcon size={18} />
-              Links
-            </TabButton>
-            <TabButton active={activeTab === 'feeds'} onClick={() => setActiveTab('feeds')}>
-              <Activity size={18} />
-              Feeds
-            </TabButton>
-            <TabButton active={activeTab === 'qrcode'} onClick={() => setActiveTab('qrcode')}>
-              <QrCode size={18} />
-              QR Code
-            </TabButton>
-            <TabButton active={activeTab === 'contact'} onClick={() => setActiveTab('contact')}>
-              <Users size={18} />
-              Contact
-            </TabButton>
-            <TabButton active={activeTab === 'appearance'} onClick={() => setActiveTab('appearance')}>
-              <Palette size={18} />
-              Appearance
-            </TabButton>
-            <TabButton active={activeTab === 'analytics'} onClick={() => setActiveTab('analytics')}>
-              <BarChart3 size={18} />
-              Analytics
-            </TabButton>
-            <TabButton active={activeTab === 'subscription'} onClick={() => setActiveTab('subscription')}>
-              <CreditCard size={18} />
-              Subscription
-            </TabButton>
-            {profile.role === 'admin' && (
-              <TabButton active={activeTab === 'developer'} onClick={() => setActiveTab('developer')}>
-                <Code size={18} />
-                Developer
-              </TabButton>
+        {/* Dropdown Navigation */}
+        <div className="relative mb-8">
+          <button 
+            onClick={() => setIsNavOpen(!isNavOpen)}
+            className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl flex items-center justify-between font-bold text-zinc-900 dark:text-white transition-all hover:border-zinc-300 dark:hover:border-zinc-700"
+          >
+            <div className="flex items-center gap-3">
+              {activeTab === 'links' && <LinkIcon size={20} />}
+              {activeTab === 'feeds' && <Activity size={20} />}
+              {activeTab === 'qrcode' && <QrCode size={20} />}
+              {activeTab === 'contact' && <Users size={20} />}
+              {activeTab === 'appearance' && <Palette size={20} />}
+              {activeTab === 'analytics' && <BarChart3 size={20} />}
+              {activeTab === 'subscription' && <CreditCard size={20} />}
+              {activeTab === 'gemini' && <Sparkles size={20} className="text-amber-500" />}
+              {activeTab === 'developer' && <Code size={20} />}
+              {activeTab === 'admin' && <Shield size={20} />}
+              {activeTab === 'blog' && <FileText size={20} />}
+              <span className="capitalize">
+                {activeTab === 'qrcode' ? 'QR Code' : 
+                 activeTab === 'gemini' ? 'Gemini AI' : 
+                 activeTab}
+              </span>
+            </div>
+            <ChevronDown size={20} className={cn("transition-transform", isNavOpen && "rotate-180")} />
+          </button>
+
+          <AnimatePresence>
+            {isNavOpen && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setIsNavOpen(false)}
+                />
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl z-50 overflow-hidden"
+                >
+                  <div className="p-2 grid grid-cols-1 sm:grid-cols-2 gap-1">
+                    {[
+                      { id: 'links', icon: <LinkIcon size={18} />, label: 'Links' },
+                      { id: 'feeds', icon: <Activity size={18} />, label: 'Feeds' },
+                      { id: 'qrcode', icon: <QrCode size={18} />, label: 'QR Code' },
+                      { id: 'contact', icon: <Users size={18} />, label: 'Contact' },
+                      { id: 'appearance', icon: <Palette size={18} />, label: 'Appearance' },
+                      { id: 'analytics', icon: <BarChart3 size={18} />, label: 'Analytics' },
+                      { id: 'subscription', icon: <CreditCard size={18} />, label: 'Subscription' },
+                      ...(profile.role === 'admin' || profile.plan === 'pro' || profile.plan === 'business' ? [{ id: 'gemini', icon: <Sparkles size={18} className="text-amber-500" />, label: 'Gemini AI' }] : []),
+                      ...(profile.role === 'admin' ? [
+                        { id: 'developer', icon: <Code size={18} />, label: 'Developer' },
+                        { id: 'admin', icon: <Shield size={18} />, label: 'Admin' },
+                        { id: 'blog', icon: <FileText size={18} />, label: 'Blog' }
+                      ] : [])
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => {
+                          setActiveTab(tab.id as any);
+                          setIsNavOpen(false);
+                        }}
+                        className={cn(
+                          "flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all",
+                          activeTab === tab.id 
+                            ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900" 
+                            : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                        )}
+                      >
+                        {tab.icon}
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              </>
             )}
-            {profile.role === 'admin' && (
-              <TabButton active={activeTab === 'admin'} onClick={() => setActiveTab('admin')}>
-                <Shield size={18} />
-                Admin
-              </TabButton>
-            )}
-            {profile.role === 'admin' && (
-              <TabButton active={activeTab === 'blog'} onClick={() => setActiveTab('blog')}>
-                <FileText size={18} />
-                Blog
-              </TabButton>
-            )}
-          </div>
+          </AnimatePresence>
         </div>
 
         {/* Tab Content */}
@@ -829,7 +950,7 @@ export default function Dashboard() {
           )}
 
           {activeTab === 'qrcode' && (
-            <div className="flex flex-col items-center gap-8 bg-white dark:bg-zinc-900 p-12 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-sm transition-colors">
+            <div className="flex flex-col items-center gap-8 bg-white dark:bg-zinc-900 p-6 sm:p-12 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-sm transition-colors">
               <div className="flex flex-col items-center gap-4 text-center max-w-md">
                 <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Your Profile QR Code</h2>
                 <p className="text-zinc-500 dark:text-zinc-400">Scan this code to instantly visit your profile. You can download it and use it on business cards, posters, or social media.</p>
@@ -891,7 +1012,7 @@ export default function Dashboard() {
           )}
 
           {activeTab === 'contact' && (
-            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-sm">
+            <div className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-sm">
               <div className="flex flex-col gap-6">
                 <div className="flex flex-col gap-2">
                   <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Contact Information</h2>
@@ -971,20 +1092,29 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <button 
-                  onClick={() => handleUpdateProfile({})}
-                  disabled={isSaving}
-                  className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-50"
-                >
-                  {isSaving ? "Saving..." : "Save Contact Info"}
-                </button>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <button 
+                    onClick={() => handleUpdateProfile({})}
+                    disabled={isSaving}
+                    className="flex-1 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-50"
+                  >
+                    {isSaving ? "Saving..." : "Save Contact Info"}
+                  </button>
+                  <button 
+                    onClick={() => downloadVCard(profile)}
+                    className="flex-1 bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all"
+                  >
+                    <Download size={18} />
+                    Download vCard
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
           {activeTab === 'appearance' && (
             <div className="flex flex-col gap-8">
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
+              <section className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Profile</h2>
                 <div className="flex items-center gap-6">
                   <div className="relative group">
@@ -993,7 +1123,7 @@ export default function Dashboard() {
                         <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-zinc-400 dark:text-zinc-500">
-                          <ImageIcon size={32} />
+                          <img src="/logo.svg" alt="Avatar Placeholder" className="w-full h-full object-cover" />
                         </div>
                       )}
                       {isUploading && (
@@ -1019,6 +1149,27 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 flex flex-col gap-4">
                     <div className="flex flex-col gap-1">
+                      <label className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Username</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 font-bold">@</span>
+                        <input 
+                          type="text" 
+                          defaultValue={profile.username}
+                          onBlur={(e) => handleUpdateUsername(e.target.value)}
+                          className={cn(
+                            "w-full bg-zinc-50 dark:bg-zinc-800 border rounded-xl pl-8 pr-4 py-2 focus:ring-2 outline-none text-zinc-900 dark:text-white transition-all",
+                            usernameError ? "border-red-500 focus:ring-red-500" : "border-zinc-200 dark:border-zinc-700 focus:ring-zinc-900 dark:focus:ring-white"
+                          )}
+                        />
+                        {isCheckingUsername && (
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                            <div className="w-4 h-4 border-2 border-zinc-900 dark:border-white border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                      {usernameError && <p className="text-[10px] font-bold text-red-500 mt-1">{usernameError}</p>}
+                    </div>
+                    <div className="flex flex-col gap-1">
                       <label className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Display Name</label>
                       <input 
                         type="text" 
@@ -1039,7 +1190,7 @@ export default function Dashboard() {
                 </div>
               </section>
 
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
+              <section className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Themes</h2>
                 <div className="grid grid-cols-2 gap-4">
                   {THEMES.map((theme) => (
@@ -1069,7 +1220,7 @@ export default function Dashboard() {
                 </div>
               </section>
 
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
+              <section className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                   Background
                   {profile?.plan === 'free' && <Lock size={16} className="text-zinc-400" />}
@@ -1080,7 +1231,7 @@ export default function Dashboard() {
                       <img src={profile.bg_image_url} alt="Background" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-zinc-400 dark:text-zinc-500">
-                        <ImageIcon size={32} />
+                        <img src="/logo.svg" alt="Background Placeholder" className="w-full h-full object-cover" />
                       </div>
                     )}
                     {isUploadingBg && (
@@ -1115,7 +1266,7 @@ export default function Dashboard() {
                 </div>
               </section>
 
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
+              <section className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
                 <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Fonts</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {FONTS.map((font) => (
@@ -1148,7 +1299,7 @@ export default function Dashboard() {
           )}
 
           {activeTab === 'analytics' && (
-            <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-8 transition-colors">
+            <div className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-8 transition-colors">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-zinc-50 dark:bg-zinc-800 p-6 rounded-2xl border border-zinc-100 dark:border-zinc-700">
                   <div className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Total Clicks</div>
@@ -1177,7 +1328,7 @@ export default function Dashboard() {
           {activeTab === 'subscription' && subscription && (
             <div className="flex flex-col gap-8">
               {/* Current Plan */}
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
+              <section className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Current Plan</h2>
                   <span className={cn(
@@ -1232,7 +1383,7 @@ export default function Dashboard() {
               </section>
 
               {/* Payment History */}
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
+              <section className="bg-white dark:bg-zinc-900 p-6 sm:p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex flex-col gap-6 transition-colors">
                 <div className="flex items-center gap-2">
                   <History size={20} className="text-zinc-400 dark:text-zinc-500" />
                   <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Payment History</h2>
@@ -1302,6 +1453,10 @@ export default function Dashboard() {
                 )}
               </section>
             </div>
+          )}
+
+          {activeTab === 'gemini' && (profile.role === 'admin' || profile.plan === 'pro' || profile.plan === 'business') && (
+            <GeminiIntelligence profile={profile} links={links} />
           )}
 
           {activeTab === 'developer' && profile.role === 'admin' && (
@@ -1811,7 +1966,7 @@ export default function Dashboard() {
                                 <img src={blogForm.image_url} alt="Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center text-zinc-300">
-                                  <ImageIcon size={24} />
+                                  <img src="/logo.svg" alt="Preview Placeholder" className="w-full h-full object-cover" />
                                 </div>
                               )}
                             </div>
@@ -2139,7 +2294,7 @@ function TabButton({ children, active, onClick }: { children: ReactNode, active:
     <button 
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all",
+        "flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap",
         active 
           ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-sm" 
           : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
@@ -2171,7 +2326,7 @@ function ProfilePreview({ profile, links, feeds }: { profile: Profile, links: Li
             <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-zinc-200 flex items-center justify-center text-zinc-400">
-              <ImageIcon size={32} />
+              <img src="/logo.svg" alt="Avatar Placeholder" className="w-full h-full object-cover" />
             </div>
           )}
         </div>

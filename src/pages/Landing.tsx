@@ -18,7 +18,7 @@ export default function Landing() {
     const fetchFeatured = async () => {
       try {
         const q = query(
-          collection(db, "users"), 
+          collection(db, "users_public"), 
           where("is_featured", "==", true),
           limit(4)
         );
@@ -99,7 +99,7 @@ export default function Landing() {
                         <img src={creator.avatar_url} alt={creator.username} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-zinc-400 dark:text-zinc-500">
-                          <User size={32} />
+                          <img src="/logo.svg" alt="Avatar Placeholder" className="w-full h-full object-cover" />
                         </div>
                       )}
                     </div>
@@ -185,7 +185,7 @@ export default function Landing() {
             <div className="relative">
               <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-zinc-900 via-zinc-500 to-zinc-900 p-1 shadow-lg dark:from-white dark:via-zinc-400 dark:to-white">
                 <div className="w-full h-full rounded-full bg-zinc-900 flex items-center justify-center overflow-hidden p-3">
-                  <img src="/favicon.svg" alt="Chip NG" className="w-full h-full object-contain" />
+                  <img src="/logo.svg" alt="Chip NG" className="w-full h-full object-contain" />
                 </div>
               </div>
               <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full border-4 border-white dark:border-zinc-900 flex items-center justify-center">

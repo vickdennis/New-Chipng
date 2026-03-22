@@ -22,8 +22,8 @@ export default function SignUp() {
     setError("");
 
     try {
-      // 1. Check if username is taken
-      const q = query(collection(db, "users"), where("username", "==", username));
+      // 1. Check if username is taken (check users_public for better privacy)
+      const q = query(collection(db, "users_public"), where("username", "==", username));
       const querySnapshot = await getDocs(q);
       if (!querySnapshot.empty) {
         setError("Username is already taken");
@@ -39,14 +39,28 @@ export default function SignUp() {
       await sendEmailVerification(user);
 
       // 4. Create Firestore Profile
-      await setDoc(doc(db, "users", user.uid), {
+      const profileData = {
         username,
         email,
         plan: email === "vickthorden@gmail.com" ? "business" : "free",
         role: email === "vickthorden@gmail.com" ? "admin" : "user",
         is_verified: false,
         created_at: new Date().toISOString()
-      });
+      };
+
+      const publicProfileData = {
+        username,
+        display_name: username,
+        bio: "Welcome to my profile!",
+        avatar_url: `https://ui-avatars.com/api/?name=${username}&background=random`,
+        is_verified: false,
+        is_featured: false
+      };
+
+      await Promise.all([
+        setDoc(doc(db, "users", user.uid), profileData),
+        setDoc(doc(db, "users_public", user.uid), publicProfileData)
+      ]);
 
       setIsSignedUp(true);
     } catch (err: any) {
@@ -81,20 +95,34 @@ export default function SignUp() {
         let finalUsername = baseUsername;
         
         // Check if username exists, if so append random string
-        const q = query(collection(db, "users"), where("username", "==", finalUsername));
+        const q = query(collection(db, "users_public"), where("username", "==", finalUsername));
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
           finalUsername = `${baseUsername}_${Math.random().toString(36).substring(2, 7)}`;
         }
 
-        await setDoc(doc(db, "users", user.uid), {
+        const profileData = {
           username: finalUsername,
           email: user.email,
           plan: user.email === "vickthorden@gmail.com" ? "business" : "free",
           role: user.email === "vickthorden@gmail.com" ? "admin" : "user",
           is_verified: true, // Google accounts are pre-verified
           created_at: new Date().toISOString()
-        });
+        };
+
+        const publicProfileData = {
+          username: finalUsername,
+          display_name: user.displayName || finalUsername,
+          bio: "Welcome to my profile!",
+          avatar_url: user.photoURL || `https://ui-avatars.com/api/?name=${user.displayName || finalUsername}&background=random`,
+          is_verified: true,
+          is_featured: false
+        };
+
+        await Promise.all([
+          setDoc(doc(db, "users", user.uid), profileData),
+          setDoc(doc(db, "users_public", user.uid), publicProfileData)
+        ]);
       }
       navigate("/dashboard");
     } catch (err: any) {
@@ -157,7 +185,7 @@ export default function SignUp() {
             disabled={loading}
             className="w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all shadow-sm disabled:opacity-50"
           >
-            <img src="https://www.gstatic.com/firebase/explore/google.svg" alt="Google" className="w-5 h-5" />
+            <img src="/logo.svg" alt="Chip NG" className="w-5 h-5 object-contain" />
             Continue with Google
           </button>
 

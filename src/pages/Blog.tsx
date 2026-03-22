@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { Calendar, User, ArrowRight } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { db } from '../firebase';
-import { collection, query, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy, where } from 'firebase/firestore';
 
 interface BlogPost {
   id: string;
@@ -24,7 +24,11 @@ export default function Blog() {
   useEffect(() => {
     const fetchBlogs = async () => {
       try {
-        const q = query(collection(db, "blogs"), orderBy("published_at", "desc"));
+        const q = query(
+          collection(db, "blogs"), 
+          where("is_published", "==", true),
+          orderBy("published_at", "desc")
+        );
         const querySnapshot = await getDocs(q);
         const blogPosts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogPost));
         setPosts(blogPosts);
@@ -36,6 +40,12 @@ export default function Blog() {
     };
     fetchBlogs();
   }, []);
+
+  const formatDate = (date: any) => {
+    if (!date) return 'Not published';
+    if (date.toDate) return date.toDate().toLocaleDateString();
+    return new Date(date).toLocaleDateString();
+  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950 pt-32 pb-20 px-4">
@@ -82,7 +92,7 @@ export default function Blog() {
               >
                 <Link to={`/blog/${post.slug}`} className="block aspect-video overflow-hidden">
                   <img 
-                    src={post.image_url || `https://picsum.photos/seed/${post.slug}/800/450`} 
+                    src={post.image_url || "/logo.svg"} 
                     alt={post.title}
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
@@ -97,11 +107,11 @@ export default function Blog() {
                     )}
                     <span className="flex items-center gap-1">
                       <Calendar size={12} />
-                      {new Date(post.published_at).toLocaleDateString()}
+                      {formatDate(post.published_at)}
                     </span>
                     <span className="flex items-center gap-1">
                       <User size={12} />
-                      {post.author_name}
+                      {post.author_name || 'Anonymous'}
                     </span>
                   </div>
                   <h2 className="text-2xl font-bold text-zinc-900 dark:text-white mb-4 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 transition-colors">
@@ -112,7 +122,7 @@ export default function Blog() {
                   </p>
                   <Link 
                     to={`/blog/${post.slug}`}
-                    className="inline-flex items-center gap-2 text-sm font-bold text-zinc-900 dark:text-white group/link"
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-2xl text-sm font-bold hover:scale-105 transition-all group/link shadow-lg hover:shadow-xl"
                   >
                     Read More 
                     <ArrowRight size={16} className="group-hover/link:translate-x-1 transition-transform" />

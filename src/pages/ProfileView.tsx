@@ -24,8 +24,8 @@ export default function ProfileView() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        // 1. Find user by username
-        const usersQuery = query(collection(db, "users"), where("username", "==", username));
+        // 1. Find user by username in users_public
+        const usersQuery = query(collection(db, "users_public"), where("username", "==", username));
         const userSnapshot = await getDocs(usersQuery);
         
         if (userSnapshot.empty) {
@@ -124,7 +124,7 @@ export default function ProfileView() {
               <img src={profile.avatar_url} alt={profile.display_name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             ) : (
               <div className="w-full h-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
-                <ImageIcon size={32} className="sm:size-40" />
+                <img src="/logo.svg" alt="Chip NG Logo" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               </div>
             )}
           </div>
@@ -132,6 +132,21 @@ export default function ProfileView() {
             <h1 className={cn("text-xl sm:text-2xl font-extrabold tracking-tight", theme.text, profile.bg_image_url && "text-white drop-shadow-lg")}>
               {profile.display_name || `@${profile.username}`}
             </h1>
+            {(profile.contact_job_title || profile.contact_organization) && (
+              <p className={cn("text-sm font-bold opacity-90", theme.text, profile.bg_image_url && "text-white drop-shadow-md")}>
+                {profile.contact_job_title}{profile.contact_job_title && profile.contact_organization && " at "}{profile.contact_organization}
+              </p>
+            )}
+            {profile.contact_website && (
+              <a 
+                href={profile.contact_website} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className={cn("text-xs font-medium opacity-70 hover:opacity-100 transition-opacity underline", theme.text, profile.bg_image_url && "text-white")}
+              >
+                {profile.contact_website.replace(/^https?:\/\//, '')}
+              </a>
+            )}
             {profile.bio && (
               <p className={cn("text-base sm:text-lg font-medium opacity-80 max-w-md", theme.text, profile.bg_image_url && "text-white drop-shadow-md")}>
                 {profile.bio}
@@ -139,7 +154,7 @@ export default function ProfileView() {
             )}
           </div>
 
-          {profile.contact_first_name && (
+          {(profile.contact_first_name || profile.contact_email || profile.contact_phone) && (
             <button 
               onClick={() => downloadVCard(profile)}
               className={cn(

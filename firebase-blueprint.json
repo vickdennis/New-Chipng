@@ -2,7 +2,7 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "User profile and account settings",
+      "description": "User profile and account settings (Private)",
       "type": "object",
       "properties": {
         "username": { "type": "string" },
@@ -28,6 +28,23 @@
         "contact_website": { "type": "string" }
       },
       "required": ["username", "email", "plan", "role"]
+    },
+    "UserPublic": {
+      "title": "User Public",
+      "description": "Public user profile data (No PII)",
+      "type": "object",
+      "properties": {
+        "username": { "type": "string" },
+        "display_name": { "type": "string" },
+        "bio": { "type": "string" },
+        "avatar_url": { "type": "string" },
+        "bg_image_url": { "type": "string" },
+        "theme": { "type": "string" },
+        "font_family": { "type": "string" },
+        "is_verified": { "type": "boolean" },
+        "is_featured": { "type": "boolean" }
+      },
+      "required": ["username"]
     },
     "Link": {
       "title": "Link",
@@ -124,7 +141,11 @@
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
-      "description": "User profile documents"
+      "description": "User profile documents (Private/PII)"
+    },
+    "/users_public/{userId}": {
+      "schema": "UserPublic",
+      "description": "Public user profile data"
     },
     "/links/{linkId}": {
       "schema": "Link",

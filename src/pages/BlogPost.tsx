@@ -58,11 +58,22 @@ export default function BlogPost() {
         title: post?.title,
         text: post?.excerpt,
         url: window.location.href,
+      }).catch((error) => {
+        if (error.name !== 'AbortError') {
+          console.error('Error sharing:', error);
+        }
       });
     } else {
       navigator.clipboard.writeText(window.location.href);
-      alert('Link copied to clipboard!');
+      // Using a console log instead of alert for better iframe compatibility
+      console.log('Link copied to clipboard!');
     }
+  };
+
+  const formatDate = (date: any) => {
+    if (!date) return 'Not published';
+    if (date.toDate) return date.toDate().toLocaleDateString();
+    return new Date(date).toLocaleDateString();
   };
 
   if (loading) {
@@ -93,7 +104,7 @@ export default function BlogPost() {
         {post.meta_keywords && <meta name="keywords" content={post.meta_keywords} />}
         <meta property="og:title" content={post.meta_title || post.title} />
         <meta property="og:description" content={post.meta_description || post.excerpt} />
-        <meta property="og:image" content={post.image_url} />
+        <meta property="og:image" content="/logo.svg" />
         <meta property="og:type" content="article" />
         <meta name="twitter:card" content="summary_large_image" />
       </Helmet>
@@ -123,11 +134,11 @@ export default function BlogPost() {
             )}
             <span className="flex items-center gap-1">
               <Calendar size={12} />
-              {new Date(post.published_at).toLocaleDateString()}
+              {formatDate(post.published_at)}
             </span>
             <span className="flex items-center gap-1">
               <User size={12} />
-              {post.author_name}
+              {post.author_name || 'Anonymous'}
             </span>
           </div>
           <h1 className="text-4xl md:text-6xl font-black text-zinc-900 dark:text-white mb-8 tracking-tight leading-tight">
@@ -136,10 +147,10 @@ export default function BlogPost() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-900 dark:text-white font-bold">
-                {post.author_name[0].toUpperCase()}
+                {(post.author_name?.[0] || 'A').toUpperCase()}
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-bold text-zinc-900 dark:text-white">{post.author_name}</span>
+                <span className="text-sm font-bold text-zinc-900 dark:text-white">{post.author_name || 'Anonymous'}</span>
                 <span className="text-xs text-zinc-500">Author</span>
               </div>
             </div>
@@ -159,7 +170,7 @@ export default function BlogPost() {
           className="aspect-video rounded-3xl overflow-hidden mb-12 border border-zinc-200 dark:border-zinc-800"
         >
           <img 
-            src={post.image_url || `https://picsum.photos/seed/${post.slug}/1200/675`} 
+            src={post.image_url || "/logo.svg"} 
             alt={post.title}
             referrerPolicy="no-referrer"
             className="w-full h-full object-cover"
@@ -172,9 +183,7 @@ export default function BlogPost() {
           transition={{ delay: 0.2 }}
           className="prose prose-zinc dark:prose-invert max-w-none"
         >
-          <div className="markdown-body">
-            <ReactMarkdown>{post.content}</ReactMarkdown>
-          </div>
+          <ReactMarkdown>{post.content}</ReactMarkdown>
         </motion.div>
 
         <motion.footer

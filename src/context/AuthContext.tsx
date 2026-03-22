@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { doc, getDoc, setDoc, onSnapshot, updateDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
+import { auth, db, OperationType, handleFirestoreError } from '../firebase';
 import { User, Profile } from '../types';
 
 interface AuthContextType {
@@ -44,32 +44,77 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               updateDoc(userDocRef, { 
                 role: 'admin',
                 plan: 'business'
-              });
+              }).catch(error => handleFirestoreError(error, OperationType.UPDATE, `users/${firebaseUser.uid}`));
             }
             setProfile(data);
           } else {
             // Create initial profile if it doesn't exist
-            const initialProfile: Profile = {
-              id: firebaseUser.uid,
-              user_id: firebaseUser.uid,
-              username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'user',
-              display_name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-              email: firebaseUser.email || '',
-              bio: `Welcome to my Chip NG profile!`,
-              avatar_url: `https://ui-avatars.com/api/?name=${firebaseUser.displayName || 'User'}&background=random`,
-              theme: 'default',
-              font_family: 'sans',
-              bg_image_url: '',
-              plan: firebaseUser.email === "vickthorden@gmail.com" ? "business" : "free",
-              role: firebaseUser.email === "vickthorden@gmail.com" ? "admin" : "user",
+            const baseUsername = (firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'user').toLowerCase().replace(/[^a-z0-9]/g, '');
+            
+            // Check for uniqueness and create profile
+            const checkAndCreateProfile = async () => {
+              let uniqueUsername = baseUsername;
+              let isUnique = false;
+              let attempts = 0;
+
+              while (!isUnique && attempts < 5) {
+                const q = query(collection(db, 'users_public'), where('username', '==', uniqueUsername));
+                try {
+                  const querySnapshot = await getDocs(q);
+                  if (querySnapshot.empty) {
+                    isUnique = true;
+                  } else {
+                    uniqueUsername = `${baseUsername}${Math.floor(Math.random() * 1000)}`;
+                    attempts++;
+                  }
+                } catch (error) {
+                  handleFirestoreError(error, OperationType.GET, 'users');
+                }
+              }
+
+              const initialProfile: Profile = {
+                id: firebaseUser.uid,
+                user_id: firebaseUser.uid,
+                username: uniqueUsername,
+                display_name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
+                email: firebaseUser.email || '',
+                bio: `Welcome to my profile!`,
+                avatar_url: `https://ui-avatars.com/api/?name=${firebaseUser.displayName || 'User'}&background=random`,
+                theme: 'default',
+                font_family: 'sans',
+                bg_image_url: '',
+                plan: firebaseUser.email === "vickthorden@gmail.com" ? "business" : "free",
+                role: firebaseUser.email === "vickthorden@gmail.com" ? "admin" : "user",
+                created_at: serverTimestamp() as any,
+              };
+
+              const publicProfile = {
+                username: uniqueUsername,
+                display_name: initialProfile.display_name,
+                bio: initialProfile.bio,
+                avatar_url: initialProfile.avatar_url,
+                theme: initialProfile.theme,
+                font_family: initialProfile.font_family,
+                is_verified: false,
+                is_featured: false
+              };
+
+              try {
+                await Promise.all([
+                  setDoc(userDocRef, initialProfile),
+                  setDoc(doc(db, 'users_public', firebaseUser.uid), publicProfile)
+                ]);
+                setProfile(initialProfile);
+              } catch (error) {
+                handleFirestoreError(error, OperationType.WRITE, `users/${firebaseUser.uid}`);
+              }
             };
-            setDoc(userDocRef, initialProfile);
-            setProfile(initialProfile);
+
+            checkAndCreateProfile();
           }
           setLoading(false);
         }, (error) => {
-          console.error("Error fetching profile:", error);
-          setLoading(false);
+          handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
         });
 
         return () => unsubProfile();

@@ -16,13 +16,15 @@ import Footer from "./components/Footer";
 import AIChatBot from "./components/AIChatBot";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 export default function App() {
   return (
     <HelmetProvider>
-      <AuthProvider>
-        <ThemeProvider>
-          <Router>
+      <ErrorBoundary>
+        <AuthProvider>
+          <ThemeProvider>
+            <Router>
             <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 transition-colors duration-300">
               <Routes>
                 {/* Public Profile View (No Navbar) */}
@@ -58,6 +60,7 @@ export default function App() {
           </Router>
         </ThemeProvider>
       </AuthProvider>
-    </HelmetProvider>
-  );
+    </ErrorBoundary>
+  </HelmetProvider>
+);
 }

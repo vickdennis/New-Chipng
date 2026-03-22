@@ -7,6 +7,7 @@ export interface User {
   subscription_status?: string;
   next_billing_date?: string | null;
   is_featured?: boolean | number;
+  created_at?: any;
 }
 
 export interface Profile extends User {

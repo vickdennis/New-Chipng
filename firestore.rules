@@ -2,75 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: users
-    // Document ID: {userId} (matches Firebase Auth UID)
-    // Fields:
-    //   - username: string (required)
-    //   - email: string (required)
-    //   - display_name: string (optional)
-    //   - bio: string (optional)
-    //   - avatar_url: string (optional)
-    //   - bg_image_url: string (optional)
-    //   - theme: string (optional)
-    //   - font_family: string (optional)
-    //   - plan: string (required, 'free' | 'pro' | 'business')
-    //   - role: string (required, 'user' | 'admin')
-    //   - is_verified: bool (optional)
-    //   - is_featured: bool (optional)
-    //   - subscription_status: string (optional)
-    //   - next_billing_date: string (optional)
-    //   - contact_*: string (optional)
-    //
-    // Collection: links
-    // Document ID: {linkId}
-    // Fields:
-    //   - user_id: string (required)
-    //   - title: string (required)
-    //   - url: string (required)
-    //   - icon: string (optional)
-    //   - position: number (required)
-    //   - clicks: number (optional)
-    //   - active: bool (required)
-    //   - color: string (optional)
-    //   - price: number (optional)
-    //   - is_product: bool (optional)
-    //
-    // Collection: social_feeds
-    // Document ID: {feedId}
-    // Fields:
-    //   - user_id: string (required)
-    //   - type: string (required, 'instagram' | 'twitter' | 'tiktok' | 'youtube')
-    //   - url: string (required)
-    //   - position: number (required)
-    //   - active: bool (required)
-    //
-    // Collection: blogs
-    // Document ID: {blogId}
-    // Fields:
-    //   - title: string (required)
-    //   - slug: string (required)
-    //   - content: string (required)
-    //   - author_id: string (required)
-    //   - is_published: bool (required)
-    //   - published_at: string (optional)
-    //   - category: string (optional)
-    //
-    // Collection: payments
-    // Document ID: {paymentId}
-    // Fields:
-    //   - user_id: string (required)
-    //   - amount: number (required)
-    //   - currency: string (required)
-    //   - status: string (required)
-    //   - date: string (required)
-    //   - plan: string (required)
-    //
-    // ===============================================================
-
-    // ===============================================================
     // Helper Functions
     // ===============================================================
     
@@ -82,49 +13,104 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    function isDocOwner() {
-      return isAuthenticated() && request.auth.uid == resource.data.user_id;
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "vickthorden@gmail.com" && request.auth.token.email_verified == true));
     }
 
-    function isAdmin() {
-      return isAuthenticated() && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-         (request.auth.token.email == "vickthorden@gmail.com" && request.auth.token.email_verified == true));
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
     }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
 
     function isValidUser(data) {
-      return data.keys().hasAll(['username', 'email', 'plan', 'role']) &&
-             data.username is string && data.username.size() >= 3 && data.username.size() <= 30 &&
-             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$") &&
+      let required = ['username', 'email', 'plan', 'role'];
+      let allowed = ['username', 'email', 'display_name', 'bio', 'avatar_url', 'bg_image_url', 'theme', 'font_family', 'plan', 'role', 'is_verified', 'is_featured', 'subscription_status', 'next_billing_date', 'contact_first_name', 'contact_last_name', 'contact_email', 'contact_phone', 'contact_organization', 'contact_job_title', 'contact_website'];
+      return data.keys().hasAll(required) && data.keys().hasOnly(allowed) &&
+             data.username is string && data.username.size() > 0 && data.username.size() < 50 &&
+             data.email is string && isValidEmail(data.email) && data.email.size() < 100 &&
              data.plan in ['free', 'pro', 'business'] &&
              data.role in ['user', 'admin'];
     }
 
     function isValidLink(data) {
-      return data.keys().hasAll(['user_id', 'title', 'url', 'position', 'active']) &&
-             data.user_id == request.auth.uid &&
-             data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
-             data.url is string && data.url.size() > 0 && data.url.size() <= 2048 &&
-             data.position is number &&
-             data.active is bool;
+      let required = ['user_id', 'title', 'url', 'position'];
+      let allowed = ['user_id', 'title', 'url', 'icon', 'position', 'clicks', 'active', 'color', 'price', 'is_product'];
+      return data.keys().hasAll(required) && data.keys().hasOnly(allowed) &&
+             data.user_id is string && data.user_id.size() < 100 &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 100 &&
+             data.url is string && data.url.size() < 500 &&
+             data.position is number;
     }
 
     function isValidSocialFeed(data) {
-      return data.keys().hasAll(['user_id', 'type', 'url', 'position', 'active']) &&
-             data.user_id == request.auth.uid &&
+      let required = ['user_id', 'type', 'url', 'position'];
+      let allowed = ['user_id', 'type', 'url', 'position', 'active'];
+      return data.keys().hasAll(required) && data.keys().hasOnly(allowed) &&
+             data.user_id is string && data.user_id.size() < 100 &&
              data.type in ['instagram', 'twitter', 'tiktok', 'youtube'] &&
-             data.url is string && data.url.size() > 0 &&
-             data.position is number &&
-             data.active is bool;
+             data.url is string && data.url.size() < 500 &&
+             data.position is number;
     }
 
     function isValidBlog(data) {
-      return data.keys().hasAll(['title', 'slug', 'content', 'author_id', 'is_published']) &&
-             data.title is string && data.title.size() > 0 &&
-             data.slug is string && data.slug.size() > 0 &&
-             data.content is string && data.content.size() > 0 &&
-             data.author_id == request.auth.uid &&
-             data.is_published is bool;
+      let required = ['title', 'slug', 'content', 'author_id'];
+      let allowed = ['title', 'slug', 'content', 'excerpt', 'author_id', 'published_at', 'is_published', 'image_url', 'meta_title', 'meta_description', 'meta_keywords', 'category', 'scheduled_at'];
+      return data.keys().hasAll(required) && data.keys().hasOnly(allowed) &&
+             data.title is string && data.title.size() > 0 && data.title.size() < 200 &&
+             data.slug is string && data.slug.size() > 0 && data.slug.size() < 200 &&
+             data.content is string && data.content.size() < 50000 &&
+             data.author_id is string && data.author_id.size() < 100;
+    }
+
+    function isValidPayment(data) {
+      let required = ['user_id', 'amount', 'status', 'date'];
+      let allowed = ['user_id', 'amount', 'currency', 'status', 'date', 'plan'];
+      return data.keys().hasAll(required) && data.keys().hasOnly(allowed) &&
+             data.user_id is string && data.user_id.size() < 100 &&
+             data.amount is number &&
+             data.status is string && data.status.size() < 50 &&
+             data.date is string && data.date.size() < 50;
+    }
+
+    function isValidContactMessage(data) {
+      let required = ['name', 'email', 'subject', 'message', 'created_at'];
+      let allowed = ['name', 'email', 'subject', 'message', 'created_at'];
+      return data.keys().hasAll(required) && data.keys().hasOnly(allowed) &&
+             data.name is string && data.name.size() < 100 &&
+             data.email is string && isValidEmail(data.email) && data.email.size() < 100 &&
+             data.subject is string && data.subject.size() < 200 &&
+             data.message is string && data.message.size() < 2000 &&
+             data.created_at is string && data.created_at.size() < 50;
+    }
+
+    function isValidApiKey(data) {
+      let required = ['user_id', 'key', 'name', 'created_at'];
+      let allowed = ['user_id', 'key', 'name', 'created_at'];
+      return data.keys().hasAll(required) && data.keys().hasOnly(allowed) &&
+             data.user_id is string && data.user_id.size() < 100 &&
+             data.key is string && data.key.size() < 200 &&
+             data.name is string && data.name.size() < 100 &&
+             data.created_at is string && data.created_at.size() < 50;
+    }
+
+    function isValidUserPublic(data) {
+      let required = ['username'];
+      let allowed = ['username', 'display_name', 'bio', 'avatar_url', 'bg_image_url', 'theme', 'font_family', 'is_verified', 'is_featured'];
+      return data.keys().hasAll(required) && data.keys().hasOnly(allowed) &&
+             data.username is string && data.username.size() > 0 && data.username.size() < 50;
     }
 
     // ===============================================================
@@ -132,67 +118,64 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{userId} {
-      // Public profiles can be read by anyone
-      allow read: if true; 
-      
-      // Only the owner can create their profile. 
-      // Default users can't set themselves as admin or pro initially.
-      // The designated admin email is allowed to bootstrap their admin status.
-      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (
-                      (request.resource.data.role == 'user' && request.resource.data.plan == 'free') ||
-                      (request.auth.token.email == "vickthorden@gmail.com")
-                    );
-      
-      // Only the owner or admin can update. Owner cannot change their role or plan directly.
-      allow update: if isAuthenticated() && (
-        (isOwner(userId) && isValidUser(request.resource.data) && 
-         request.resource.data.role == resource.data.role && 
-         request.resource.data.plan == resource.data.plan) || 
-        isAdmin()
-      );
-      
-      // Deletion is restricted to admin or owner (manual deletion)
-      allow delete: if isOwner(userId) || isAdmin();
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) && 
+                      (isAdmin() || request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    match /users_public/{userId} {
+      allow read: if true;
+      allow create: if isOwner(userId) && isValidUserPublic(request.resource.data);
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUserPublic(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /links/{linkId} {
-      allow read: if true; // Links are public
-      allow create: if isAuthenticated() && isValidLink(request.resource.data);
-      allow update: if isDocOwner() && isValidLink(request.resource.data);
-      allow delete: if isDocOwner() || isAdmin();
+      allow read: if true; // Public profiles
+      allow create: if isAuthenticated() && isOwner(request.resource.data.user_id) && isValidLink(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(resource.data.user_id) || isAdmin()) && isValidLink(request.resource.data) &&
+                      (isAdmin() || request.resource.data.user_id == resource.data.user_id);
+      allow delete: if isAuthenticated() && (isOwner(resource.data.user_id) || isAdmin());
     }
 
     match /social_feeds/{feedId} {
       allow read: if true;
-      allow create: if isAuthenticated() && isValidSocialFeed(request.resource.data);
-      allow update: if isDocOwner() && isValidSocialFeed(request.resource.data);
-      allow delete: if isDocOwner() || isAdmin();
+      allow create: if isAuthenticated() && isOwner(request.resource.data.user_id) && isValidSocialFeed(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(resource.data.user_id) || isAdmin()) && isValidSocialFeed(request.resource.data) &&
+                      (isAdmin() || request.resource.data.user_id == resource.data.user_id);
+      allow delete: if isAuthenticated() && (isOwner(resource.data.user_id) || isAdmin());
     }
 
     match /blogs/{blogId} {
-      allow read: if true; // Blog posts are public
-      allow create: if isAdmin() && isValidBlog(request.resource.data);
-      allow update: if isAdmin() && isValidBlog(request.resource.data);
-      allow delete: if isAdmin();
+      allow read: if true;
+      allow create: if isAuthenticated() && (isOwner(request.resource.data.author_id) || isAdmin()) && isValidBlog(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(resource.data.author_id) || isAdmin()) && isValidBlog(request.resource.data) &&
+                      (isAdmin() || request.resource.data.author_id == resource.data.author_id);
+      allow delete: if isAuthenticated() && (isOwner(resource.data.author_id) || isAdmin());
     }
 
     match /payments/{paymentId} {
-      allow read: if isAuthenticated() && (resource.data.user_id == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() && request.resource.data.user_id == request.auth.uid;
+      allow read: if isAuthenticated() && (isOwner(resource.data.user_id) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(request.resource.data.user_id) && isValidPayment(request.resource.data);
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
     match /contact_messages/{messageId} {
-      allow create: if true;
       allow read: if isAdmin();
+      allow create: if isValidContactMessage(request.resource.data);
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
     match /api_keys/{keyId} {
-      allow read: if isAdmin();
-      allow write: if isAdmin();
+      allow read: if isAuthenticated() && (isOwner(resource.data.user_id) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(request.resource.data.user_id) && isValidApiKey(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(resource.data.user_id) || isAdmin()) && isValidApiKey(request.resource.data) &&
+                      (isAdmin() || request.resource.data.user_id == resource.data.user_id);
+      allow delete: if isAuthenticated() && (isOwner(resource.data.user_id) || isAdmin());
     }
   }
 }
