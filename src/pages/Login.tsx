@@ -75,7 +75,7 @@ export default function Login() {
             disabled={loading}
             className="w-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all shadow-sm disabled:opacity-50"
           >
-            <img src="/logo.svg" alt="Chip NG" className="w-5 h-5 object-contain" />
+            <img src="/logo.svg" alt="Chip NG" className="w-5 h-5 object-contain" referrerPolicy="no-referrer" />
             Continue with Google
           </button>
 

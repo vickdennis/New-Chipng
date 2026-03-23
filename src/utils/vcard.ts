@@ -1,4 +1,5 @@
 import { Profile } from "../types";
+import { BASE_URL } from "../constants";
 
 export function generateVCard(profile: Profile): string {
   const vcard = [
@@ -11,7 +12,7 @@ export function generateVCard(profile: Profile): string {
     profile.contact_organization ? `ORG:${profile.contact_organization}` : "",
     profile.contact_job_title ? `TITLE:${profile.contact_job_title}` : "",
     profile.contact_website ? `URL:${profile.contact_website}` : "",
-    profile.avatar_url ? `PHOTO;VALUE=URI:${profile.avatar_url.startsWith('http') ? profile.avatar_url : window.location.origin + profile.avatar_url}` : "",
+    profile.avatar_url ? `PHOTO;VALUE=URI:${profile.avatar_url.startsWith('http') ? profile.avatar_url : BASE_URL + profile.avatar_url}` : "",
     "END:VCARD"
   ].filter(line => line !== "").join("\n");
 

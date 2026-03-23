@@ -14,6 +14,7 @@ import VerifyEmail from "./pages/VerifyEmail";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import AIChatBot from "./components/AIChatBot";
+import { Toaster } from "sonner";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -24,6 +25,7 @@ export default function App() {
       <ErrorBoundary>
         <AuthProvider>
           <ThemeProvider>
+            <Toaster position="top-center" richColors />
             <Router>
             <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 transition-colors duration-300">
               <Routes>

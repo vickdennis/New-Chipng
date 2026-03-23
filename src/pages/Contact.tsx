@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Mail, Phone, MapPin, Send, CheckCircle2 } from "lucide-react";
 import { WhatsAppIcon } from "../components/Icons";
 import { motion } from "motion/react";
+import { toast } from "sonner";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { db } from "../firebase";
@@ -27,11 +28,12 @@ export default function Contact() {
         created_at: new Date().toISOString()
       });
       setIsSubmitted(true);
+      toast.success("Message sent successfully!");
       setTimeout(() => setIsSubmitted(false), 5000);
       setFormData({ name: "", email: "", subject: "", message: "" });
     } catch (err) {
       console.error("Failed to send message", err);
-      alert("Failed to send message. Please try again.");
+      toast.error("Failed to send message. Please try again.");
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 import { useState, useEffect, ReactNode, useRef, ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
+import { toast } from "sonner";
 import { 
   Plus, 
   Trash2, 
@@ -62,6 +63,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Profile, Link as LinkType, SocialFeed, THEMES, FONTS, User } from "../types";
 import { downloadVCard } from "../utils/vcard";
+import { BASE_URL, DISPLAY_DOMAIN } from "../constants";
 import GeminiIntelligence from "../components/GeminiIntelligence";
 import { IconPicker, IconRenderer } from "../components/IconPicker";
 import { SUGGESTED_INGREDIENTS } from "../data/ingredients";
@@ -390,7 +392,7 @@ export default function Dashboard() {
     
     // Pricing check: Free users limited to 5 links
     if (profile?.plan === 'free' && links.length >= 5) {
-      alert("Free plan is limited to 5 links. Upgrade to Pro for unlimited links!");
+      toast.error("Free plan is limited to 5 links. Upgrade to Pro for unlimited links!");
       return;
     }
 
@@ -439,7 +441,7 @@ export default function Dashboard() {
   };
 
   const handleDeleteLink = async (id: string | number) => {
-    if (!confirm("Are you sure you want to delete this link?")) return;
+    if (!window.confirm("Are you sure you want to delete this link?")) return;
     await deleteDoc(doc(db, "links", id.toString()));
   };
 
@@ -448,7 +450,7 @@ export default function Dashboard() {
     
     // Pricing check: Pro feature
     if (profile?.plan === 'free') {
-      alert("Social feeds are a Pro feature. Upgrade to enable!");
+      toast.error("Social feeds are a Pro feature. Upgrade to enable!");
       return;
     }
 
@@ -466,7 +468,7 @@ export default function Dashboard() {
   };
 
   const handleDeleteFeed = async (id: string | number) => {
-    if (!confirm("Are you sure you want to delete this feed?")) return;
+    if (!window.confirm("Are you sure you want to delete this feed?")) return;
     await deleteDoc(doc(db, "social_feeds", id.toString()));
   };
 
@@ -579,7 +581,7 @@ export default function Dashboard() {
       await handleUpdateProfile({ avatar_url: url });
     } catch (error) {
       console.error("Error uploading avatar:", error);
-      alert(`Failed to upload avatar: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to upload avatar: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsUploading(false);
     }
@@ -587,7 +589,7 @@ export default function Dashboard() {
 
   const handleBackgroundUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     if (profile?.plan === 'free') {
-      alert("Custom background images are a Pro feature. Upgrade to enable!");
+      toast.error("Custom background images are a Pro feature. Upgrade to enable!");
       return;
     }
 
@@ -605,14 +607,14 @@ export default function Dashboard() {
       await handleUpdateProfile({ bg_image_url: url });
     } catch (error) {
       console.error("Error uploading background:", error);
-      alert(`Failed to upload background image: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Failed to upload background image: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsUploadingBg(false);
     }
   };
 
   const handleShare = () => {
-    const url = `${window.location.origin}/p/${profile?.username}`;
+    const url = `${BASE_URL}/p/${profile?.username}`;
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -635,21 +637,23 @@ export default function Dashboard() {
       setGeneratedKey(key);
     } catch (err) {
       console.error("Failed to generate API key", err);
-      alert("Failed to generate API key. Please try again.");
+      toast.error("Failed to generate API key. Please try again.");
     }
   };
 
   const handleDeleteKey = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this API key?")) return;
+    if (!window.confirm("Are you sure you want to delete this API key?")) return;
     try {
       await deleteDoc(doc(db, "api_keys", id));
+      toast.success("API key deleted successfully");
     } catch (err) {
       console.error("Failed to delete API key", err);
+      toast.error("Failed to delete API key");
     }
   };
 
   const handleCreateUser = async () => {
-    alert("Admin user creation is disabled in this demo. Use SignUp for new users.");
+    toast.error("Admin user creation is disabled in this demo. Use SignUp for new users.");
   };
 
   const handleUpdateUserRole = async (id: string, role: string) => {
@@ -670,12 +674,12 @@ export default function Dashboard() {
   };
 
   const handleDeleteAdminLink = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this link?")) return;
+    if (!window.confirm("Are you sure you want to delete this link?")) return;
     await deleteDoc(doc(db, "links", id));
   };
 
   const handleDeleteUser = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this user? This action is irreversible.")) return;
+    if (!window.confirm("Are you sure you want to delete this user? This action is irreversible.")) return;
     await deleteDoc(doc(db, "users", id));
   };
 
@@ -714,7 +718,7 @@ export default function Dashboard() {
   };
 
   const handleDeleteBlog = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this blog post?')) return;
+    if (!window.confirm('Are you sure you want to delete this blog post?')) return;
     await deleteDoc(doc(db, "blogs", id));
   };
 
@@ -764,7 +768,7 @@ export default function Dashboard() {
           <div className="flex flex-col gap-1">
             <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Your Profile Link</span>
             <div className="flex items-center gap-2 text-zinc-900 dark:text-white font-bold break-all">
-              <span className="opacity-40">{window.location.origin}/p/</span>
+              <span className="opacity-40">{DISPLAY_DOMAIN}/p/</span>
               {profile.username}
             </div>
           </div>
@@ -959,7 +963,7 @@ export default function Dashboard() {
               <div className="p-8 bg-white rounded-3xl shadow-xl border border-zinc-100">
                 <QRCodeSVG 
                   id="profile-qrcode"
-                  value={`${window.location.origin}/p/${profile.username}`}
+                  value={`${BASE_URL}/p/${profile.username}`}
                   size={256}
                   level="H"
                   includeMargin={true}
@@ -1198,7 +1202,7 @@ export default function Dashboard() {
                       key={theme.id}
                       onClick={() => {
                         if (theme.is_premium && profile?.plan === 'free') {
-                          alert(`${theme.name} is a Pro theme. Upgrade to enable!`);
+                          toast.error(`${theme.name} is a Pro theme. Upgrade to enable!`);
                           return;
                         }
                         handleUpdateProfile({ theme: theme.id });
@@ -1228,10 +1232,10 @@ export default function Dashboard() {
                 <div className="flex flex-col gap-4">
                   <div className="relative w-full h-32 bg-zinc-100 dark:bg-zinc-800 rounded-2xl overflow-hidden border-2 border-zinc-200 dark:border-zinc-700 group">
                     {profile.bg_image_url ? (
-                      <img src={profile.bg_image_url} alt="Background" className="w-full h-full object-cover" />
+                      <img src={profile.bg_image_url} alt="Background" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-zinc-400 dark:text-zinc-500">
-                        <img src="/logo.svg" alt="Background Placeholder" className="w-full h-full object-cover" />
+                        <img src="/logo.svg" alt="Background Placeholder" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       </div>
                     )}
                     {isUploadingBg && (
@@ -1274,7 +1278,7 @@ export default function Dashboard() {
                       key={font.id}
                       onClick={() => {
                         if (font.is_premium && profile?.plan === 'free') {
-                          alert(`${font.name} is a Pro font. Upgrade to enable!`);
+                          toast.error(`${font.name} is a Pro font. Upgrade to enable!`);
                           return;
                         }
                         handleUpdateProfile({ font_family: font.id });
@@ -2323,10 +2327,10 @@ function ProfilePreview({ profile, links, feeds }: { profile: Profile, links: Li
       <div className="flex flex-col items-center gap-4 text-center relative z-10">
         <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-white/20 shadow-lg">
           {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+            <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           ) : (
             <div className="w-full h-full bg-zinc-200 flex items-center justify-center text-zinc-400">
-              <img src="/logo.svg" alt="Avatar Placeholder" className="w-full h-full object-cover" />
+              <img src="/logo.svg" alt="Avatar Placeholder" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             </div>
           )}
         </div>

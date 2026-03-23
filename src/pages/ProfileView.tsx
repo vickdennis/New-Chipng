@@ -7,6 +7,7 @@ import { twMerge } from "tailwind-merge";
 import { ExternalLink, Image as ImageIcon, ShoppingBag, UserPlus } from "lucide-react";
 import { usePaystackPayment } from "react-paystack";
 import { downloadVCard } from "../utils/vcard";
+import { toast } from "sonner";
 import { db } from "../firebase";
 import { collection, query, where, getDocs, doc, updateDoc, increment, orderBy, addDoc } from "firebase/firestore";
 
@@ -336,7 +337,7 @@ function PaymentModal({ link, onClose, userId }: { link: LinkType, onClose: () =
         type: "product",
         created_at: new Date().toISOString()
       });
-      alert("Payment successful! Thank you for your purchase.");
+      toast.success("Payment successful! Thank you for your purchase.");
       onClose();
     } catch (err) {
       console.error("Product payment failed", err);
