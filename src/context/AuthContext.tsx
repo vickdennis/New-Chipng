@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { onAuthStateChanged, User as FirebaseUser, signOut } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot, updateDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
 import { auth, db, OperationType, handleFirestoreError } from '../firebase';
 import { User, Profile } from '../types';
+
+const IDLE_TIMEOUT = 15 * 60 * 1000; // 15 minutes in milliseconds
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -25,6 +27,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut(auth);
+      setUser(null);
+      setProfile(null);
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  }, []);
+
+  const resetIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+    }
+    if (user) {
+      idleTimerRef.current = setTimeout(() => {
+        handleLogout();
+      }, IDLE_TIMEOUT);
+    }
+  }, [user, handleLogout]);
+
+  useEffect(() => {
+    if (user) {
+      const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove'];
+      
+      const handleActivity = () => {
+        resetIdleTimer();
+      };
+
+      events.forEach(event => {
+        window.addEventListener(event, handleActivity);
+      });
+
+      resetIdleTimer();
+
+      return () => {
+        events.forEach(event => {
+          window.removeEventListener(event, handleActivity);
+        });
+        if (idleTimerRef.current) {
+          clearTimeout(idleTimerRef.current);
+        }
+      };
+    }
+  }, [user, resetIdleTimer]);
 
   useEffect(() => {
     let unsubProfile: (() => void) | null = null;
