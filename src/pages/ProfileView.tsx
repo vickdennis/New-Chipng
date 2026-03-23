@@ -24,9 +24,11 @@ export default function ProfileView() {
 
   useEffect(() => {
     const fetchProfile = async () => {
+      if (!username) return;
       try {
-        // 1. Find user by username in users_public
-        const usersQuery = query(collection(db, "users_public"), where("username", "==", username));
+        // 1. Find user by username in users_public (case-insensitive search by lowercasing)
+        const normalizedUsername = username.toLowerCase();
+        const usersQuery = query(collection(db, "users_public"), where("username", "==", normalizedUsername));
         const userSnapshot = await getDocs(usersQuery);
         
         if (userSnapshot.empty) {
@@ -41,21 +43,23 @@ export default function ProfileView() {
         const linksQuery = query(
           collection(db, "links"), 
           where("user_id", "==", userId), 
-          where("active", "==", true),
-          orderBy("position", "asc")
+          where("active", "==", true)
         );
         const linksSnapshot = await getDocs(linksQuery);
-        const links = linksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        const links = linksSnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as any))
+          .sort((a, b) => (a.position || 0) - (b.position || 0));
 
         // 3. Fetch feeds
         const feedsQuery = query(
           collection(db, "social_feeds"), 
           where("user_id", "==", userId), 
-          where("active", "==", true),
-          orderBy("position", "asc")
+          where("active", "==", true)
         );
         const feedsSnapshot = await getDocs(feedsQuery);
-        const feeds = feedsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        const feeds = feedsSnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as any))
+          .sort((a, b) => (a.position || 0) - (b.position || 0));
 
         setProfile({ ...userData, id: userId, links, feeds } as any);
       } catch (err) {
