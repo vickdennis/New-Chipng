@@ -277,6 +277,8 @@ export default function Dashboard() {
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [newUser, setNewUser] = useState({ username: "", email: "", password: "", plan: "free", role: "user" });
   const [isSaving, setIsSaving] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ show: boolean; title: string; message: string; onConfirm: () => void } | null>(null);
+  const [promptModal, setPromptModal] = useState<{ show: boolean; title: string; placeholder: string; onConfirm: (val: string) => void } | null>(null);
   const [pickingIconFor, setPickingIconFor] = useState<string | number | null>(null);
   const [copied, setCopied] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -441,8 +443,21 @@ export default function Dashboard() {
   };
 
   const handleDeleteLink = async (id: string | number) => {
-    if (!window.confirm("Are you sure you want to delete this link?")) return;
-    await deleteDoc(doc(db, "links", id.toString()));
+    setConfirmModal({
+      show: true,
+      title: "Delete Link",
+      message: "Are you sure you want to delete this link?",
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, "links", id.toString()));
+          toast.success("Link deleted successfully");
+        } catch (err) {
+          console.error("Failed to delete link", err);
+          toast.error("Failed to delete link");
+        }
+        setConfirmModal(null);
+      }
+    });
   };
 
   const handleAddFeed = async () => {
@@ -468,8 +483,21 @@ export default function Dashboard() {
   };
 
   const handleDeleteFeed = async (id: string | number) => {
-    if (!window.confirm("Are you sure you want to delete this feed?")) return;
-    await deleteDoc(doc(db, "social_feeds", id.toString()));
+    setConfirmModal({
+      show: true,
+      title: "Delete Feed",
+      message: "Are you sure you want to delete this feed?",
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, "social_feeds", id.toString()));
+          toast.success("Feed deleted successfully");
+        } catch (err) {
+          console.error("Failed to delete feed", err);
+          toast.error("Failed to delete feed");
+        }
+        setConfirmModal(null);
+      }
+    });
   };
 
   const handleUpdateUsername = async (newUsername: string) => {
@@ -622,34 +650,47 @@ export default function Dashboard() {
 
   const handleGenerateKey = async () => {
     if (!user) return;
-    const name = prompt("Enter a name for this API key:");
-    if (!name) return;
-
-    const key = `chip_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
-    
-    try {
-      await addDoc(collection(db, "api_keys"), {
-        user_id: user.uid,
-        key,
-        name,
-        created_at: serverTimestamp()
-      });
-      setGeneratedKey(key);
-    } catch (err) {
-      console.error("Failed to generate API key", err);
-      toast.error("Failed to generate API key. Please try again.");
-    }
+    setPromptModal({
+      show: true,
+      title: "Generate API Key",
+      placeholder: "Enter a name for this API key:",
+      onConfirm: async (name) => {
+        if (!name) return;
+        const key = `chip_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+        try {
+          await addDoc(collection(db, "api_keys"), {
+            user_id: user.uid,
+            key,
+            name,
+            created_at: serverTimestamp()
+          });
+          setGeneratedKey(key);
+          toast.success("API key generated successfully");
+        } catch (err) {
+          console.error("Failed to generate API key", err);
+          toast.error("Failed to generate API key. Please try again.");
+        }
+        setPromptModal(null);
+      }
+    });
   };
 
   const handleDeleteKey = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this API key?")) return;
-    try {
-      await deleteDoc(doc(db, "api_keys", id));
-      toast.success("API key deleted successfully");
-    } catch (err) {
-      console.error("Failed to delete API key", err);
-      toast.error("Failed to delete API key");
-    }
+    setConfirmModal({
+      show: true,
+      title: "Delete API Key",
+      message: "Are you sure you want to delete this API key?",
+      onConfirm: async () => {
+        try {
+          await deleteDoc(doc(db, "api_keys", id));
+          toast.success("API key deleted successfully");
+        } catch (err) {
+          console.error("Failed to delete API key", err);
+          toast.error("Failed to delete API key");
+        }
+        setConfirmModal(null);
+      }
+    });
   };
 
   const handleCreateUser = async () => {
@@ -674,13 +715,29 @@ export default function Dashboard() {
   };
 
   const handleDeleteAdminLink = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this link?")) return;
-    await deleteDoc(doc(db, "links", id));
+    setConfirmModal({
+      show: true,
+      title: "Delete Link",
+      message: "Are you sure you want to delete this link?",
+      onConfirm: async () => {
+        await deleteDoc(doc(db, "links", id));
+        toast.success("Link deleted successfully");
+        setConfirmModal(null);
+      }
+    });
   };
 
   const handleDeleteUser = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this user? This action is irreversible.")) return;
-    await deleteDoc(doc(db, "users", id));
+    setConfirmModal({
+      show: true,
+      title: "Delete User",
+      message: "Are you sure you want to delete this user? This action is irreversible.",
+      onConfirm: async () => {
+        await deleteDoc(doc(db, "users", id));
+        toast.success("User deleted successfully");
+        setConfirmModal(null);
+      }
+    });
   };
 
   const handleSaveBlog = async () => {
@@ -718,15 +775,30 @@ export default function Dashboard() {
   };
 
   const handleDeleteBlog = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this blog post?')) return;
-    await deleteDoc(doc(db, "blogs", id));
+    setConfirmModal({
+      show: true,
+      title: "Delete Blog Post",
+      message: "Are you sure you want to delete this blog post?",
+      onConfirm: async () => {
+        await deleteDoc(doc(db, "blogs", id));
+        toast.success("Blog post deleted successfully");
+        setConfirmModal(null);
+      }
+    });
   };
 
   const handleBlogImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    const url = prompt("Enter Image URL for Blog Post:");
-    if (url) {
-      setBlogForm(prev => ({ ...prev, image_url: url }));
-    }
+    setPromptModal({
+      show: true,
+      title: "Blog Image URL",
+      placeholder: "Enter Image URL for Blog Post:",
+      onConfirm: (url) => {
+        if (url) {
+          setBlogForm(prev => ({ ...prev, image_url: url }));
+        }
+        setPromptModal(null);
+      }
+    });
   };
 
   const handleLogout = async () => {
@@ -740,6 +812,68 @@ export default function Dashboard() {
 
   return (
     <div className="grid lg:grid-cols-[1fr_400px] gap-8 px-4 sm:px-0 pb-24 lg:pb-0">
+      {confirmModal?.show && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-6">
+          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 max-w-sm w-full flex flex-col gap-6 shadow-2xl border border-transparent dark:border-zinc-800 transition-colors">
+            <div className="flex flex-col gap-2 text-center">
+              <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{confirmModal.title}</h3>
+              <p className="text-zinc-500 dark:text-zinc-400 text-sm">{confirmModal.message}</p>
+            </div>
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={confirmModal.onConfirm}
+                className="w-full bg-red-600 text-white py-4 rounded-2xl font-bold hover:bg-red-700 transition-all"
+              >
+                Confirm
+              </button>
+              <button 
+                onClick={() => setConfirmModal(null)}
+                className="w-full py-4 rounded-2xl font-bold text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {promptModal?.show && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-6">
+          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] p-8 max-w-sm w-full flex flex-col gap-6 shadow-2xl border border-transparent dark:border-zinc-800 transition-colors">
+            <div className="flex flex-col gap-2 text-center">
+              <h3 className="text-xl font-bold text-zinc-900 dark:text-white">{promptModal.title}</h3>
+            </div>
+            <input 
+              type="text"
+              placeholder={promptModal.placeholder}
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-zinc-900 dark:text-white transition-all"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  promptModal.onConfirm((e.target as HTMLInputElement).value);
+                }
+              }}
+            />
+            <div className="flex flex-col gap-3">
+              <button 
+                onClick={() => {
+                  const input = document.querySelector('input[placeholder="' + promptModal.placeholder + '"]') as HTMLInputElement;
+                  promptModal.onConfirm(input.value);
+                }}
+                className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 py-4 rounded-2xl font-bold hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all"
+              >
+                Submit
+              </button>
+              <button 
+                onClick={() => setPromptModal(null)}
+                className="w-full py-4 rounded-2xl font-bold text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Editor Side */}
       <div className="flex flex-col gap-8">
         <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
