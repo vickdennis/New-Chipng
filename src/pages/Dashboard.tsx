@@ -182,7 +182,7 @@ function SortableLink({
             <input 
               type="checkbox" 
               checked={Boolean(link.active)}
-              onChange={(e) => onUpdate(link.id, { active: e.target.checked ? 1 : 0 })}
+              onChange={(e) => onUpdate(link.id, { active: e.target.checked })}
               className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-white focus:ring-zinc-900 dark:focus:ring-white bg-transparent"
             />
             <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Active</span>
@@ -205,7 +205,7 @@ function SortableLink({
               <input 
                 type="checkbox" 
                 checked={Boolean(link.is_product)}
-                onChange={(e) => onUpdate(link.id, { is_product: e.target.checked ? 1 : 0 })}
+                onChange={(e) => onUpdate(link.id, { is_product: e.target.checked })}
                 className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-700 text-zinc-900 dark:text-white focus:ring-zinc-900 dark:focus:ring-white bg-transparent"
               />
               <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Product</span>

@@ -9,7 +9,7 @@ import { usePaystackPayment } from "react-paystack";
 import { downloadVCard } from "../utils/vcard";
 import { toast } from "sonner";
 import { db } from "../firebase";
-import { collection, query, where, getDocs, doc, updateDoc, increment, orderBy, addDoc } from "firebase/firestore";
+import { collection, query, where, getDocs, doc, updateDoc, increment, orderBy, addDoc, onSnapshot } from "firebase/firestore";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -22,55 +22,72 @@ export default function ProfileView() {
   const [error, setError] = useState<string | null>(null);
   const [payingFor, setPayingFor] = useState<LinkType | null>(null);
 
+  const [userId, setUserId] = useState<string | null>(null);
+
   useEffect(() => {
-    const fetchProfile = async () => {
-      if (!username) return;
-      try {
-        // 1. Find user by username in users_public (case-insensitive search by lowercasing)
-        const normalizedUsername = username.toLowerCase();
-        const usersQuery = query(collection(db, "users_public"), where("username", "==", normalizedUsername));
-        const userSnapshot = await getDocs(usersQuery);
-        
-        if (userSnapshot.empty) {
-          throw new Error("Profile not found");
-        }
+    if (!username) return;
 
-        const userDoc = userSnapshot.docs[0];
-        const userData = userDoc.data() as Profile;
-        const userId = userDoc.id;
+    const normalizedUsername = username.toLowerCase();
+    const usersQuery = query(collection(db, "users_public"), where("username", "==", normalizedUsername));
 
-        // 2. Fetch links
-        const linksQuery = query(
-          collection(db, "links"), 
-          where("user_id", "==", userId), 
-          where("active", "==", true)
-        );
-        const linksSnapshot = await getDocs(linksQuery);
-        const links = linksSnapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as any))
-          .sort((a, b) => (a.position || 0) - (b.position || 0));
-
-        // 3. Fetch feeds
-        const feedsQuery = query(
-          collection(db, "social_feeds"), 
-          where("user_id", "==", userId), 
-          where("active", "==", true)
-        );
-        const feedsSnapshot = await getDocs(feedsQuery);
-        const feeds = feedsSnapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as any))
-          .sort((a, b) => (a.position || 0) - (b.position || 0));
-
-        setProfile({ ...userData, id: userId, links, feeds } as any);
-      } catch (err) {
-        console.error("Fetch profile error:", err);
-        setError(err instanceof Error ? err.message : "An error occurred");
-      } finally {
+    const unsubscribeUser = onSnapshot(usersQuery, (userSnapshot) => {
+      if (userSnapshot.empty) {
+        setError("Profile not found");
         setLoading(false);
+        setUserId(null);
+        return;
       }
-    };
-    fetchProfile();
+
+      const userDoc = userSnapshot.docs[0];
+      setUserId(userDoc.id);
+      setProfile(prev => ({ ...(userDoc.data() as Profile), id: userDoc.id, links: prev?.links || [], feeds: prev?.feeds || [] } as any));
+    }, (err) => {
+      console.error("User listener error:", err);
+      setError("An error occurred");
+      setLoading(false);
+    });
+
+    return () => unsubscribeUser();
   }, [username]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    const linksQuery = query(
+      collection(db, "links"), 
+      where("user_id", "==", userId), 
+      where("active", "in", [true, 1]),
+      orderBy("position", "asc")
+    );
+
+    const feedsQuery = query(
+      collection(db, "social_feeds"), 
+      where("user_id", "==", userId), 
+      where("active", "in", [true, 1]),
+      orderBy("position", "asc")
+    );
+
+    const unsubLinks = onSnapshot(linksQuery, (linksSnapshot) => {
+      const links = linksSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      setProfile(prev => prev ? { ...prev, links } : null);
+      setLoading(false);
+    }, (err) => {
+      console.error("Links listener error:", err);
+    });
+
+    const unsubFeeds = onSnapshot(feedsQuery, (feedsSnapshot) => {
+      const feeds = feedsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      setProfile(prev => prev ? { ...prev, feeds } : null);
+      setLoading(false);
+    }, (err) => {
+      console.error("Feeds listener error:", err);
+    });
+
+    return () => {
+      unsubLinks();
+      unsubFeeds();
+    };
+  }, [userId]);
 
   const handleLinkClick = async (link: LinkType) => {
     // Increment click count in Firestore
