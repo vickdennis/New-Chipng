@@ -1,7 +1,7 @@
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion } from "motion/react";
-import { User as UserIcon, Mail, Lock, ArrowRight } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { User as UserIcon, Mail, Lock, ArrowRight, Check, X as XIcon, Sparkles } from "lucide-react";
 import Logo from "../components/Logo";
 import { createUserWithEmailAndPassword, sendEmailVerification, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { doc, setDoc, getDocs, collection, query, where, getDoc } from "firebase/firestore";
@@ -14,23 +14,58 @@ export default function SignUp() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isSignedUp, setIsSignedUp] = useState(false);
+  const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const navigate = useNavigate();
+
+  // Debounced username check
+  useEffect(() => {
+    if (!username || username.length < 3) {
+      setUsernameStatus('idle');
+      setSuggestions([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setUsernameStatus('checking');
+      try {
+        const q = query(collection(db, "users_public"), where("username", "==", username.toLowerCase()));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          setUsernameStatus('available');
+          setSuggestions([]);
+        } else {
+          setUsernameStatus('taken');
+          // Generate suggestions
+          const newSuggestions = [
+            `${username}${Math.floor(Math.random() * 100)}`,
+            `${username}_official`,
+            `the${username}`,
+            `${username}ng`
+          ];
+          setSuggestions(newSuggestions);
+        }
+      } catch (err) {
+        console.error("Error checking username:", err);
+        setUsernameStatus('idle');
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [username]);
 
   const handleSignUp = async (e: FormEvent) => {
     e.preventDefault();
+    if (usernameStatus !== 'available') {
+      setError("Please choose an available username");
+      return;
+    }
+    
     setLoading(true);
     setError("");
 
     try {
-      // 1. Check if username is taken (check users_public for better privacy)
-      const q = query(collection(db, "users_public"), where("username", "==", username));
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        setError("Username is already taken");
-        setLoading(false);
-        return;
-      }
-
       // 2. Create Auth User
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
@@ -40,7 +75,7 @@ export default function SignUp() {
 
       // 4. Create Firestore Profile
       const profileData = {
-        username,
+        username: username.toLowerCase(),
         email,
         plan: email === "vickthorden@gmail.com" ? "business" : "free",
         role: email === "vickthorden@gmail.com" ? "admin" : "user",
@@ -49,7 +84,7 @@ export default function SignUp() {
       };
 
       const publicProfileData = {
-        username,
+        username: username.toLowerCase(),
         display_name: username,
         bio: "Welcome to my profile!",
         avatar_url: `https://ui-avatars.com/api/?name=${username}&background=random`,
@@ -196,7 +231,7 @@ export default function SignUp() {
           </div>
 
           <form onSubmit={handleSignUp} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-2">
               <label className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider ml-1">Username</label>
               <div className="relative">
                 <UserIcon size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
@@ -206,9 +241,55 @@ export default function SignUp() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
                   placeholder="yourname"
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none transition-all text-zinc-900 dark:text-white"
+                  className={`w-full bg-zinc-50 dark:bg-zinc-800 border rounded-2xl pl-12 pr-10 py-3 focus:ring-2 outline-none transition-all text-zinc-900 dark:text-white ${
+                    usernameStatus === 'available' ? 'border-green-500 focus:ring-green-500' : 
+                    usernameStatus === 'taken' ? 'border-red-500 focus:ring-red-500' : 
+                    'border-zinc-200 dark:border-zinc-700 focus:ring-zinc-900 dark:focus:ring-white'
+                  }`}
                 />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  {usernameStatus === 'checking' && (
+                    <div className="w-4 h-4 border-2 border-zinc-300 border-t-zinc-600 rounded-full animate-spin" />
+                  )}
+                  {usernameStatus === 'available' && <Check size={18} className="text-green-500" />}
+                  {usernameStatus === 'taken' && <XIcon size={18} className="text-red-500" />}
+                </div>
               </div>
+              
+              <AnimatePresence>
+                {usernameStatus === 'taken' && suggestions.length > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex flex-col gap-2 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800"
+                  >
+                    <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                      <Sparkles size={12} />
+                      Suggestions
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestions.map((suggestion) => (
+                        <button
+                          key={suggestion}
+                          type="button"
+                          onClick={() => setUsername(suggestion)}
+                          className="text-xs bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 px-2 py-1 rounded-lg hover:border-zinc-900 dark:hover:border-white transition-colors text-zinc-600 dark:text-zinc-400"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {usernameStatus === 'available' && (
+                <p className="text-[10px] text-green-500 font-bold uppercase tracking-wider ml-1">Username is available</p>
+              )}
+              {usernameStatus === 'taken' && (
+                <p className="text-[10px] text-red-500 font-bold uppercase tracking-wider ml-1">Username is already taken</p>
+              )}
             </div>
 
             <div className="flex flex-col gap-1">
@@ -243,7 +324,7 @@ export default function SignUp() {
 
             <button 
               type="submit" 
-              disabled={loading}
+              disabled={loading || usernameStatus !== 'available'}
               className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all shadow-lg mt-4 disabled:opacity-50"
             >
               {loading ? "Creating account..." : "Sign Up"}

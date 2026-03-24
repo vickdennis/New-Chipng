@@ -1,25 +1,32 @@
 import { Link, useNavigate } from "react-router-dom";
-import { LayoutDashboard, CreditCard, Home, LogOut, User, Menu, X, Mail, HelpCircle, FileText } from "lucide-react";
-import { useEffect, useState } from "react";
+import { LayoutDashboard, CreditCard, Home, LogOut, User, Menu, X, Mail, HelpCircle, FileText, ChevronDown } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import ThemeToggle from "./ThemeToggle";
 import { motion, AnimatePresence } from "motion/react";
 import Logo from "./Logo";
+import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
-  const [username, setUsername] = useState<string | null>(null);
+  const { profile, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem("chip_username");
-    if (stored) setUsername(stored);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("chip_user_id");
-    localStorage.removeItem("chip_username");
-    setUsername(null);
+  const handleLogout = async () => {
+    await logout();
     setIsMenuOpen(false);
+    setIsUserMenuOpen(false);
     navigate("/");
   };
 
@@ -55,27 +62,73 @@ export default function Navbar() {
             Blog
           </Link>
           
-          {username ? (
-            <>
-              <Link to="/dashboard" className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white flex items-center gap-1.5 text-sm font-medium transition-colors">
-                <LayoutDashboard size={18} />
-                Dashboard
-              </Link>
-              <div className="flex items-center gap-4">
-                <Link to={`/p/${username}`} className="bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white px-4 py-2 rounded-full text-sm font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors flex items-center gap-2">
-                  <User size={16} />
-                  My Page
-                </Link>
-                <ThemeToggle />
+          {profile ? (
+            <div className="flex items-center gap-4">
+              <ThemeToggle />
+              <div className="relative" ref={userMenuRef}>
                 <button 
-                  onClick={handleLogout}
-                  className="text-zinc-400 hover:text-red-500 transition-colors p-2"
-                  title="Logout"
+                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                  className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-3 py-1.5 rounded-full transition-colors group"
                 >
-                  <LogOut size={20} />
+                  <div className="w-6 h-6 rounded-full overflow-hidden bg-zinc-200 dark:bg-zinc-700">
+                    <img 
+                      src={profile.avatar_url || `https://ui-avatars.com/api/?name=${profile.display_name}&background=random`} 
+                      alt={profile.display_name}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <span className="text-sm font-bold text-zinc-900 dark:text-white max-w-[100px] truncate">
+                    {profile.username}
+                  </span>
+                  <ChevronDown size={16} className={`text-zinc-400 transition-transform duration-200 ${isUserMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
+
+                <AnimatePresence>
+                  {isUserMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-2 w-56 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden py-2 z-50"
+                    >
+                      <div className="px-4 py-2 border-b border-zinc-100 dark:border-zinc-800 mb-2">
+                        <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Account</p>
+                        <p className="text-sm font-bold text-zinc-900 dark:text-white truncate">{profile.display_name}</p>
+                      </div>
+                      
+                      <Link 
+                        to="/dashboard" 
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                      >
+                        <LayoutDashboard size={18} />
+                        Dashboard
+                      </Link>
+                      
+                      <Link 
+                        to={`/p/${profile.username}`} 
+                        onClick={() => setIsUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                      >
+                        <User size={18} />
+                        My Page
+                      </Link>
+
+                      <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-2" />
+                      
+                      <button 
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      >
+                        <LogOut size={18} />
+                        Log Out
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            </>
+            </div>
           ) : (
             <div className="flex items-center gap-4">
               <ThemeToggle />
@@ -132,13 +185,14 @@ export default function Navbar() {
                 Blog
               </Link>
               
-              {username ? (
+              {profile ? (
                 <>
+                  <div className="h-px bg-zinc-100 dark:bg-zinc-800 my-2" />
                   <Link to="/dashboard" onClick={closeMenu} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-900 dark:text-white font-bold transition-colors">
                     <LayoutDashboard size={20} />
                     Dashboard
                   </Link>
-                  <Link to={`/p/${username}`} onClick={closeMenu} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold transition-colors">
+                  <Link to={`/p/${profile.username}`} onClick={closeMenu} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold transition-colors">
                     <User size={20} />
                     My Page
                   </Link>
