@@ -1,120 +1,88 @@
+export type UserRole = 'user' | 'admin';
+export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset';
+export type ButtonStyle = 'rounded' | 'pill' | 'square';
+export type BackgroundType = 'solid' | 'gradient';
+
 export interface User {
-  id: string | number;
-  username: string;
+  uid: string;
   email: string;
-  plan: 'free' | 'pro' | 'business';
-  role: 'user' | 'admin';
-  subscription_status?: string;
-  next_billing_date?: string | null;
-  is_featured?: boolean | number;
-  created_at?: any;
+  role: UserRole;
+  createdAt: string;
+  status: 'active' | 'suspended';
 }
 
-export interface Profile extends User {
-  user_id: string | number;
-  display_name: string;
-  bio: string;
-  avatar_url: string;
-  theme: string;
-  font_family: string;
-  bg_image_url: string;
-  // Contact Info
-  contact_first_name?: string;
-  contact_last_name?: string;
-  contact_email?: string;
-  contact_phone?: string;
-  contact_organization?: string;
-  contact_job_title?: string;
-  contact_website?: string;
+export interface Profile {
+  userId: string;
+  username: string;
+  displayName?: string;
+  bio?: string;
+  photoURL?: string;
+  theme: ThemeType;
+  buttonStyle: ButtonStyle;
+  backgroundType: BackgroundType;
+  backgroundColor?: string;
+  totalClicks?: number;
 }
 
 export interface Link {
-  id: string | number;
-  user_id: string | number;
+  id: string;
+  userId: string;
   title: string;
   url: string;
-  icon: string;
+  icon?: string;
+  active: boolean;
   position: number;
-  clicks: number;
-  active: number | boolean;
-  color?: string;
-  price?: number;
-  is_product?: number | boolean;
+  clicks?: number;
 }
 
-export interface SocialFeed {
-  id: string | number;
-  user_id: string | number;
-  type: 'instagram' | 'twitter' | 'tiktok' | 'youtube';
-  url: string;
-  position: number;
-  active: number | boolean;
-}
-
-export interface Theme {
-  id: string;
-  name: string;
-  bg: string;
+export interface ThemeConfig {
+  name: ThemeType;
+  background: string;
   text: string;
-  card: string;
   button: string;
   buttonText: string;
-  is_premium?: boolean;
+  accent: string;
 }
 
-export const THEMES: Theme[] = [
-  {
-    id: 'default',
-    name: 'Classic White',
-    bg: 'bg-white',
+export const THEMES: Record<ThemeType, ThemeConfig> = {
+  minimal: {
+    name: 'minimal',
+    background: 'bg-white',
     text: 'text-zinc-900',
-    card: 'bg-zinc-50',
-    button: 'bg-zinc-900',
-    buttonText: 'text-white',
-    is_premium: false
+    button: 'bg-zinc-100 hover:bg-zinc-200',
+    buttonText: 'text-zinc-900',
+    accent: 'bg-zinc-900',
   },
-  {
-    id: 'dark',
-    name: 'Midnight',
-    bg: 'bg-zinc-950',
-    text: 'text-zinc-50',
-    card: 'bg-zinc-900',
-    button: 'bg-zinc-50',
-    buttonText: 'text-zinc-950',
-    is_premium: false
+  neon: {
+    name: 'neon',
+    background: 'bg-zinc-950',
+    text: 'text-white',
+    button: 'bg-zinc-900 border border-lime-400 hover:bg-lime-400/10',
+    buttonText: 'text-lime-400',
+    accent: 'bg-lime-400',
   },
-  {
-    id: 'sunset',
-    name: 'Sunset Glow',
-    bg: 'bg-orange-50',
-    text: 'text-orange-950',
-    card: 'bg-orange-100',
-    button: 'bg-orange-600',
+  glassmorphism: {
+    name: 'glassmorphism',
+    background: 'bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500',
+    text: 'text-white',
+    button: 'bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30',
     buttonText: 'text-white',
-    is_premium: true
+    accent: 'bg-white',
   },
-  {
-    id: 'forest',
-    name: 'Deep Forest',
-    bg: 'bg-emerald-950',
-    text: 'text-emerald-50',
-    card: 'bg-emerald-900',
-    button: 'bg-emerald-500',
+  dark: {
+    name: 'dark',
+    background: 'bg-zinc-900',
+    text: 'text-zinc-100',
+    button: 'bg-zinc-800 hover:bg-zinc-700 border border-zinc-700',
+    buttonText: 'text-zinc-100',
+    accent: 'bg-white',
+  },
+  sunset: {
+    name: 'sunset',
+    background: 'bg-gradient-to-b from-orange-400 to-rose-500',
+    text: 'text-white',
+    button: 'bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20',
     buttonText: 'text-white',
-    is_premium: true
-  }
-];
-
-export interface Font {
-  id: string;
-  name: string;
-  family: string;
-  is_premium?: boolean;
-}
-
-export const FONTS: Font[] = [
-  { id: 'sans', name: 'Modern Sans', family: 'font-sans', is_premium: false },
-  { id: 'serif', name: 'Elegant Serif', family: 'font-serif', is_premium: true },
-  { id: 'mono', name: 'Technical Mono', family: 'font-mono', is_premium: true },
-  { id: 'display', name: 'Bold Display', family: 'font-display', is_premium: true },
-];
+    accent: 'bg-orange-200',
+  },
+};

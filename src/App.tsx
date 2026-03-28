@@ -1,68 +1,40 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Landing from "./pages/Landing";
-import Dashboard from "./pages/Dashboard";
-import ProfileView from "./pages/ProfileView";
-import Pricing from "./pages/Pricing";
-import Contact from "./pages/Contact";
-import FAQ from "./pages/FAQ";
-import Blog from "./pages/Blog";
-import BlogPost from "./pages/BlogPost";
-import SignUp from "./pages/SignUp";
-import { HelmetProvider } from 'react-helmet-async';
-import Login from "./pages/Login";
-import VerifyEmail from "./pages/VerifyEmail";
-import Navbar from "./components/Navbar";
-import Footer from "./components/Footer";
-import AIChatBot from "./components/AIChatBot";
-import { Toaster } from "sonner";
-import { ThemeProvider } from "./context/ThemeContext";
-import { AuthProvider } from "./context/AuthContext";
-import ErrorBoundary from "./components/ErrorBoundary";
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import LandingPage from './pages/LandingPage';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Dashboard from './pages/Dashboard';
+import PublicProfile from './pages/PublicProfile';
+import AdminPanel from './pages/AdminPanel';
+import { Toaster } from 'sonner';
 
-export default function App() {
+const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean }> = ({ children, adminOnly }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (!user) return <Navigate to="/login" />;
+  if (adminOnly && user.role !== 'admin') return <Navigate to="/dashboard" />;
+
+  return <>{children}</>;
+};
+
+const App: React.FC = () => {
   return (
-    <HelmetProvider>
-      <ErrorBoundary>
-        <AuthProvider>
-          <ThemeProvider>
-            <Toaster position="top-center" richColors />
-            <Router>
-            <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 transition-colors duration-300">
-              <Routes>
-                {/* Public Profile View (No Navbar) */}
-                <Route path="/p/:username" element={<ProfileView />} />
-                <Route path="/verify/:token" element={<VerifyEmail />} />
-                
-                {/* Main App Routes */}
-                <Route
-                  path="*"
-                  element={
-                    <>
-                      <Navbar />
-                      <main className="container mx-auto px-4 py-8">
-                        <Routes>
-                          <Route path="/" element={<Landing />} />
-                          <Route path="/dashboard" element={<Dashboard />} />
-                          <Route path="/pricing" element={<Pricing />} />
-                          <Route path="/contact" element={<Contact />} />
-                          <Route path="/faq" element={<FAQ />} />
-                          <Route path="/blog" element={<Blog />} />
-                          <Route path="/blog/:slug" element={<BlogPost />} />
-                          <Route path="/signup" element={<SignUp />} />
-                          <Route path="/login" element={<Login />} />
-                        </Routes>
-                      </main>
-                      <Footer />
-                      <AIChatBot />
-                    </>
-                  }
-                />
-              </Routes>
-            </div>
-          </Router>
-        </ThemeProvider>
-      </AuthProvider>
-    </ErrorBoundary>
-  </HelmetProvider>
-);
-}
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPanel /></ProtectedRoute>} />
+          <Route path="/:username" element={<PublicProfile />} />
+        </Routes>
+      </Router>
+      <Toaster position="top-center" richColors />
+    </AuthProvider>
+  );
+};
+
+export default App;

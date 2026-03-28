@@ -1,26 +1,72 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { toast } from 'sonner';
-import { Link as LinkIcon, Mail, Lock, ArrowRight } from 'lucide-react';
+import { Link as LinkIcon, Mail, Lock, User as UserIcon, ArrowRight } from 'lucide-react';
 
-const Login: React.FC = () => {
+const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+
+    const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
+    if (cleanUsername.length < 3) {
+      toast.error('Username must be at least 3 characters');
+      setLoading(false);
+      return;
+    }
+
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      toast.success('Welcome back!');
+      // Check if username is taken
+      const usernameDoc = await getDoc(doc(db, 'profiles_by_username', cleanUsername));
+      if (usernameDoc.exists()) {
+        toast.error('Username is already taken');
+        setLoading(false);
+        return;
+      }
+
+      // Create user
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
+
+      // Create user doc
+      await setDoc(doc(db, 'users', uid), {
+        email,
+        role: 'user',
+        createdAt: serverTimestamp(),
+        status: 'active'
+      });
+
+      // Create profile doc
+      await setDoc(doc(db, 'profiles', uid), {
+        userId: uid,
+        username: cleanUsername,
+        displayName: cleanUsername,
+        bio: 'Welcome to my Chip NG profile!',
+        theme: 'minimal',
+        buttonStyle: 'rounded',
+        backgroundType: 'solid',
+        backgroundColor: '#ffffff',
+        totalClicks: 0
+      });
+
+      // Create username mapping
+      await setDoc(doc(db, 'profiles_by_username', cleanUsername), {
+        userId: uid
+      });
+
+      toast.success('Account created successfully!');
       navigate('/dashboard');
     } catch (error: any) {
-      toast.error(error.message || 'Failed to login');
+      toast.error(error.message || 'Failed to sign up');
     } finally {
       setLoading(false);
     }
@@ -93,11 +139,26 @@ const Login: React.FC = () => {
           <div className="w-16 h-16 bg-lime-400 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <LinkIcon className="text-zinc-950 w-8 h-8" />
           </div>
-          <h1 className="text-4xl font-bold tracking-tighter mb-2">Welcome back</h1>
-          <p className="text-zinc-500">Log in to manage your Chip NG profile</p>
+          <h1 className="text-4xl font-bold tracking-tighter mb-2">Create an account</h1>
+          <p className="text-zinc-500">Join Chip NG and build your link-in-bio page</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleSignup} className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-zinc-400 ml-1">Username</label>
+            <div className="relative">
+              <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 w-5 h-5" />
+              <input 
+                type="text" 
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="yourname"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl pl-12 pr-4 py-4 focus:ring-2 focus:ring-lime-400 outline-none transition-all"
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
             <label className="text-sm font-medium text-zinc-400 ml-1">Email Address</label>
             <div className="relative">
@@ -133,7 +194,7 @@ const Login: React.FC = () => {
             disabled={loading}
             className="w-full bg-lime-400 text-zinc-950 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-lime-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Logging in...' : 'Log in'} <ArrowRight className="w-5 h-5" />
+            {loading ? 'Creating account...' : 'Sign up'} <ArrowRight className="w-5 h-5" />
           </button>
         </form>
 
@@ -173,11 +234,11 @@ const Login: React.FC = () => {
         </button>
 
         <p className="text-center mt-8 text-zinc-500">
-          Don't have an account? <Link to="/signup" className="text-lime-400 font-bold hover:underline">Sign up</Link>
+          Already have an account? <Link to="/login" className="text-lime-400 font-bold hover:underline">Log in</Link>
         </p>
       </div>
     </div>
   );
 };
 
-export default Login;
+export default Signup;

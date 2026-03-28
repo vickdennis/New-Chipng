@@ -1,0 +1,124 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { ArrowRight, Link as LinkIcon, Smartphone, Zap, Shield } from 'lucide-react';
+
+const LandingPage: React.FC = () => {
+  return (
+    <div className="min-h-screen bg-zinc-950 text-white selection:bg-lime-400 selection:text-zinc-950">
+      {/* Navigation */}
+      <nav className="max-w-7xl mx-auto px-6 py-8 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 bg-lime-400 rounded-xl flex items-center justify-center">
+            <LinkIcon className="text-zinc-950 w-6 h-6" />
+          </div>
+          <span className="text-2xl font-bold tracking-tighter">Chip NG</span>
+        </div>
+        <div className="flex items-center gap-6">
+          <Link to="/login" className="text-zinc-400 hover:text-white transition-colors">Login</Link>
+          <Link to="/signup" className="bg-white text-zinc-950 px-6 py-2.5 rounded-full font-bold hover:bg-zinc-200 transition-all">
+            Get Started
+          </Link>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <main className="max-w-7xl mx-auto px-6 pt-20 pb-32">
+        <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-full text-sm text-zinc-400 mb-8"
+          >
+            <span className="w-2 h-2 bg-lime-400 rounded-full animate-pulse" />
+            Join 10,000+ creators in Nigeria
+          </motion.div>
+          
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-6xl md:text-8xl font-bold tracking-tighter mb-8 leading-[0.9]"
+          >
+            Everything you are. <br />
+            <span className="text-zinc-500">In one simple link.</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="text-xl text-zinc-400 mb-12 max-w-2xl"
+          >
+            Chip NG is the powerful link-in-bio tool for creators, entrepreneurs, and businesses. 
+            Build your professional page in seconds.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-md"
+          >
+            <div className="relative w-full">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium">chipng.com/</span>
+              <input 
+                type="text" 
+                placeholder="yourname"
+                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl pl-[100px] pr-4 py-4 focus:ring-2 focus:ring-lime-400 outline-none transition-all"
+              />
+            </div>
+            <Link to="/signup" className="w-full sm:w-auto bg-lime-400 text-zinc-950 px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-lime-300 transition-all whitespace-nowrap">
+              Claim Link <ArrowRight className="w-5 h-5" />
+            </Link>
+          </motion.div>
+        </div>
+
+        {/* Features Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-40">
+          {[
+            { icon: Zap, title: "Lightning Fast", desc: "Optimized for speed. Your profile loads in milliseconds." },
+            { icon: Smartphone, title: "Mobile First", desc: "Designed to look stunning on every device." },
+            { icon: Shield, title: "Secure & Reliable", desc: "Built on enterprise-grade infrastructure." }
+          ].map((feature, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className="bg-zinc-900/50 border border-zinc-800 p-8 rounded-[2.5rem] hover:border-zinc-700 transition-all"
+            >
+              <div className="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center mb-6">
+                <feature.icon className="text-lime-400 w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold mb-4">{feature.title}</h3>
+              <p className="text-zinc-400 leading-relaxed">{feature.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-zinc-900 py-20">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-lime-400 rounded-lg flex items-center justify-center">
+              <LinkIcon className="text-zinc-950 w-5 h-5" />
+            </div>
+            <span className="text-xl font-bold tracking-tighter">Chip NG</span>
+          </div>
+          <p className="text-zinc-500 text-sm">© 2026 Chip NG. Built for the next generation of creators.</p>
+          <div className="flex items-center gap-6">
+            <a href="#" className="text-zinc-500 hover:text-white transition-colors">Twitter</a>
+            <a href="#" className="text-zinc-500 hover:text-white transition-colors">Instagram</a>
+            <a href="#" className="text-zinc-500 hover:text-white transition-colors">Privacy</a>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default LandingPage;
