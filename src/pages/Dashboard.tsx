@@ -295,7 +295,7 @@ const Dashboard: React.FC = () => {
         body: JSON.stringify({ reference: reference.reference, userId: user?.uid }),
       });
       const data = await response.json();
-      if (data.success) {
+      if (data.status === 'success') {
         toast.success('Upgrade successful! Welcome to Pro.');
       } else {
         toast.error('Verification failed. Please contact support.');
