@@ -13,6 +13,14 @@ const Signup: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlUsername = params.get('username');
+    if (urlUsername) {
+      setUsername(urlUsername);
+    }
+  }, []);
+
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);

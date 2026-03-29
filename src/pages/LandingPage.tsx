@@ -4,6 +4,17 @@ import { motion } from 'motion/react';
 import { ArrowRight, Link as LinkIcon, Smartphone, Zap, Shield } from 'lucide-react';
 
 const LandingPage: React.FC = () => {
+  const [username, setUsername] = React.useState('');
+  const [placeholderIndex, setPlaceholderIndex] = React.useState(0);
+  const placeholders = ['yourname', 'yourbrand', 'yourlink', 'yourbusiness'];
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white selection:bg-lime-400 selection:text-zinc-950">
       {/* Navigation */}
@@ -59,18 +70,46 @@ const LandingPage: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="flex flex-col sm:flex-row items-center gap-4 w-full max-w-md"
+            className="flex flex-col items-center gap-6 w-full max-w-md"
           >
-            <div className="relative w-full">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 font-medium">chipng.com/</span>
-              <input 
-                type="text" 
-                placeholder="yourname"
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl pl-[100px] pr-4 py-4 focus:ring-2 focus:ring-lime-400 outline-none transition-all"
-              />
+            <div className="group relative w-full">
+              {/* Focus Glow Effect */}
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-lime-400 to-emerald-400 rounded-2xl blur opacity-0 group-focus-within:opacity-20 transition duration-500"></div>
+              
+              <div className="relative flex items-center w-full h-16 bg-zinc-900 border border-zinc-800 rounded-2xl px-6 transition-all duration-300 group-focus-within:border-lime-400/50 group-focus-within:bg-zinc-900/80 backdrop-blur-sm">
+                <span className="text-zinc-500 font-medium select-none whitespace-nowrap text-lg">chipng.com/</span>
+                <div className="relative flex-1 h-full flex items-center ml-1">
+                  {!username && (
+                    <motion.span
+                      key={placeholderIndex}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.3 }}
+                      className="absolute text-zinc-700 pointer-events-none text-lg"
+                    >
+                      {placeholders[placeholderIndex]}
+                    </motion.span>
+                  )}
+                  <input 
+                    type="text" 
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="w-full bg-transparent border-none outline-none text-white font-bold text-lg"
+                  />
+                </div>
+              </div>
             </div>
-            <Link to="/signup" className="w-full sm:w-auto bg-lime-400 text-zinc-950 px-8 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-lime-300 transition-all whitespace-nowrap">
-              Claim Link <ArrowRight className="w-5 h-5" />
+
+            <Link 
+              to={`/signup?username=${username}`} 
+              className="group relative w-full h-16 bg-lime-400 text-zinc-950 rounded-2xl font-bold flex items-center justify-center gap-2 overflow-hidden transition-all duration-300 hover:bg-lime-300 hover:shadow-[0_0_30px_rgba(163,230,53,0.3)] hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <span className="relative z-10 flex items-center gap-2 text-lg">
+                Claim Link <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </span>
+              {/* Shine effect */}
+              <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-shine"></div>
             </Link>
           </motion.div>
         </div>
