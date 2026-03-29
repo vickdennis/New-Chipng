@@ -24,7 +24,14 @@ const AdminPanel: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'users' | 'revenue'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'revenue' | 'brand'>('users');
+
+  const LogoBox = ({ title, children, dark = false }: { title: string, children: React.ReactNode, dark?: boolean }) => (
+    <div className={`flex flex-col items-center justify-center p-8 rounded-[2rem] border border-zinc-800 ${dark ? 'bg-zinc-950' : 'bg-white text-zinc-950'}`}>
+      <div className="mb-6">{children}</div>
+      <span className={`text-xs font-bold uppercase tracking-widest ${dark ? 'text-zinc-500' : 'text-zinc-400'}`}>{title}</span>
+    </div>
+  );
 
   const mockRevenueData = [
     { name: 'Jan', revenue: 4000 },
@@ -145,6 +152,12 @@ const AdminPanel: React.FC = () => {
           >
             Revenue
           </button>
+          <button 
+            onClick={() => setActiveTab('brand')}
+            className={`px-8 py-3 rounded-2xl font-bold transition-all ${activeTab === 'brand' ? 'bg-white text-zinc-950' : 'bg-zinc-900 text-zinc-500 hover:text-white'}`}
+          >
+            Brand Assets
+          </button>
         </div>
 
         {activeTab === 'users' ? (
@@ -247,7 +260,7 @@ const AdminPanel: React.FC = () => {
               )}
             </div>
           </>
-        ) : (
+        ) : activeTab === 'revenue' ? (
           <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-zinc-900/50 border border-zinc-800 p-8 rounded-[2.5rem]">
@@ -303,6 +316,71 @@ const AdminPanel: React.FC = () => {
                     <Area type="monotone" dataKey="revenue" stroke="#a3e635" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3} />
                   </AreaChart>
                 </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-12">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Logo Variations</h2>
+              <p className="text-zinc-500 mb-8">Official branding assets for Chip NG</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <LogoBox title="Default (Dark Mode)" dark>
+                  <Logo size="lg" color="white" />
+                </LogoBox>
+                <LogoBox title="Neon Accent" dark>
+                  <Logo size="lg" color="neon" />
+                </LogoBox>
+                <LogoBox title="Light Mode">
+                  <Logo size="lg" color="black" />
+                </LogoBox>
+                <LogoBox title="App Icon" dark>
+                  <Logo size="lg" variant="app-icon" color="neon" />
+                </LogoBox>
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Iconography</h2>
+              <p className="text-zinc-500 mb-8">Simplified marks for small-scale use</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <LogoBox title="Icon Only" dark>
+                  <Logo size="lg" variant="icon-only" color="white" />
+                </LogoBox>
+                <LogoBox title="Favicon (16x16)" dark>
+                  <Logo size="sm" variant="favicon" color="neon" />
+                </LogoBox>
+                <LogoBox title="Favicon (32x32)" dark>
+                  <Logo size="md" variant="favicon" color="white" />
+                </LogoBox>
+                <LogoBox title="Favicon (64x64)">
+                  <Logo size="lg" variant="favicon" color="black" />
+                </LogoBox>
+              </div>
+            </div>
+
+            <div className="bg-zinc-900/50 border border-zinc-800 p-12 rounded-[2.5rem] text-center">
+              <h3 className="text-xl font-bold mb-4">Brand Identity Guidelines</h3>
+              <p className="text-zinc-500 max-w-2xl mx-auto mb-8">
+                The Chip NG logo represents digital identity and connectivity. 
+                Always ensure sufficient contrast and maintain the clear space around the logo.
+                Use the Neon Green version for primary brand touchpoints.
+              </p>
+              <div className="flex flex-wrap justify-center gap-4">
+                <div className="flex items-center gap-2 px-4 py-2 bg-zinc-800 rounded-full border border-zinc-700">
+                  <div className="w-3 h-3 rounded-full bg-lime-400"></div>
+                  <span className="text-xs font-mono">#A3E635</span>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 bg-zinc-800 rounded-full border border-zinc-700">
+                  <div className="w-3 h-3 rounded-full bg-white"></div>
+                  <span className="text-xs font-mono">#FFFFFF</span>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 bg-zinc-800 rounded-full border border-zinc-700">
+                  <div className="w-3 h-3 rounded-full bg-black border border-zinc-600"></div>
+                  <span className="text-xs font-mono">#000000</span>
+                </div>
               </div>
             </div>
           </div>
