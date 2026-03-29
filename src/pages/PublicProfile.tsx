@@ -296,11 +296,11 @@ const PublicProfile: React.FC = () => {
                 className={`w-full p-5 ${theme.button} ${theme.buttonText} ${btnStyle} font-bold text-lg transition-all flex items-center justify-between group relative overflow-hidden border border-white/10`}
               >
                 <div className="flex items-center gap-4 w-full">
-                  {getFavicon(link.url) && (
+                  {(link.icon || getFavicon(link.url)) && (
                     <img 
-                      src={getFavicon(link.url)!} 
+                      src={link.icon || getFavicon(link.url)!} 
                       alt="" 
-                      className="w-6 h-6 rounded-md"
+                      className="w-6 h-6 rounded-md object-cover"
                       referrerPolicy="no-referrer"
                     />
                   )}

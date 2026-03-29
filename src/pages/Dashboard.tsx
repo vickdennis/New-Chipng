@@ -33,15 +33,26 @@ import { useNavigate } from 'react-router-dom';
 import UpgradeModal from '../components/UpgradeModal';
 import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock } from 'lucide-react';
 
-const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium }: { 
+const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, isUploading }: { 
   link: Link; 
   onUpdate: (id: string, data: Partial<Link>) => void;
   onDelete: (id: string) => void;
   isPremium: boolean;
+  onUploadIcon: (e: React.ChangeEvent<HTMLInputElement>, linkId: string) => void;
+  isUploading: boolean;
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: link.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
   const [showSettings, setShowSettings] = useState(false);
+
+  const getFavicon = (url: string) => {
+    try {
+      const domain = new URL(url).hostname;
+      return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+    } catch (e) {
+      return null;
+    }
+  };
 
   return (
     <div ref={setNodeRef} style={style} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl flex flex-col gap-4 group">
@@ -52,6 +63,27 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium }: {
         
         <div className="flex-1 space-y-3">
           <div className="flex items-center gap-4">
+            <div className="relative group/icon">
+              <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
+                {link.icon ? (
+                  <img src={link.icon} alt="" className="w-full h-full object-cover" />
+                ) : getFavicon(link.url) ? (
+                  <img src={getFavicon(link.url)!} alt="" className="w-6 h-6" referrerPolicy="no-referrer" />
+                ) : (
+                  <ImageIcon className="w-5 h-5 text-zinc-400" />
+                )}
+              </div>
+              <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-lg opacity-0 group-hover/icon:opacity-100 cursor-pointer transition-opacity">
+                <Plus className="w-4 h-4" />
+                <input 
+                  type="file" 
+                  className="hidden" 
+                  onChange={(e) => onUploadIcon(e, link.id)} 
+                  accept="image/*"
+                  disabled={isUploading}
+                />
+              </label>
+            </div>
             <input 
               type="text" 
               value={link.title}
@@ -305,24 +337,45 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'background') => {
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'background' | 'link-icon', linkId?: string) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    if (type === 'background' && !checkFeatureAccess('pro', 'Custom Background')) return;
+    if (type === 'background' && !hasAccess('pro')) {
+      checkFeatureAccess('pro', 'Custom Background');
+      return;
+    }
 
-    const folder = type === 'profile' ? 'profiles' : 'backgrounds';
-    const storageRef = ref(storage, `${folder}/${user.uid}/${file.name}`);
+    if (type === 'link-icon' && !hasAccess('pro')) {
+      checkFeatureAccess('pro', 'Custom Link Icons');
+      return;
+    }
+
+    setIsUploading(true);
+    const folder = type === 'profile' ? 'profiles' : type === 'background' ? 'backgrounds' : 'link-icons';
+    const timestamp = Date.now();
+    const storageRef = ref(storage, `${folder}/${user.uid}/${timestamp}_${file.name}`);
+    
     try {
       const snapshot = await uploadBytes(storageRef, file);
       const url = await getDownloadURL(snapshot.ref);
+      
       if (type === 'profile') {
         await handleUpdateProfile({ photoURL: url });
-      } else {
+      } else if (type === 'background') {
         await handleUpdateProfile({ backgroundImage: url, backgroundType: 'image' });
+      } else if (type === 'link-icon' && linkId) {
+        await handleUpdateLink(linkId, { icon: url });
       }
+      toast.success(`${type.replace('-', ' ')} updated`);
     } catch (error) {
-      toast.error(`Failed to upload ${type} image`);
+      console.error('Upload error:', error);
+      toast.error(`Failed to upload ${type.replace('-', ' ')} image. Please check your connection.`);
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -464,6 +517,8 @@ const Dashboard: React.FC = () => {
                         onUpdate={handleUpdateLink}
                         onDelete={handleDeleteLink}
                         isPremium={!!user?.isPremium}
+                        onUploadIcon={(e, id) => handleFileUpload(e, 'link-icon', id)}
+                        isUploading={isUploading}
                       />
                     ))}
                   </div>
@@ -489,8 +544,12 @@ const Dashboard: React.FC = () => {
                       )}
                     </div>
                     <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                      <ImageIcon className="w-6 h-6" />
-                      <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'profile')} accept="image/*" />
+                      {isUploading ? (
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
+                      ) : (
+                        <ImageIcon className="w-6 h-6" />
+                      )}
+                      <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'profile')} accept="image/*" disabled={isUploading} />
                     </label>
                   </div>
                   <div className="flex-1 space-y-4">
@@ -582,9 +641,16 @@ const Dashboard: React.FC = () => {
                             </div>
                           )}
                         </div>
-                        <label className="flex-1 py-2 px-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 rounded-xl text-center font-bold cursor-pointer hover:opacity-90 transition-opacity">
-                          Upload Image
-                          <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'background')} accept="image/*" />
+                        <label className="flex-1 py-2 px-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 rounded-xl text-center font-bold cursor-pointer hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+                          {isUploading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
+                              Uploading...
+                            </>
+                          ) : (
+                            'Upload Image'
+                          )}
+                          <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'background')} accept="image/*" disabled={isUploading} />
                         </label>
                       </div>
                     </div>
