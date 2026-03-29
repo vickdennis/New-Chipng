@@ -18,12 +18,48 @@
         "premiumUntil": { "type": "string", "format": "date-time" },
         "theme": { "type": "string", "enum": ["minimal", "neon", "glassmorphism", "dark", "sunset"] },
         "buttonStyle": { "type": "string", "enum": ["rounded", "pill", "square"] },
-        "backgroundType": { "type": "string", "enum": ["solid", "gradient"] },
+        "backgroundType": { "type": "string", "enum": ["solid", "gradient", "image"] },
         "backgroundColor": { "type": "string" },
+        "backgroundImage": { "type": "string" },
         "totalClicks": { "type": "number" },
-        "isVerified": { "type": "boolean" }
+        "isVerified": { "type": "boolean" },
+        "plan": { "type": "string", "enum": ["basic", "pro", "business"] },
+        "subscriptionStatus": { "type": "string", "enum": ["active", "inactive"] },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" },
+            "address": { "type": "string" }
+          }
+        },
+        "appointmentsEnabled": { "type": "boolean" },
+        "appointments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "dateTime": { "type": "string", "format": "date-time" },
+              "contactLink": { "type": "string" }
+            }
+          }
+        },
+        "socialLinks": {
+          "type": "object",
+          "properties": {
+            "instagram": { "type": "string" },
+            "twitter": { "type": "string" },
+            "linkedin": { "type": "string" },
+            "youtube": { "type": "string" },
+            "facebook": { "type": "string" },
+            "whatsapp": { "type": "string" },
+            "tiktok": { "type": "string" }
+          }
+        }
       },
-      "required": ["email", "role", "createdAt", "username", "theme", "buttonStyle", "backgroundType"]
+      "required": ["email", "role", "createdAt", "username", "theme", "buttonStyle", "backgroundType", "plan", "subscriptionStatus"]
     },
     "Link": {
       "title": "Link",

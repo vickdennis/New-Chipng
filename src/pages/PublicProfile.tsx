@@ -10,7 +10,9 @@ import { QRCodeSVG } from 'qrcode.react';
 import { 
   Share2, QrCode, X, Copy, Check, 
   ExternalLink, Link as LinkIcon, AlertCircle,
-  CheckCircle2, Youtube, Music2
+  CheckCircle2, Youtube, Music2,
+  Instagram, Twitter, Linkedin, Facebook, MessageCircle,
+  MapPin, Calendar, Clock, ChevronRight
 } from 'lucide-react';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { toast } from 'sonner';
@@ -146,8 +148,40 @@ const PublicProfile: React.FC = () => {
   const theme = THEMES[profile.theme];
   const btnStyle = profile.buttonStyle === 'rounded' ? 'rounded-2xl' : profile.buttonStyle === 'pill' ? 'rounded-full' : 'rounded-none';
 
+  const getFavicon = (url: string) => {
+    try {
+      const domain = new URL(url).hostname;
+      return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const socialIcons = [
+    { id: 'instagram', icon: Instagram, url: (val: string) => val.startsWith('http') ? val : `https://instagram.com/${val}` },
+    { id: 'twitter', icon: Twitter, url: (val: string) => val.startsWith('http') ? val : `https://twitter.com/${val}` },
+    { id: 'linkedin', icon: Linkedin, url: (val: string) => val.startsWith('http') ? val : `https://linkedin.com/in/${val}` },
+    { id: 'youtube', icon: Youtube, url: (val: string) => val.startsWith('http') ? val : `https://youtube.com/@${val}` },
+    { id: 'facebook', icon: Facebook, url: (val: string) => val.startsWith('http') ? val : `https://facebook.com/${val}` },
+    { id: 'whatsapp', icon: MessageCircle, url: (val: string) => val.startsWith('http') ? val : `https://wa.me/${val}` },
+    { id: 'tiktok', icon: Music2, url: (val: string) => val.startsWith('http') ? val : `https://tiktok.com/@${val}` }
+  ];
+
   return (
-    <div className={`min-h-screen ${theme.background} ${theme.text} selection:bg-white selection:text-black`}>
+    <div className={`min-h-screen relative ${theme.background} ${theme.text} selection:bg-white selection:text-black`}>
+      {/* Custom Background Image */}
+      {profile.backgroundType === 'image' && profile.backgroundImage && (
+        <div 
+          className="fixed inset-0 z-0 opacity-40 pointer-events-none"
+          style={{ 
+            backgroundImage: `url(${profile.backgroundImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            filter: 'blur(10px)'
+          }}
+        />
+      )}
+      
       <Helmet>
         <title>{profile.displayName || profile.username} | Chip NG</title>
         <meta name="description" content={profile.bio || `Check out ${profile.username}'s links on Chip NG.`} />
@@ -156,12 +190,12 @@ const PublicProfile: React.FC = () => {
         {profile.photoURL && <meta property="og:image" content={profile.photoURL} />}
       </Helmet>
 
-      <div className="max-w-2xl mx-auto px-6 py-20 flex flex-col items-center">
+      <div className="max-w-2xl mx-auto px-6 py-20 flex flex-col items-center relative z-10">
         {/* Profile Header */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center text-center mb-12"
+          className="flex flex-col items-center text-center mb-12 w-full"
         >
           <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 border-white/20 shadow-2xl mb-6">
             {profile.photoURL ? (
@@ -179,7 +213,28 @@ const PublicProfile: React.FC = () => {
             )}
           </div>
           {profile.displayName && <h2 className="text-lg opacity-80 mb-4">{profile.displayName}</h2>}
-          {profile.bio && <p className="text-base opacity-70 max-w-sm leading-relaxed">{profile.bio}</p>}
+          {profile.bio && <p className="text-base opacity-70 max-w-sm leading-relaxed mb-8">{profile.bio}</p>}
+
+          {/* Social Icons */}
+          {profile.socialLinks && Object.values(profile.socialLinks).some(v => v) && (
+            <div className="flex flex-wrap justify-center gap-4 mb-8">
+              {socialIcons.map(social => {
+                const value = profile.socialLinks?.[social.id as keyof typeof profile.socialLinks];
+                if (!value) return null;
+                return (
+                  <a 
+                    key={social.id}
+                    href={social.url(value)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-all hover:scale-110"
+                  >
+                    <social.icon className="w-5 h-5" />
+                  </a>
+                );
+              })}
+            </div>
+          )}
         </motion.div>
 
         {/* Links List */}
@@ -240,11 +295,89 @@ const PublicProfile: React.FC = () => {
                 onClick={() => handleLinkClick(link.id, link.url)}
                 className={`w-full p-5 ${theme.button} ${theme.buttonText} ${btnStyle} font-bold text-lg transition-all flex items-center justify-between group relative overflow-hidden border border-white/10`}
               >
-                <span className="flex-1 text-center">{link.title}</span>
+                <div className="flex items-center gap-4 w-full">
+                  {getFavicon(link.url) && (
+                    <img 
+                      src={getFavicon(link.url)!} 
+                      alt="" 
+                      className="w-6 h-6 rounded-md"
+                      referrerPolicy="no-referrer"
+                    />
+                  )}
+                  <span className="flex-1 text-center pr-6">{link.title}</span>
+                </div>
                 <ExternalLink className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity absolute right-5" />
               </motion.button>
             );
           })}
+        </div>
+
+        {/* Business Features: Location & Appointments */}
+        <div className="w-full mt-12 space-y-12">
+          {/* Google Maps */}
+          {profile.location?.lat && profile.location?.lng && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`w-full p-6 bg-white/10 backdrop-blur-md border border-white/10 ${btnStyle} overflow-hidden`}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <MapPin className="w-5 h-5 text-lime-400" />
+                <h3 className="font-bold">Our Location</h3>
+              </div>
+              <div className="aspect-video w-full rounded-xl overflow-hidden mb-4">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  style={{ border: 0 }}
+                  src={`https://www.google.com/maps/embed/v1/place?key=${process.env.VITE_GOOGLE_MAPS_API_KEY}&q=${profile.location.lat},${profile.location.lng}`}
+                  allowFullScreen
+                />
+              </div>
+              {profile.location.address && (
+                <p className="text-sm opacity-70">{profile.location.address}</p>
+              )}
+            </motion.div>
+          )}
+
+          {/* Appointments */}
+          {profile.appointmentsEnabled && profile.appointments && profile.appointments.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="w-full space-y-6"
+            >
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-lime-400" />
+                <h3 className="font-bold text-xl">Book an Appointment</h3>
+              </div>
+              <div className="grid gap-4">
+                {profile.appointments.map((apt, idx) => (
+                  <a
+                    key={idx}
+                    href={apt.contactLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`p-5 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 ${btnStyle} transition-all group flex items-center justify-between`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-lime-400/20 rounded-xl flex items-center justify-center">
+                        <Clock className="w-6 h-6 text-lime-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold">{apt.title}</h4>
+                        <p className="text-sm opacity-60">
+                          {format(new Date(apt.dateTime), 'PPP p')}
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </a>
+                ))}
+              </div>
+            </motion.div>
+          )}
         </div>
 
         {/* Action Buttons */}

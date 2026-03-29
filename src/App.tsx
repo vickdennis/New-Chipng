@@ -7,6 +7,7 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import PublicProfile from './pages/PublicProfile';
 import AdminPanel from './pages/AdminPanel';
+import Pricing from './pages/Pricing';
 import { Toaster } from 'sonner';
 
 import ErrorBoundary from './components/ErrorBoundary';
@@ -31,6 +32,7 @@ const App: React.FC = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/pricing" element={<Pricing />} />
             <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPanel /></ProtectedRoute>} />
             <Route path="/:username" element={<PublicProfile />} />
           </Routes>

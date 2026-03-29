@@ -1,7 +1,15 @@
 export type UserRole = 'user' | 'admin';
 export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset';
 export type ButtonStyle = 'rounded' | 'pill' | 'square';
-export type BackgroundType = 'solid' | 'gradient';
+export type BackgroundType = 'solid' | 'gradient' | 'image';
+export type PlanType = 'basic' | 'pro' | 'business';
+
+export interface Appointment {
+  id: string;
+  title: string;
+  dateTime: string;
+  contactLink: string; // WhatsApp or email
+}
 
 export interface User {
   uid: string;
@@ -19,8 +27,27 @@ export interface User {
   buttonStyle: ButtonStyle;
   backgroundType: BackgroundType;
   backgroundColor?: string;
+  backgroundImage?: string;
   totalClicks?: number;
   isVerified?: boolean;
+  plan: PlanType;
+  subscriptionStatus: 'active' | 'inactive';
+  location?: {
+    lat: number;
+    lng: number;
+    address?: string;
+  };
+  appointmentsEnabled?: boolean;
+  appointments?: Appointment[];
+  socialLinks?: {
+    instagram?: string;
+    twitter?: string;
+    linkedin?: string;
+    youtube?: string;
+    facebook?: string;
+    whatsapp?: string;
+    tiktok?: string;
+  };
 }
 
 export interface Link {

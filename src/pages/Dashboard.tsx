@@ -28,9 +28,11 @@ import {
 } from 'recharts';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { toast } from 'sonner';
-import { Link, THEMES, ThemeType, ButtonStyle, User as UserType } from '../types';
+import { Link, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment } from '../types';
 import { auth } from '../firebase';
 import { useNavigate } from 'react-router-dom';
+import UpgradeModal from '../components/UpgradeModal';
+import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock } from 'lucide-react';
 
 const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium }: { 
   link: Link; 
@@ -164,9 +166,14 @@ const Dashboard: React.FC = () => {
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [links, setLinks] = useState<Link[]>([]);
-  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'analytics' | 'settings'>('links');
+  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'settings'>('links');
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [upgradeModal, setUpgradeModal] = useState<{ isOpen: boolean; requiredPlan: PlanType; featureName: string }>({
+    isOpen: false,
+    requiredPlan: 'pro',
+    featureName: ''
+  });
   const navigate = useNavigate();
 
   const sensors = useSensors(
@@ -299,17 +306,24 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'background') => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    const storageRef = ref(storage, `profiles/${user.uid}/${file.name}`);
+    if (type === 'background' && !checkFeatureAccess('pro', 'Custom Background')) return;
+
+    const folder = type === 'profile' ? 'profiles' : 'backgrounds';
+    const storageRef = ref(storage, `${folder}/${user.uid}/${file.name}`);
     try {
       const snapshot = await uploadBytes(storageRef, file);
       const url = await getDownloadURL(snapshot.ref);
-      await handleUpdateProfile({ photoURL: url });
+      if (type === 'profile') {
+        await handleUpdateProfile({ photoURL: url });
+      } else {
+        await handleUpdateProfile({ backgroundImage: url, backgroundType: 'image' });
+      }
     } catch (error) {
-      toast.error('Failed to upload photo');
+      toast.error(`Failed to upload ${type} image`);
     }
   };
 
@@ -353,12 +367,29 @@ const Dashboard: React.FC = () => {
   };
 
   const handleUpgrade = () => {
-    if (!user) return;
-    if (!config.publicKey) {
-      toast.error('Paystack public key not configured');
-      return;
+    navigate('/pricing');
+  };
+
+  const checkFeatureAccess = (requiredPlan: PlanType, featureName: string) => {
+    if (!profile) return false;
+    
+    const planHierarchy: Record<PlanType, number> = {
+      'basic': 0,
+      'pro': 1,
+      'business': 2
+    };
+
+    const userPlan = profile.plan || 'basic';
+    if (planHierarchy[userPlan] >= planHierarchy[requiredPlan]) {
+      return true;
     }
-    initializePayment({ onSuccess, onClose });
+
+    setUpgradeModal({
+      isOpen: true,
+      requiredPlan,
+      featureName
+    });
+    return false;
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">Loading...</div>;
@@ -388,6 +419,7 @@ const Dashboard: React.FC = () => {
           {[
             { id: 'links', icon: LinkIcon, label: 'Links' },
             { id: 'appearance', icon: Palette, label: 'Appearance' },
+            { id: 'business', icon: Crown, label: 'Business' },
             { id: 'analytics', icon: BarChart2, label: 'Analytics' },
             { id: 'settings', icon: Settings, label: 'Settings' }
           ].map((item) => (
@@ -488,7 +520,7 @@ const Dashboard: React.FC = () => {
                     </div>
                     <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
                       <ImageIcon className="w-6 h-6" />
-                      <input type="file" className="hidden" onChange={handlePhotoUpload} accept="image/*" />
+                      <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'profile')} accept="image/*" />
                     </label>
                   </div>
                   <div className="flex-1 space-y-4">
@@ -535,6 +567,100 @@ const Dashboard: React.FC = () => {
                 </div>
               </section>
 
+              {/* Background Section */}
+              <section className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold dark:text-white">Background</h2>
+                  {!checkFeatureAccess('pro', 'Custom Background') && (
+                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
+                      <Crown className="w-3 h-3" /> PRO
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <label className="text-sm font-medium text-zinc-500">Background Type</label>
+                    <div className="flex gap-2">
+                      {['solid', 'gradient', 'image'].map((type) => (
+                        <button
+                          key={type}
+                          onClick={() => {
+                            if (type === 'image' && !checkFeatureAccess('pro', 'Custom Background')) return;
+                            handleUpdateProfile({ backgroundType: type as any });
+                          }}
+                          className={`flex-1 py-2 px-4 rounded-xl border transition-all capitalize text-sm font-bold ${
+                            profile.backgroundType === type 
+                              ? 'border-lime-400 bg-lime-400/5 text-lime-600' 
+                              : 'border-zinc-200 dark:border-zinc-800 text-zinc-500'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {profile.backgroundType === 'image' && (
+                    <div className="space-y-4">
+                      <label className="text-sm font-medium text-zinc-500">Custom Image</label>
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                          {profile.backgroundImage ? (
+                            <img src={profile.backgroundImage} alt="Background" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-zinc-400">
+                              <ImageIcon className="w-6 h-6" />
+                            </div>
+                          )}
+                        </div>
+                        <label className="flex-1 py-2 px-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 rounded-xl text-center font-bold cursor-pointer hover:opacity-90 transition-opacity">
+                          Upload Image
+                          <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'background')} accept="image/*" />
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* Social Icons Section */}
+              <section className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold dark:text-white">Social Icons</h2>
+                  {!checkFeatureAccess('pro', 'Social Icons') && (
+                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
+                      <Crown className="w-3 h-3" /> PRO
+                    </span>
+                  )}
+                </div>
+                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${!checkFeatureAccess('pro', 'Social Icons') ? 'opacity-50 pointer-events-none' : ''}`}>
+                  {[
+                    { id: 'instagram', icon: Instagram, label: 'Instagram' },
+                    { id: 'twitter', icon: Twitter, label: 'Twitter' },
+                    { id: 'linkedin', icon: Linkedin, label: 'LinkedIn' },
+                    { id: 'youtube', icon: Youtube, label: 'YouTube' },
+                    { id: 'facebook', icon: Facebook, label: 'Facebook' },
+                    { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp' },
+                    { id: 'tiktok', icon: Music2, label: 'TikTok' }
+                  ].map((social) => (
+                    <div key={social.id} className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                        <social.icon className="w-3 h-3" /> {social.label}
+                      </label>
+                      <input 
+                        type="text" 
+                        value={profile.socialLinks?.[social.id as keyof typeof profile.socialLinks] || ''}
+                        onChange={(e) => {
+                          const newSocialLinks = { ...(profile.socialLinks || {}), [social.id]: e.target.value };
+                          handleUpdateProfile({ socialLinks: newSocialLinks });
+                        }}
+                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white text-sm"
+                        placeholder={`${social.label} URL or username`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+
               {/* Themes Section */}
               <section className="space-y-6">
                 <h2 className="text-xl font-bold dark:text-white">Themes</h2>
@@ -576,6 +702,159 @@ const Dashboard: React.FC = () => {
                       <span className="block mt-4 text-sm font-bold dark:text-white capitalize">{style}</span>
                     </button>
                   ))}
+                </div>
+              </section>
+            </div>
+          )}
+
+          {activeTab === 'business' && profile && (
+            <div className="space-y-12">
+              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold dark:text-white">Location & Map</h2>
+                  {!checkFeatureAccess('business', 'Google Maps') && (
+                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
+                      <Crown className="w-3 h-3" /> BUSINESS
+                    </span>
+                  )}
+                </div>
+                <div className={`space-y-6 ${!checkFeatureAccess('business', 'Google Maps') ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-zinc-500">Latitude</label>
+                      <input 
+                        type="number" 
+                        step="any"
+                        value={profile.location?.lat || ''}
+                        onChange={(e) => handleUpdateProfile({ location: { ...profile.location!, lat: parseFloat(e.target.value) || 0, lng: profile.location?.lng || 0 } })}
+                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                        placeholder="6.5244"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-zinc-500">Longitude</label>
+                      <input 
+                        type="number" 
+                        step="any"
+                        value={profile.location?.lng || ''}
+                        onChange={(e) => handleUpdateProfile({ location: { ...profile.location!, lng: parseFloat(e.target.value) || 0, lat: profile.location?.lat || 0 } })}
+                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                        placeholder="3.3792"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-zinc-500">Address (Optional)</label>
+                    <input 
+                      type="text" 
+                      value={profile.location?.address || ''}
+                      onChange={(e) => handleUpdateProfile({ location: { ...profile.location!, address: e.target.value, lat: profile.location?.lat || 0, lng: profile.location?.lng || 0 } })}
+                      className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                      placeholder="123 Business Way, Lagos"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold dark:text-white">Appointments</h2>
+                  {!checkFeatureAccess('business', 'Appointments') && (
+                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
+                      <Crown className="w-3 h-3" /> BUSINESS
+                    </span>
+                  )}
+                </div>
+                <div className={`space-y-6 ${!checkFeatureAccess('business', 'Appointments') ? 'opacity-50 pointer-events-none' : ''}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-zinc-500">Enable Appointments</span>
+                    <button 
+                      onClick={() => handleUpdateProfile({ appointmentsEnabled: !profile.appointmentsEnabled })}
+                      className={`w-12 h-6 rounded-full transition-all relative ${profile.appointmentsEnabled ? 'bg-lime-400' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                    >
+                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${profile.appointmentsEnabled ? 'left-7' : 'left-1'}`} />
+                    </button>
+                  </div>
+
+                  {profile.appointmentsEnabled && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-bold dark:text-white">Booking Slots</h3>
+                        <button 
+                          onClick={() => {
+                            const newAppt: Appointment = {
+                              id: Math.random().toString(36).substr(2, 9),
+                              title: 'Consultation',
+                              dateTime: new Date().toISOString(),
+                              contactLink: ''
+                            };
+                            handleUpdateProfile({ appointments: [...(profile.appointments || []), newAppt] });
+                          }}
+                          className="flex items-center gap-2 text-sm font-bold text-lime-500 hover:text-lime-600"
+                        >
+                          <Plus className="w-4 h-4" /> Add Slot
+                        </button>
+                      </div>
+
+                      <div className="space-y-4">
+                        {(profile.appointments || []).map((appt, idx) => (
+                          <div key={appt.id} className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700 space-y-4">
+                            <div className="flex items-center justify-between">
+                              <input 
+                                type="text" 
+                                value={appt.title}
+                                onChange={(e) => {
+                                  const newAppts = [...(profile.appointments || [])];
+                                  newAppts[idx].title = e.target.value;
+                                  handleUpdateProfile({ appointments: newAppts });
+                                }}
+                                className="bg-transparent font-bold dark:text-white outline-none"
+                                placeholder="Slot Title"
+                              />
+                              <button 
+                                onClick={() => {
+                                  const newAppts = profile.appointments?.filter(a => a.id !== appt.id);
+                                  handleUpdateProfile({ appointments: newAppts });
+                                }}
+                                className="text-zinc-400 hover:text-red-500"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                <span className="text-[10px] text-zinc-500 uppercase font-bold">Date & Time</span>
+                                <input 
+                                  type="datetime-local" 
+                                  value={appt.dateTime.slice(0, 16)}
+                                  onChange={(e) => {
+                                    const newAppts = [...(profile.appointments || [])];
+                                    newAppts[idx].dateTime = new Date(e.target.value).toISOString();
+                                    handleUpdateProfile({ appointments: newAppts });
+                                  }}
+                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 text-xs outline-none"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <span className="text-[10px] text-zinc-500 uppercase font-bold">Contact Link (WhatsApp/Email)</span>
+                                <input 
+                                  type="text" 
+                                  value={appt.contactLink}
+                                  onChange={(e) => {
+                                    const newAppts = [...(profile.appointments || [])];
+                                    newAppts[idx].contactLink = e.target.value;
+                                    handleUpdateProfile({ appointments: newAppts });
+                                  }}
+                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 text-xs outline-none"
+                                  placeholder="https://wa.me/..."
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </section>
             </div>
@@ -747,6 +1026,13 @@ const Dashboard: React.FC = () => {
           )}
         </div>
       </main>
+
+      <UpgradeModal 
+        isOpen={upgradeModal.isOpen} 
+        onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
+        requiredPlan={upgradeModal.requiredPlan}
+        featureName={upgradeModal.featureName}
+      />
     </div>
   );
 };
