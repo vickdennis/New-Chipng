@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db, getUserByUsername } from '../firebase';
+import { auth, db, getUserByUsername, handleFirestoreError, OperationType } from '../firebase';
 import { toast } from 'sonner';
 import { Link as LinkIcon, Mail, Lock, User as UserIcon, ArrowRight } from 'lucide-react';
 
@@ -51,22 +51,26 @@ const Signup: React.FC = () => {
       const uid = userCredential.user.uid;
 
       // Create user doc with all profile data merged
-      await setDoc(doc(db, 'users', uid), {
-        uid,
-        email,
-        username: finalUsername,
-        displayName: finalUsername,
-        bio: 'Welcome to my Chip NG profile!',
-        photoURL: null,
-        role: 'user',
-        createdAt: serverTimestamp(),
-        status: 'active',
-        theme: 'minimal',
-        buttonStyle: 'rounded',
-        backgroundType: 'solid',
-        backgroundColor: '#ffffff',
-        totalClicks: 0
-      });
+      try {
+        await setDoc(doc(db, 'users', uid), {
+          uid,
+          email,
+          username: finalUsername,
+          displayName: finalUsername,
+          bio: 'Welcome to my Chip NG profile!',
+          photoURL: null,
+          role: 'user',
+          createdAt: serverTimestamp(),
+          status: 'active',
+          theme: 'minimal',
+          buttonStyle: 'rounded',
+          backgroundType: 'solid',
+          backgroundColor: '#ffffff',
+          totalClicks: 0
+        });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.CREATE, `users/${uid}`);
+      }
 
       toast.success('Account created successfully!');
       navigate('/dashboard');
@@ -85,39 +89,47 @@ const Signup: React.FC = () => {
       const user = result.user;
 
       // Check if user doc exists
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (!userDoc.exists()) {
+      let userDoc;
+      try {
+        userDoc = await getDoc(doc(db, 'users', user.uid));
+      } catch (error) {
+        handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+      }
+
+      if (!userDoc?.exists()) {
         // New user from Google
         // Generate a unique username
         let baseUsername = user.email?.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user';
         let finalUsername = baseUsername;
-        let counter = 1;
 
         // Check for collisions
         while (true) {
           const usernameCheck = await getUserByUsername(finalUsername);
           if (!usernameCheck) break;
           finalUsername = `${baseUsername}${Math.floor(Math.random() * 10000)}`;
-          // If still taken, loop will continue
         }
 
         // Create user doc with all profile data merged
-        await setDoc(doc(db, 'users', user.uid), {
-          uid: user.uid,
-          email: user.email,
-          username: finalUsername,
-          displayName: user.displayName || finalUsername,
-          photoURL: user.photoURL || null,
-          bio: 'Welcome to my Chip NG profile!',
-          role: 'user',
-          createdAt: serverTimestamp(),
-          status: 'active',
-          theme: 'minimal',
-          buttonStyle: 'rounded',
-          backgroundType: 'solid',
-          backgroundColor: '#ffffff',
-          totalClicks: 0
-        });
+        try {
+          await setDoc(doc(db, 'users', user.uid), {
+            uid: user.uid,
+            email: user.email,
+            username: finalUsername,
+            displayName: user.displayName || finalUsername,
+            photoURL: user.photoURL || null,
+            bio: 'Welcome to my Chip NG profile!',
+            role: 'user',
+            createdAt: serverTimestamp(),
+            status: 'active',
+            theme: 'minimal',
+            buttonStyle: 'rounded',
+            backgroundType: 'solid',
+            backgroundColor: '#ffffff',
+            totalClicks: 0
+          });
+        } catch (error) {
+          handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}`);
+        }
       }
 
       toast.success('Welcome back!');

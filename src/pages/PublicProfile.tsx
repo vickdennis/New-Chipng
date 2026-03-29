@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
-import { db, getUserByUsername } from '../firebase';
+import { db, getUserByUsername, handleFirestoreError, OperationType } from '../firebase';
 import { 
   collection, query, where, orderBy, onSnapshot, 
   doc, updateDoc, increment 
@@ -46,8 +46,10 @@ const PublicProfile: React.FC = () => {
         const profileRef = doc(db, 'users', userId);
 
         // Track profile view
-        await updateDoc(profileRef, {
+        updateDoc(profileRef, {
           totalClicks: increment(1)
+        }).catch(err => {
+          console.error('Failed to track profile view:', err);
         });
 
         unsubProfile = onSnapshot(profileRef, (doc) => {
@@ -57,8 +59,7 @@ const PublicProfile: React.FC = () => {
             setError('Profile no longer exists');
           }
         }, (error) => {
-          console.error('Public profile snapshot error:', error);
-          setError('Failed to load profile');
+          handleFirestoreError(error, OperationType.GET, profileRef.path);
         });
 
         const q = query(
@@ -87,9 +88,7 @@ const PublicProfile: React.FC = () => {
           setLinks(filteredLinks);
           setLoading(false);
         }, (error) => {
-          console.error('Public links snapshot error:', error);
-          setError('Failed to load links');
-          setLoading(false);
+          handleFirestoreError(error, OperationType.LIST, 'links');
         });
       } catch (err) {
         console.error(err);
@@ -108,9 +107,9 @@ const PublicProfile: React.FC = () => {
 
   const handleLinkClick = async (linkId: string, url: string) => {
     try {
-      await updateDoc(doc(db, 'links', linkId), {
+      updateDoc(doc(db, 'links', linkId), {
         clicks: increment(1)
-      });
+      }).catch(err => console.error('Failed to track click:', err));
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (err) {
       console.error(err);

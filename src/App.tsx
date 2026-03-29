@@ -9,6 +9,8 @@ import PublicProfile from './pages/PublicProfile';
 import AdminPanel from './pages/AdminPanel';
 import { Toaster } from 'sonner';
 
+import ErrorBoundary from './components/ErrorBoundary';
+
 const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean }> = ({ children, adminOnly }) => {
   const { user, loading } = useAuth();
 
@@ -21,19 +23,21 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean 
 
 const App: React.FC = () => {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPanel /></ProtectedRoute>} />
-          <Route path="/:username" element={<PublicProfile />} />
-        </Routes>
-      </Router>
-      <Toaster position="top-center" richColors />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPanel /></ProtectedRoute>} />
+            <Route path="/:username" element={<PublicProfile />} />
+          </Routes>
+        </Router>
+        <Toaster position="top-center" richColors />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 };
 

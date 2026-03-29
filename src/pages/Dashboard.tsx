@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { db, storage, getUserByUsername } from '../firebase';
+import { db, storage, getUserByUsername, handleFirestoreError, OperationType } from '../firebase';
 import { 
   collection, query, where, orderBy, onSnapshot, 
-  addDoc, updateDoc, deleteDoc, doc, writeBatch 
+  addDoc, updateDoc, deleteDoc, doc, writeBatch, getDoc
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
@@ -188,8 +188,7 @@ const Dashboard: React.FC = () => {
         });
       }
     }, (error) => {
-      console.error('Profile snapshot error:', error);
-      toast.error('Failed to load profile');
+      handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
     });
 
     const q = query(collection(db, 'links'), where('userId', '==', user.uid), orderBy('position', 'asc'));
@@ -197,9 +196,7 @@ const Dashboard: React.FC = () => {
       setLinks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Link)));
       setLoading(false);
     }, (error) => {
-      console.error('Links snapshot error:', error);
-      toast.error('Failed to load links');
-      setLoading(false);
+      handleFirestoreError(error, OperationType.LIST, 'links');
     });
 
     return () => {
@@ -230,7 +227,7 @@ const Dashboard: React.FC = () => {
     try {
       await updateDoc(doc(db, 'links', id), data);
     } catch (error) {
-      toast.error('Failed to update link');
+      handleFirestoreError(error, OperationType.UPDATE, `links/${id}`);
     }
   };
 
@@ -239,7 +236,7 @@ const Dashboard: React.FC = () => {
       await deleteDoc(doc(db, 'links', id));
       toast.success('Link deleted');
     } catch (error) {
-      toast.error('Failed to delete link');
+      handleFirestoreError(error, OperationType.DELETE, `links/${id}`);
     }
   };
 
@@ -280,10 +277,23 @@ const Dashboard: React.FC = () => {
         }
         data.username = cleanUsername;
       }
-      await updateDoc(doc(db, 'users', user.uid), data);
+
+      // Ensure we don't accidentally remove required fields if they are missing in the local state
+      // but required by security rules. We fetch the current doc to be sure.
+      const userRef = doc(db, 'users', user.uid);
+      const currentDoc = await getDoc(userRef);
+      const currentData = currentDoc.data() as UserType;
+
+      // Merge with default values if missing (for legacy users)
+      const updatePayload: any = { ...data };
+      if (!currentData.backgroundType) updatePayload.backgroundType = 'solid';
+      if (!currentData.theme) updatePayload.theme = 'minimal';
+      if (!currentData.buttonStyle) updatePayload.buttonStyle = 'rounded';
+
+      await updateDoc(userRef, updatePayload);
       toast.success('Profile updated');
     } catch (error) {
-      toast.error('Failed to update profile');
+      handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
     } finally {
       setIsSavingProfile(false);
     }
