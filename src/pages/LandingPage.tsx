@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { ArrowRight, Link as LinkIcon, Smartphone, Zap, Shield } from 'lucide-react';
+import { ArrowRight, Smartphone, Zap, Shield } from 'lucide-react';
+import Logo from '../components/Logo';
 
 const LandingPage: React.FC = () => {
   const [username, setUsername] = React.useState('');
@@ -19,12 +20,9 @@ const LandingPage: React.FC = () => {
     <div className="min-h-screen bg-zinc-950 text-white selection:bg-lime-400 selection:text-zinc-950">
       {/* Navigation */}
       <nav className="max-w-7xl mx-auto px-6 py-8 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-lime-400 rounded-xl flex items-center justify-center">
-            <LinkIcon className="text-zinc-950 w-6 h-6" />
-          </div>
-          <span className="text-2xl font-bold tracking-tighter">Chip NG</span>
-        </div>
+        <Link to="/" className="flex items-center gap-2">
+          <Logo size="sm" className="!flex-row !gap-3" />
+        </Link>
         <div className="flex items-center gap-6">
           <Link to="/login" className="text-zinc-400 hover:text-white transition-colors">Login</Link>
           <Link to="/signup" className="bg-white text-zinc-950 px-6 py-2.5 rounded-full font-bold hover:bg-zinc-200 transition-all">
@@ -142,12 +140,7 @@ const LandingPage: React.FC = () => {
       {/* Footer */}
       <footer className="border-t border-zinc-900 py-20">
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-lime-400 rounded-lg flex items-center justify-center">
-              <LinkIcon className="text-zinc-950 w-5 h-5" />
-            </div>
-            <span className="text-xl font-bold tracking-tighter">Chip NG</span>
-          </div>
+          <Logo size="sm" className="!flex-row !gap-3" />
           <p className="text-zinc-500 text-sm">© 2026 Chip NG. Built for the next generation of creators.</p>
           <div className="flex items-center gap-6">
             <a href="#" className="text-zinc-500 hover:text-white transition-colors">Twitter</a>

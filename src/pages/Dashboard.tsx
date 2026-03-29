@@ -21,6 +21,7 @@ import {
   LogOut, ExternalLink, Copy, Check, Moon, Sun, Palette,
   Calendar, Youtube, Music2, Crown, CheckCircle2, TrendingUp
 } from 'lucide-react';
+import Logo from '../components/Logo';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, AreaChart, Area 
@@ -29,7 +30,7 @@ import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { Link, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment } from '../types';
 import { auth } from '../firebase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import UpgradeModal from '../components/UpgradeModal';
 import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock } from 'lucide-react';
 
@@ -431,12 +432,9 @@ const Dashboard: React.FC = () => {
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col md:flex-row">
       {/* Sidebar */}
       <aside className="w-full md:w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 p-6 flex flex-col">
-        <div className="flex items-center gap-2 mb-12">
-          <div className="w-8 h-8 bg-lime-400 rounded-lg flex items-center justify-center">
-            <LinkIcon className="text-zinc-950 w-5 h-5" />
-          </div>
-          <span className="text-xl font-bold tracking-tighter dark:text-white">Chip NG</span>
-        </div>
+        <RouterLink to="/" className="mb-12">
+          <Logo size="sm" className="!flex-row !gap-3 !justify-start" />
+        </RouterLink>
 
         <nav className="flex-1 space-y-2">
           {[

@@ -14,6 +14,7 @@ import {
   Instagram, Twitter, Linkedin, Facebook, MessageCircle,
   MapPin, Calendar, Clock, ChevronRight
 } from 'lucide-react';
+import Logo from '../components/Logo';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { User, Link, THEMES, ThemeType, ButtonStyle } from '../types';
@@ -397,11 +398,8 @@ const PublicProfile: React.FC = () => {
         </div>
 
         {/* Branding */}
-        <RouterLink to="/" className="mt-20 flex items-center gap-2 opacity-50 hover:opacity-100 transition-opacity">
-          <div className="w-6 h-6 bg-white rounded flex items-center justify-center">
-            <LinkIcon className="text-black w-4 h-4" />
-          </div>
-          <span className="text-sm font-bold tracking-tighter">Chip NG</span>
+        <RouterLink to="/" className="mt-20 opacity-50 hover:opacity-100 transition-opacity">
+          <Logo size="sm" className="!flex-row !gap-3" />
         </RouterLink>
       </div>
 

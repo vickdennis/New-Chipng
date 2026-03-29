@@ -4,7 +4,8 @@ import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } f
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, getUserByUsername, handleFirestoreError, OperationType } from '../firebase';
 import { toast } from 'sonner';
-import { Link as LinkIcon, Mail, Lock, User as UserIcon, ArrowRight } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, ArrowRight } from 'lucide-react';
+import Logo from '../components/Logo';
 
 const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -149,9 +150,9 @@ const Signup: React.FC = () => {
     <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-12">
-          <div className="w-16 h-16 bg-lime-400 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <LinkIcon className="text-zinc-950 w-8 h-8" />
-          </div>
+          <Link to="/">
+            <Logo size="lg" className="mb-6" />
+          </Link>
           <h1 className="text-4xl font-bold tracking-tighter mb-2">Create an account</h1>
           <p className="text-zinc-500">Join Chip NG and build your link-in-bio page</p>
         </div>

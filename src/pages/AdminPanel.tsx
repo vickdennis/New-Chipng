@@ -9,6 +9,7 @@ import {
   Search, ArrowLeft, BarChart2, TrendingUp,
   DollarSign, Crown, CheckCircle2
 } from 'lucide-react';
+import Logo from '../components/Logo';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, BarChart, Bar, Cell
@@ -102,6 +103,11 @@ const AdminPanel: React.FC = () => {
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-6 md:p-12">
       <div className="max-w-7xl mx-auto">
+        <div className="flex justify-center mb-12">
+          <Link to="/">
+            <Logo size="md" className="!flex-row !gap-3" />
+          </Link>
+        </div>
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div className="flex items-center gap-4">
             <Link to="/dashboard" className="p-3 bg-zinc-900 border border-zinc-800 rounded-2xl hover:bg-zinc-800 transition-all">

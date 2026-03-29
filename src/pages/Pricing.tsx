@@ -6,6 +6,9 @@ import { toast } from 'sonner';
 import { PlanType } from '../types';
 import { usePaystackPayment } from 'react-paystack';
 
+import Logo from '../components/Logo';
+import { Link } from 'react-router-dom';
+
 const PLANS = [
   {
     id: 'basic' as PlanType,
@@ -136,6 +139,11 @@ const Pricing: React.FC = () => {
   return (
     <div className="min-h-screen bg-zinc-950 text-white py-24 px-6">
       <div className="max-w-7xl mx-auto">
+        <div className="flex justify-center mb-12">
+          <Link to="/">
+            <Logo size="lg" />
+          </Link>
+        </div>
         <div className="text-center mb-20">
           <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-6 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent">
             Simple, transparent pricing
