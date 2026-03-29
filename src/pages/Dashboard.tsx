@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { db, storage } from '../firebase';
+import { db, storage, getUserByUsername } from '../firebase';
 import { 
   collection, query, where, orderBy, onSnapshot, 
   addDoc, updateDoc, deleteDoc, doc, writeBatch 
@@ -157,6 +157,12 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium }: {
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserType | null>(null);
+  const [profileForm, setProfileForm] = useState({
+    username: '',
+    displayName: '',
+    bio: ''
+  });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [links, setLinks] = useState<Link[]>([]);
   const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'analytics' | 'settings'>('links');
   const [loading, setLoading] = useState(true);
@@ -172,7 +178,15 @@ const Dashboard: React.FC = () => {
     if (!user) return;
 
     const unsubProfile = onSnapshot(doc(db, 'users', user.uid), (doc) => {
-      if (doc.exists()) setProfile(doc.data() as UserType);
+      if (doc.exists()) {
+        const data = doc.data() as UserType;
+        setProfile(data);
+        setProfileForm({
+          username: data.username || '',
+          displayName: data.displayName || '',
+          bio: data.bio || ''
+        });
+      }
     }, (error) => {
       console.error('Profile snapshot error:', error);
       toast.error('Failed to load profile');
@@ -248,11 +262,30 @@ const Dashboard: React.FC = () => {
 
   const handleUpdateProfile = async (data: Partial<UserType>) => {
     if (!user) return;
+    setIsSavingProfile(true);
     try {
+      // If updating username, check for uniqueness
+      if (data.username && data.username !== profile?.username) {
+        const cleanUsername = data.username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
+        if (cleanUsername.length < 3) {
+          toast.error('Username must be at least 3 characters');
+          setIsSavingProfile(false);
+          return;
+        }
+        const existingUser = await getUserByUsername(cleanUsername);
+        if (existingUser) {
+          toast.error('Username is already taken');
+          setIsSavingProfile(false);
+          return;
+        }
+        data.username = cleanUsername;
+      }
       await updateDoc(doc(db, 'users', user.uid), data);
       toast.success('Profile updated');
     } catch (error) {
       toast.error('Failed to update profile');
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -450,11 +483,24 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div className="flex-1 space-y-4">
                     <div className="space-y-2">
+                      <label className="text-sm font-medium text-zinc-500">Username</label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">chipng.com/</span>
+                        <input 
+                          type="text" 
+                          value={profileForm.username}
+                          onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
+                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl pl-[5.5rem] pr-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                          placeholder="username"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
                       <label className="text-sm font-medium text-zinc-500">Display Name</label>
                       <input 
                         type="text" 
-                        value={profile.displayName || ''}
-                        onChange={(e) => handleUpdateProfile({ displayName: e.target.value })}
+                        value={profileForm.displayName}
+                        onChange={(e) => setProfileForm({ ...profileForm, displayName: e.target.value })}
                         className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
                         placeholder="Your Name"
                       />
@@ -462,12 +508,19 @@ const Dashboard: React.FC = () => {
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-zinc-500">Bio</label>
                       <textarea 
-                        value={profile.bio || ''}
-                        onChange={(e) => handleUpdateProfile({ bio: e.target.value })}
+                        value={profileForm.bio}
+                        onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
                         className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white h-24 resize-none"
                         placeholder="Tell your story..."
                       />
                     </div>
+                    <button 
+                      onClick={() => handleUpdateProfile(profileForm)}
+                      disabled={isSavingProfile}
+                      className="w-full py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 rounded-xl font-bold hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all disabled:opacity-50"
+                    >
+                      {isSavingProfile ? 'Saving...' : 'Save Profile'}
+                    </button>
                   </div>
                 </div>
               </section>

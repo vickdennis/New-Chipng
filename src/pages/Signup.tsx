@@ -33,12 +33,17 @@ const Signup: React.FC = () => {
     }
 
     try {
-      // Check if username is taken
-      const existingUser = await getUserByUsername(cleanUsername);
+      // Ensure username uniqueness
+      let finalUsername = cleanUsername;
+      const existingUser = await getUserByUsername(finalUsername);
       if (existingUser) {
-        toast.error('Username is already taken');
-        setLoading(false);
-        return;
+        // If taken, append a random number and loop until unique
+        while (true) {
+          finalUsername = `${cleanUsername}${Math.floor(Math.random() * 10000)}`;
+          const check = await getUserByUsername(finalUsername);
+          if (!check) break;
+        }
+        toast.info(`Username "${cleanUsername}" was taken. We've set yours to "${finalUsername}". You can change it later in settings.`);
       }
 
       // Create user
@@ -49,8 +54,8 @@ const Signup: React.FC = () => {
       await setDoc(doc(db, 'users', uid), {
         uid,
         email,
-        username: cleanUsername,
-        displayName: cleanUsername,
+        username: finalUsername,
+        displayName: finalUsername,
         bio: 'Welcome to my Chip NG profile!',
         photoURL: null,
         role: 'user',
@@ -83,13 +88,6 @@ const Signup: React.FC = () => {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (!userDoc.exists()) {
         // New user from Google
-        await setDoc(doc(db, 'users', user.uid), {
-          email: user.email,
-          role: 'user',
-          createdAt: serverTimestamp(),
-          status: 'active'
-        });
-
         // Generate a unique username
         let baseUsername = user.email?.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user';
         let finalUsername = baseUsername;
