@@ -4,7 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import cors from "cors";
-import * as admin from "firebase-admin";
+import admin from "firebase-admin";
 import fs from "fs";
 import crypto from "crypto";
 import axios from "axios";
@@ -15,7 +15,7 @@ dotenv.config();
 const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
 if (fs.existsSync(configPath)) {
   const firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  if (!admin.apps.length) {
+  if (!admin.apps?.length) {
     admin.initializeApp({
       projectId: firebaseConfig.projectId,
     });

@@ -29,9 +29,14 @@ const PublicProfile: React.FC = () => {
   useEffect(() => {
     if (!username) return;
 
+    let unsubProfile: () => void = () => {};
+    let unsubLinks: () => void = () => {};
+
     const fetchProfile = async () => {
       try {
-        const usernameDoc = await getDoc(doc(db, 'profiles_by_username', username.toLowerCase()));
+        const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
+        const usernameDoc = await getDoc(doc(db, 'profiles_by_username', cleanUsername));
+        
         if (!usernameDoc.exists()) {
           setError('Profile not found');
           setLoading(false);
@@ -40,13 +45,27 @@ const PublicProfile: React.FC = () => {
 
         const userId = usernameDoc.data().userId;
         
+        // Check if profile exists before updating
+        const profileRef = doc(db, 'profiles', userId);
+        const profileSnap = await getDoc(profileRef);
+        
+        if (!profileSnap.exists()) {
+          setError('Profile not found');
+          setLoading(false);
+          return;
+        }
+
         // Track profile view
-        await updateDoc(doc(db, 'profiles', userId), {
+        await updateDoc(profileRef, {
           totalClicks: increment(1)
         });
 
-        const unsubProfile = onSnapshot(doc(db, 'profiles', userId), (doc) => {
-          if (doc.exists()) setProfile(doc.data() as Profile);
+        unsubProfile = onSnapshot(profileRef, (doc) => {
+          if (doc.exists()) {
+            setProfile(doc.data() as Profile);
+          } else {
+            setError('Profile no longer exists');
+          }
         }, (error) => {
           console.error('Public profile snapshot error:', error);
           setError('Failed to load profile');
@@ -58,7 +77,7 @@ const PublicProfile: React.FC = () => {
           where('active', '==', true),
           orderBy('position', 'asc')
         );
-        const unsubLinks = onSnapshot(q, (snapshot) => {
+        unsubLinks = onSnapshot(q, (snapshot) => {
           const allLinks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Link));
           
           // Filter by scheduling
@@ -82,11 +101,6 @@ const PublicProfile: React.FC = () => {
           setError('Failed to load links');
           setLoading(false);
         });
-
-        return () => {
-          unsubProfile();
-          unsubLinks();
-        };
       } catch (err) {
         console.error(err);
         setError('Something went wrong');
@@ -95,6 +109,11 @@ const PublicProfile: React.FC = () => {
     };
 
     fetchProfile();
+
+    return () => {
+      unsubProfile();
+      unsubLinks();
+    };
   }, [username]);
 
   const handleLinkClick = async (linkId: string, url: string) => {

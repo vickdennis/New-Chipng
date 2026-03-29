@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { 
   collection, query, orderBy, onSnapshot, 
-  doc, updateDoc, deleteDoc, getDocs 
+  doc, updateDoc, deleteDoc, getDocs, getDoc, where, writeBatch 
 } from 'firebase/firestore';
 import { 
   Users, Shield, Trash2, Ban, CheckCircle, 
@@ -67,11 +67,30 @@ const AdminPanel: React.FC = () => {
   const handleDeleteUser = async (userId: string) => {
     if (!window.confirm('Are you sure you want to delete this user? This action is irreversible.')) return;
     try {
-      await deleteDoc(doc(db, 'users', userId));
-      // Also delete profile and links (ideally via cloud functions, but here we do it manually for simplicity)
+      // 1. Get profile to find username
+      const profileDoc = await getDoc(doc(db, 'profiles', userId));
+      
+      // 2. Delete profiles_by_username entry
+      if (profileDoc.exists()) {
+        const username = profileDoc.data().username;
+        if (username) {
+          await deleteDoc(doc(db, 'profiles_by_username', username.toLowerCase()));
+        }
+      }
+
+      // 3. Delete links
+      const linksSnapshot = await getDocs(query(collection(db, 'links'), where('userId', '==', userId)));
+      const batch = writeBatch(db);
+      linksSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+
+      // 4. Delete profile and user
       await deleteDoc(doc(db, 'profiles', userId));
-      toast.success('User deleted');
+      await deleteDoc(doc(db, 'users', userId));
+      
+      toast.success('User and all associated data deleted');
     } catch (error) {
+      console.error('Error deleting user:', error);
       toast.error('Failed to delete user');
     }
   };
