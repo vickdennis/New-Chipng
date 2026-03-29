@@ -45,6 +45,9 @@ const PublicProfile: React.FC = () => {
 
         const unsubProfile = onSnapshot(doc(db, 'profiles', userId), (doc) => {
           if (doc.exists()) setProfile(doc.data() as Profile);
+        }, (error) => {
+          console.error('Public profile snapshot error:', error);
+          setError('Failed to load profile');
         });
 
         const q = query(
@@ -55,6 +58,10 @@ const PublicProfile: React.FC = () => {
         );
         const unsubLinks = onSnapshot(q, (snapshot) => {
           setLinks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Link)));
+          setLoading(false);
+        }, (error) => {
+          console.error('Public links snapshot error:', error);
+          setError('Failed to load links');
           setLoading(false);
         });
 

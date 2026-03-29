@@ -11,21 +11,32 @@ import {
 import { toast } from 'sonner';
 import { User } from '../types';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const AdminPanel: React.FC = () => {
+  const { user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
+    if (!user || user.role !== 'admin') {
+      setLoading(false);
+      return;
+    }
+
     const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setUsers(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User)));
       setLoading(false);
+    }, (error) => {
+      console.error('Admin users listener error:', error);
+      toast.error('Failed to load users');
+      setLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [user]);
 
   const handleToggleStatus = async (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active';

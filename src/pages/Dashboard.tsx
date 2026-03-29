@@ -93,11 +93,18 @@ const Dashboard: React.FC = () => {
 
     const unsubProfile = onSnapshot(doc(db, 'profiles', user.uid), (doc) => {
       if (doc.exists()) setProfile(doc.data() as Profile);
+    }, (error) => {
+      console.error('Profile snapshot error:', error);
+      toast.error('Failed to load profile');
     });
 
     const q = query(collection(db, 'links'), where('userId', '==', user.uid), orderBy('position', 'asc'));
     const unsubLinks = onSnapshot(q, (snapshot) => {
       setLinks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Link)));
+      setLoading(false);
+    }, (error) => {
+      console.error('Links snapshot error:', error);
+      toast.error('Failed to load links');
       setLoading(false);
     });
 
@@ -113,13 +120,14 @@ const Dashboard: React.FC = () => {
       await addDoc(collection(db, 'links'), {
         userId: user.uid,
         title: 'New Link',
-        url: '',
+        url: 'https://',
         active: true,
         position: links.length,
         clicks: 0
       });
       toast.success('Link added');
     } catch (error) {
+      console.error('Error adding link:', error);
       toast.error('Failed to add link');
     }
   };

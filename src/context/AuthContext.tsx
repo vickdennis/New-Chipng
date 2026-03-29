@@ -29,6 +29,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(null);
           }
           setLoading(false);
+        }, (error) => {
+          console.error('Auth user snapshot error:', error);
+          setUser(null);
+          setLoading(false);
         });
         return () => unsubUser();
       } else {
