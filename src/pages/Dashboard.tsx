@@ -28,7 +28,7 @@ import {
 } from 'recharts';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { toast } from 'sonner';
-import { Profile, Link, THEMES, ThemeType, ButtonStyle, User as UserType } from '../types';
+import { Link, THEMES, ThemeType, ButtonStyle, User as UserType } from '../types';
 import { auth } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -156,7 +156,7 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium }: {
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<UserType | null>(null);
   const [links, setLinks] = useState<Link[]>([]);
   const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'analytics' | 'settings'>('links');
   const [loading, setLoading] = useState(true);
@@ -171,8 +171,8 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!user) return;
 
-    const unsubProfile = onSnapshot(doc(db, 'profiles', user.uid), (doc) => {
-      if (doc.exists()) setProfile(doc.data() as Profile);
+    const unsubProfile = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+      if (doc.exists()) setProfile(doc.data() as UserType);
     }, (error) => {
       console.error('Profile snapshot error:', error);
       toast.error('Failed to load profile');
@@ -246,10 +246,10 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleUpdateProfile = async (data: Partial<Profile>) => {
+  const handleUpdateProfile = async (data: Partial<UserType>) => {
     if (!user) return;
     try {
-      await updateDoc(doc(db, 'profiles', user.uid), data);
+      await updateDoc(doc(db, 'users', user.uid), data);
       toast.success('Profile updated');
     } catch (error) {
       toast.error('Failed to update profile');

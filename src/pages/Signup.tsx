@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../firebase';
+import { auth, db, getUserByUsername } from '../firebase';
 import { toast } from 'sonner';
 import { Link as LinkIcon, Mail, Lock, User as UserIcon, ArrowRight } from 'lucide-react';
 
@@ -34,8 +34,8 @@ const Signup: React.FC = () => {
 
     try {
       // Check if username is taken
-      const usernameDoc = await getDoc(doc(db, 'profiles_by_username', cleanUsername));
-      if (usernameDoc.exists()) {
+      const existingUser = await getUserByUsername(cleanUsername);
+      if (existingUser) {
         toast.error('Username is already taken');
         setLoading(false);
         return;
@@ -45,30 +45,22 @@ const Signup: React.FC = () => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
 
-      // Create user doc
+      // Create user doc with all profile data merged
       await setDoc(doc(db, 'users', uid), {
+        uid,
         email,
-        role: 'user',
-        createdAt: serverTimestamp(),
-        status: 'active'
-      });
-
-      // Create profile doc
-      await setDoc(doc(db, 'profiles', uid), {
-        userId: uid,
         username: cleanUsername,
         displayName: cleanUsername,
         bio: 'Welcome to my Chip NG profile!',
+        photoURL: null,
+        role: 'user',
+        createdAt: serverTimestamp(),
+        status: 'active',
         theme: 'minimal',
         buttonStyle: 'rounded',
         backgroundType: 'solid',
         backgroundColor: '#ffffff',
         totalClicks: 0
-      });
-
-      // Create username mapping
-      await setDoc(doc(db, 'profiles_by_username', cleanUsername), {
-        userId: uid
       });
 
       toast.success('Account created successfully!');
@@ -98,36 +90,35 @@ const Signup: React.FC = () => {
           status: 'active'
         });
 
-        // Generate a username
+        // Generate a unique username
         let baseUsername = user.email?.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user';
         let finalUsername = baseUsername;
         let counter = 1;
 
         // Check for collisions
         while (true) {
-          const usernameCheck = await getDoc(doc(db, 'profiles_by_username', finalUsername));
-          if (!usernameCheck.exists()) break;
-          finalUsername = `${baseUsername}${counter}`;
-          counter++;
+          const usernameCheck = await getUserByUsername(finalUsername);
+          if (!usernameCheck) break;
+          finalUsername = `${baseUsername}${Math.floor(Math.random() * 10000)}`;
+          // If still taken, loop will continue
         }
 
-        // Create profile
-        await setDoc(doc(db, 'profiles', user.uid), {
-          userId: user.uid,
+        // Create user doc with all profile data merged
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          email: user.email,
           username: finalUsername,
           displayName: user.displayName || finalUsername,
+          photoURL: user.photoURL || null,
           bio: 'Welcome to my Chip NG profile!',
+          role: 'user',
+          createdAt: serverTimestamp(),
+          status: 'active',
           theme: 'minimal',
           buttonStyle: 'rounded',
           backgroundType: 'solid',
           backgroundColor: '#ffffff',
-          totalClicks: 0,
-          avatarUrl: user.photoURL || null
-        });
-
-        // Create username mapping
-        await setDoc(doc(db, 'profiles_by_username', finalUsername), {
-          userId: user.uid
+          totalClicks: 0
         });
       }
 

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
-import { db } from '../firebase';
+import { db, getUserByUsername } from '../firebase';
 import { 
   collection, query, where, orderBy, onSnapshot, 
-  doc, getDoc, updateDoc, increment, getDocs 
+  doc, updateDoc, increment 
 } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -14,12 +14,12 @@ import {
 } from 'lucide-react';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { toast } from 'sonner';
-import { Profile, Link, THEMES, ThemeType, ButtonStyle } from '../types';
+import { User, Link, THEMES, ThemeType, ButtonStyle } from '../types';
 import { Helmet } from 'react-helmet-async';
 
 const PublicProfile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<User | null>(null);
   const [links, setLinks] = useState<Link[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,26 +34,16 @@ const PublicProfile: React.FC = () => {
 
     const fetchProfile = async () => {
       try {
-        const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
-        const usernameDoc = await getDoc(doc(db, 'profiles_by_username', cleanUsername));
+        const userData = await getUserByUsername(username);
         
-        if (!usernameDoc.exists()) {
+        if (!userData) {
           setError('Profile not found');
           setLoading(false);
           return;
         }
 
-        const userId = usernameDoc.data().userId;
-        
-        // Check if profile exists before updating
-        const profileRef = doc(db, 'profiles', userId);
-        const profileSnap = await getDoc(profileRef);
-        
-        if (!profileSnap.exists()) {
-          setError('Profile not found');
-          setLoading(false);
-          return;
-        }
+        const userId = userData.uid;
+        const profileRef = doc(db, 'users', userId);
 
         // Track profile view
         await updateDoc(profileRef, {
@@ -62,7 +52,7 @@ const PublicProfile: React.FC = () => {
 
         unsubProfile = onSnapshot(profileRef, (doc) => {
           if (doc.exists()) {
-            setProfile(doc.data() as Profile);
+            setProfile(doc.data() as User);
           } else {
             setError('Profile no longer exists');
           }

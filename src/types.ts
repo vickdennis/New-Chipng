@@ -6,19 +6,15 @@ export type BackgroundType = 'solid' | 'gradient';
 export interface User {
   uid: string;
   email: string;
+  username: string;
+  displayName?: string;
+  bio?: string;
+  photoURL?: string;
   role: UserRole;
   createdAt: string;
   status: 'active' | 'suspended';
   isPremium?: boolean;
   premiumUntil?: string;
-}
-
-export interface Profile {
-  userId: string;
-  username: string;
-  displayName?: string;
-  bio?: string;
-  photoURL?: string;
   theme: ThemeType;
   buttonStyle: ButtonStyle;
   backgroundType: BackgroundType;

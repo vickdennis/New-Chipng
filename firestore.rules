@@ -86,15 +86,10 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUser(data) {
-      return data.keys().hasAll(['email', 'role', 'createdAt']) &&
+      return data.keys().hasAll(['email', 'role', 'createdAt', 'username', 'theme', 'buttonStyle', 'backgroundType']) &&
              isValidEmail(data.email) &&
              data.role in ['user', 'admin'] &&
-             data.createdAt is timestamp;
-    }
-
-    function isValidProfile(data) {
-      return data.keys().hasAll(['userId', 'username', 'theme', 'buttonStyle', 'backgroundType']) &&
-             data.userId is string &&
+             data.createdAt is timestamp &&
              data.username is string && data.username.size() >= 3 && data.username.size() <= 30 &&
              data.theme in ['minimal', 'neon', 'glassmorphism', 'dark', 'sunset'] &&
              data.buttonStyle in ['rounded', 'pill', 'square'] &&
@@ -115,28 +110,12 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
+      allow read: if true; // Public profiles
       allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
       allow update: if isAdmin() || (isOwner(userId) && 
                       request.resource.data.role == resource.data.role && 
                       (!('isPremium' in request.resource.data) || request.resource.data.isPremium == resource.data.isPremium) &&
                       isValidUser(request.resource.data));
-      allow delete: if isAdmin();
-    }
-
-    match /profiles/{userId} {
-      allow read: if true;
-      allow create: if isOwner(userId) && isValidProfile(request.resource.data);
-      allow update: if isAdmin() || (isOwner(userId) && 
-                      (!('isVerified' in request.resource.data) || request.resource.data.isVerified == resource.data.isVerified) &&
-                      isValidProfile(request.resource.data));
-      allow delete: if isAdmin();
-    }
-
-    match /profiles_by_username/{username} {
-      allow read: if true;
-      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
-      allow update: if isAuthenticated() && isOwner(request.resource.data.userId);
       allow delete: if isAdmin();
     }
 

@@ -2,28 +2,20 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "Private user information and settings.",
+      "description": "User information and profile settings.",
       "type": "object",
       "properties": {
+        "uid": { "type": "string" },
         "email": { "type": "string", "format": "email" },
-        "role": { "type": "string", "enum": ["user", "admin"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["active", "suspended"] },
-        "isPremium": { "type": "boolean" },
-        "premiumUntil": { "type": "string", "format": "date-time" }
-      },
-      "required": ["email", "role", "createdAt"]
-    },
-    "Profile": {
-      "title": "Profile",
-      "description": "Public profile configuration for the link-in-bio page.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
         "username": { "type": "string" },
         "displayName": { "type": "string" },
         "bio": { "type": "string" },
         "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "isPremium": { "type": "boolean" },
+        "premiumUntil": { "type": "string", "format": "date-time" },
         "theme": { "type": "string", "enum": ["minimal", "neon", "glassmorphism", "dark", "sunset"] },
         "buttonStyle": { "type": "string", "enum": ["rounded", "pill", "square"] },
         "backgroundType": { "type": "string", "enum": ["solid", "gradient"] },
@@ -31,7 +23,7 @@
         "totalClicks": { "type": "number" },
         "isVerified": { "type": "boolean" }
       },
-      "required": ["userId", "username", "theme", "buttonStyle"]
+      "required": ["email", "role", "createdAt", "username", "theme", "buttonStyle", "backgroundType"]
     },
     "Link": {
       "title": "Link",
@@ -62,29 +54,12 @@
         "date": { "type": "string" }
       },
       "required": ["userId", "timestamp", "date"]
-    },
-    "UsernameMap": {
-      "title": "Username Map",
-      "description": "Maps a unique username to a userId for routing.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" }
-      },
-      "required": ["userId"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
-      "description": "Private user data."
-    },
-    "/profiles/{userId}": {
-      "schema": "Profile",
-      "description": "Public profile settings."
-    },
-    "/profiles_by_username/{username}": {
-      "schema": "UsernameMap",
-      "description": "Username to userId lookup."
+      "description": "User and profile data."
     },
     "/links/{linkId}": {
       "schema": "Link",
