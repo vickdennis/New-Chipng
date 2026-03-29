@@ -9,6 +9,8 @@ export interface User {
   role: UserRole;
   createdAt: string;
   status: 'active' | 'suspended';
+  isPremium?: boolean;
+  premiumUntil?: string;
 }
 
 export interface Profile {
@@ -22,6 +24,7 @@ export interface Profile {
   backgroundType: BackgroundType;
   backgroundColor?: string;
   totalClicks?: number;
+  isVerified?: boolean;
 }
 
 export interface Link {
@@ -33,6 +36,9 @@ export interface Link {
   active: boolean;
   position: number;
   clicks?: number;
+  scheduledStart?: string;
+  scheduledEnd?: string;
+  type?: 'standard' | 'youtube' | 'tiktok';
 }
 
 export interface ThemeConfig {

@@ -8,7 +8,9 @@
         "email": { "type": "string", "format": "email" },
         "role": { "type": "string", "enum": ["user", "admin"] },
         "createdAt": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["active", "suspended"] }
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "isPremium": { "type": "boolean" },
+        "premiumUntil": { "type": "string", "format": "date-time" }
       },
       "required": ["email", "role", "createdAt"]
     },
@@ -26,7 +28,8 @@
         "buttonStyle": { "type": "string", "enum": ["rounded", "pill", "square"] },
         "backgroundType": { "type": "string", "enum": ["solid", "gradient"] },
         "backgroundColor": { "type": "string" },
-        "totalClicks": { "type": "number" }
+        "totalClicks": { "type": "number" },
+        "isVerified": { "type": "boolean" }
       },
       "required": ["userId", "username", "theme", "buttonStyle"]
     },
@@ -41,9 +44,24 @@
         "icon": { "type": "string" },
         "active": { "type": "boolean" },
         "position": { "type": "number" },
-        "clicks": { "type": "number" }
+        "clicks": { "type": "number" },
+        "scheduledStart": { "type": "string", "format": "date-time" },
+        "scheduledEnd": { "type": "string", "format": "date-time" },
+        "type": { "type": "string", "enum": ["standard", "youtube", "tiktok"] }
       },
       "required": ["userId", "title", "url", "active", "position"]
+    },
+    "Analytics": {
+      "title": "Analytics",
+      "description": "Time-series click data for links and profiles.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "linkId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "date": { "type": "string" }
+      },
+      "required": ["userId", "timestamp", "date"]
     },
     "UsernameMap": {
       "title": "Username Map",
@@ -71,6 +89,10 @@
     "/links/{linkId}": {
       "schema": "Link",
       "description": "User links."
+    },
+    "/analytics/{analyticsId}": {
+      "schema": "Analytics",
+      "description": "Analytics events."
     }
   }
 }

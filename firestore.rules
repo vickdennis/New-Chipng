@@ -8,6 +8,8 @@
 //   - role: string (required, 'user' or 'admin')
 //   - createdAt: timestamp (required)
 //   - status: string (optional, 'active' or 'suspended')
+//   - isPremium: boolean (optional)
+//   - premiumUntil: timestamp (optional)
 //
 // Collection: /profiles/{userId}
 // Fields:
@@ -21,6 +23,7 @@
 //   - backgroundType: string (required, 'solid', 'gradient')
 //   - backgroundColor: string (optional)
 //   - totalClicks: number (optional)
+//   - isVerified: boolean (optional)
 //
 // Collection: /profiles_by_username/{username}
 // Fields:
@@ -35,6 +38,16 @@
 //   - active: boolean (required)
 //   - position: number (required)
 //   - clicks: number (optional)
+//   - scheduledStart: timestamp (optional)
+//   - scheduledEnd: timestamp (optional)
+//   - type: string (optional, 'standard', 'youtube', 'tiktok')
+//
+// Collection: /analytics/{analyticsId}
+// Fields:
+//   - userId: string (required)
+//   - linkId: string (optional)
+//   - timestamp: timestamp (required)
+//   - date: string (required)
 //
 // ===============================================================
 
@@ -104,14 +117,19 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
-      allow update: if isAdmin() || (isOwner(userId) && request.resource.data.role == resource.data.role && isValidUser(request.resource.data));
+      allow update: if isAdmin() || (isOwner(userId) && 
+                      request.resource.data.role == resource.data.role && 
+                      (!('isPremium' in request.resource.data) || request.resource.data.isPremium == resource.data.isPremium) &&
+                      isValidUser(request.resource.data));
       allow delete: if isAdmin();
     }
 
     match /profiles/{userId} {
-      allow read: if true; // Public profiles are readable by anyone
+      allow read: if true;
       allow create: if isOwner(userId) && isValidProfile(request.resource.data);
-      allow update: if isOwner(userId) && isValidProfile(request.resource.data);
+      allow update: if isAdmin() || (isOwner(userId) && 
+                      (!('isVerified' in request.resource.data) || request.resource.data.isVerified == resource.data.isVerified) &&
+                      isValidProfile(request.resource.data));
       allow delete: if isAdmin();
     }
 
@@ -123,10 +141,15 @@ service cloud.firestore {
     }
 
     match /links/{linkId} {
-      allow read: if true; // Links are public
+      allow read: if true;
       allow create: if isAuthenticated() && isOwner(request.resource.data.userId) && isValidLink(request.resource.data);
       allow update: if isAuthenticated() && isOwner(resource.data.userId) && isValidLink(request.resource.data);
       allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+
+    match /analytics/{analyticsId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+      allow create: if true; // Public click tracking
     }
   }
 }

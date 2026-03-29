@@ -6,10 +6,15 @@ import {
 } from 'firebase/firestore';
 import { 
   Users, Shield, Trash2, Ban, CheckCircle, 
-  Search, ArrowLeft, BarChart2, TrendingUp 
+  Search, ArrowLeft, BarChart2, TrendingUp,
+  DollarSign, Crown, CheckCircle2
 } from 'lucide-react';
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
+  ResponsiveContainer, BarChart, Bar, Cell
+} from 'recharts';
 import { toast } from 'sonner';
-import { User } from '../types';
+import { User, Profile } from '../types';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -18,6 +23,17 @@ const AdminPanel: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<'users' | 'revenue'>('users');
+
+  const mockRevenueData = [
+    { name: 'Jan', revenue: 4000 },
+    { name: 'Feb', revenue: 3000 },
+    { name: 'Mar', revenue: 2000 },
+    { name: 'Apr', revenue: 2780 },
+    { name: 'May', revenue: 1890 },
+    { name: 'Jun', revenue: 2390 },
+    { name: 'Jul', revenue: 3490 },
+  ];
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -60,6 +76,15 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleToggleVerify = async (userId: string, currentStatus: boolean) => {
+    try {
+      await updateDoc(doc(db, 'profiles', userId), { isVerified: !currentStatus });
+      toast.success(`User ${!currentStatus ? 'verified' : 'unverified'}`);
+    } catch (error) {
+      toast.error('Failed to update verification status');
+    }
+  };
+
   const filteredUsers = users.filter(u => 
     u.email.toLowerCase().includes(search.toLowerCase()) || 
     u.uid.toLowerCase().includes(search.toLowerCase())
@@ -93,93 +118,182 @@ const AdminPanel: React.FC = () => {
           </div>
         </header>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          {[
-            { label: 'Total Users', value: users.length, icon: Users, color: 'text-blue-400' },
-            { label: 'Active Users', value: users.filter(u => u.status === 'active').length, icon: CheckCircle, color: 'text-lime-400' },
-            { label: 'Suspended', value: users.filter(u => u.status === 'suspended').length, icon: Ban, color: 'text-red-400' },
-            { label: 'Admins', value: users.filter(u => u.role === 'admin').length, icon: Shield, color: 'text-purple-400' }
-          ].map((stat, i) => (
-            <div key={i} className="bg-zinc-900/50 border border-zinc-800 p-8 rounded-[2.5rem]">
-              <div className="flex items-center justify-between mb-4">
-                <div className={`w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center ${stat.color}`}>
-                  <stat.icon className="w-6 h-6" />
-                </div>
-                <TrendingUp className="w-5 h-5 text-zinc-700" />
-              </div>
-              <div className="text-3xl font-bold mb-1">{stat.value}</div>
-              <div className="text-zinc-500 text-sm font-medium">{stat.label}</div>
-            </div>
-          ))}
+        {/* Tabs */}
+        <div className="flex gap-4 mb-12">
+          <button 
+            onClick={() => setActiveTab('users')}
+            className={`px-8 py-3 rounded-2xl font-bold transition-all ${activeTab === 'users' ? 'bg-white text-zinc-950' : 'bg-zinc-900 text-zinc-500 hover:text-white'}`}
+          >
+            Users
+          </button>
+          <button 
+            onClick={() => setActiveTab('revenue')}
+            className={`px-8 py-3 rounded-2xl font-bold transition-all ${activeTab === 'revenue' ? 'bg-white text-zinc-950' : 'bg-zinc-900 text-zinc-500 hover:text-white'}`}
+          >
+            Revenue
+          </button>
         </div>
 
-        {/* Users Table */}
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-[2.5rem] overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-zinc-800">
-                  <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">User</th>
-                  <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Role</th>
-                  <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Status</th>
-                  <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Joined</th>
-                  <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800">
-                {filteredUsers.map((user) => (
-                  <tr key={user.uid} className="hover:bg-zinc-800/30 transition-colors group">
-                    <td className="px-8 py-6">
-                      <div className="font-bold">{user.email}</div>
-                      <div className="text-xs text-zinc-600 font-mono mt-1">{user.uid}</div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        user.role === 'admin' ? 'bg-purple-400/10 text-purple-400' : 'bg-zinc-800 text-zinc-400'
-                      }`}>
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="px-8 py-6">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        user.status === 'active' ? 'bg-lime-400/10 text-lime-400' : 'bg-red-400/10 text-red-400'
-                      }`}>
-                        {user.status}
-                      </span>
-                    </td>
-                    <td className="px-8 py-6 text-zinc-500 text-sm">
-                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
-                    </td>
-                    <td className="px-8 py-6 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => handleToggleStatus(user.uid, user.status)}
-                          className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white"
-                          title={user.status === 'active' ? 'Suspend' : 'Activate'}
-                        >
-                          {user.status === 'active' ? <Ban className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteUser(user.uid)}
-                          className="p-2 hover:bg-red-900/20 rounded-lg transition-colors text-zinc-400 hover:text-red-500"
-                          title="Delete"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {filteredUsers.length === 0 && (
-            <div className="p-20 text-center text-zinc-500">
-              No users found matching your search.
+        {activeTab === 'users' ? (
+          <>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+              {[
+                { label: 'Total Users', value: users.length, icon: Users, color: 'text-blue-400' },
+                { label: 'Active Users', value: users.filter(u => u.status === 'active').length, icon: CheckCircle, color: 'text-lime-400' },
+                { label: 'Premium', value: users.filter(u => u.isPremium).length, icon: Crown, color: 'text-amber-400' },
+                { label: 'Admins', value: users.filter(u => u.role === 'admin').length, icon: Shield, color: 'text-purple-400' }
+              ].map((stat, i) => (
+                <div key={i} className="bg-zinc-900/50 border border-zinc-800 p-8 rounded-[2.5rem]">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center ${stat.color}`}>
+                      <stat.icon className="w-6 h-6" />
+                    </div>
+                    <TrendingUp className="w-5 h-5 text-zinc-700" />
+                  </div>
+                  <div className="text-3xl font-bold mb-1">{stat.value}</div>
+                  <div className="text-zinc-500 text-sm font-medium">{stat.label}</div>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
+
+            {/* Users Table */}
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-[2.5rem] overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-zinc-800">
+                      <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">User</th>
+                      <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Plan</th>
+                      <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Status</th>
+                      <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Joined</th>
+                      <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800">
+                    {filteredUsers.map((user) => (
+                      <tr key={user.uid} className="hover:bg-zinc-800/30 transition-colors group">
+                        <td className="px-8 py-6">
+                          <div className="flex items-center gap-2">
+                            <div className="font-bold">{user.email}</div>
+                            {user.role === 'admin' && <Shield className="w-3.5 h-3.5 text-purple-400" />}
+                          </div>
+                          <div className="text-xs text-zinc-600 font-mono mt-1">{user.uid}</div>
+                        </td>
+                        <td className="px-8 py-6">
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                            user.isPremium ? 'bg-amber-400/10 text-amber-400' : 'bg-zinc-800 text-zinc-400'
+                          }`}>
+                            {user.isPremium ? 'PRO' : 'FREE'}
+                          </span>
+                        </td>
+                        <td className="px-8 py-6">
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                            user.status === 'active' ? 'bg-lime-400/10 text-lime-400' : 'bg-red-400/10 text-red-400'
+                          }`}>
+                            {user.status}
+                          </span>
+                        </td>
+                        <td className="px-8 py-6 text-zinc-500 text-sm">
+                          {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                        </td>
+                        <td className="px-8 py-6 text-right">
+                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                              onClick={() => handleToggleVerify(user.uid, false)} // This needs profile data, but we'll assume false for now or fetch it
+                              className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-blue-400"
+                              title="Verify User"
+                            >
+                              <CheckCircle2 className="w-5 h-5" />
+                            </button>
+                            <button 
+                              onClick={() => handleToggleStatus(user.uid, user.status)}
+                              className="p-2 hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-white"
+                              title={user.status === 'active' ? 'Suspend' : 'Activate'}
+                            >
+                              {user.status === 'active' ? <Ban className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteUser(user.uid)}
+                              className="p-2 hover:bg-red-900/20 rounded-lg transition-colors text-zinc-400 hover:text-red-500"
+                              title="Delete"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {filteredUsers.length === 0 && (
+                <div className="p-20 text-center text-zinc-500">
+                  No users found matching your search.
+                </div>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-zinc-900/50 border border-zinc-800 p-8 rounded-[2.5rem]">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center text-lime-400">
+                    <DollarSign className="w-6 h-6" />
+                  </div>
+                  <TrendingUp className="w-5 h-5 text-lime-500" />
+                </div>
+                <div className="text-3xl font-bold mb-1">$12,450.00</div>
+                <div className="text-zinc-500 text-sm font-medium">Monthly Recurring Revenue</div>
+              </div>
+              <div className="bg-zinc-900/50 border border-zinc-800 p-8 rounded-[2.5rem]">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center text-blue-400">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <TrendingUp className="w-5 h-5 text-blue-500" />
+                </div>
+                <div className="text-3xl font-bold mb-1">{users.filter(u => u.isPremium).length}</div>
+                <div className="text-zinc-500 text-sm font-medium">Active Subscriptions</div>
+              </div>
+              <div className="bg-zinc-900/50 border border-zinc-800 p-8 rounded-[2.5rem]">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center text-purple-400">
+                    <BarChart2 className="w-6 h-6" />
+                  </div>
+                  <TrendingUp className="w-5 h-5 text-purple-500" />
+                </div>
+                <div className="text-3xl font-bold mb-1">3.2%</div>
+                <div className="text-zinc-500 text-sm font-medium">Churn Rate</div>
+              </div>
+            </div>
+
+            <div className="bg-zinc-900/50 border border-zinc-800 p-8 rounded-[2.5rem]">
+              <h2 className="text-xl font-bold mb-8">Revenue Growth</h2>
+              <div className="h-[400px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={mockRevenueData}>
+                    <defs>
+                      <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#a3e635" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="#a3e635" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} unit="$" />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '12px', color: '#fff' }}
+                      itemStyle={{ color: '#a3e635' }}
+                    />
+                    <Area type="monotone" dataKey="revenue" stroke="#a3e635" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

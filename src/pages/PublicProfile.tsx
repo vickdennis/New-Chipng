@@ -9,8 +9,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
   Share2, QrCode, X, Copy, Check, 
-  ExternalLink, Link as LinkIcon, AlertCircle 
+  ExternalLink, Link as LinkIcon, AlertCircle,
+  CheckCircle2, Youtube, Music2
 } from 'lucide-react';
+import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { Profile, Link, THEMES, ThemeType, ButtonStyle } from '../types';
 import { Helmet } from 'react-helmet-async';
@@ -57,7 +59,23 @@ const PublicProfile: React.FC = () => {
           orderBy('position', 'asc')
         );
         const unsubLinks = onSnapshot(q, (snapshot) => {
-          setLinks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Link)));
+          const allLinks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Link));
+          
+          // Filter by scheduling
+          const now = new Date();
+          const filteredLinks = allLinks.filter(link => {
+            if (!link.scheduledStart && !link.scheduledEnd) return true;
+            
+            const start = link.scheduledStart ? new Date(link.scheduledStart) : null;
+            const end = link.scheduledEnd ? new Date(link.scheduledEnd) : null;
+            
+            if (start && isBefore(now, start)) return false;
+            if (end && isAfter(now, end)) return false;
+            
+            return true;
+          });
+
+          setLinks(filteredLinks);
           setLoading(false);
         }, (error) => {
           console.error('Public links snapshot error:', error);
@@ -146,26 +164,79 @@ const PublicProfile: React.FC = () => {
               </div>
             )}
           </div>
-          <h1 className="text-2xl font-bold tracking-tight mb-2">@{profile.username}</h1>
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-2xl font-bold tracking-tight">@{profile.username}</h1>
+            {profile.isVerified && (
+              <CheckCircle2 className="w-5 h-5 text-blue-500 fill-blue-500/10" />
+            )}
+          </div>
           {profile.displayName && <h2 className="text-lg opacity-80 mb-4">{profile.displayName}</h2>}
           {profile.bio && <p className="text-base opacity-70 max-w-sm leading-relaxed">{profile.bio}</p>}
         </motion.div>
 
         {/* Links List */}
         <div className="w-full space-y-4">
-          {links.map((link, i) => (
-            <motion.button
-              key={link.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              onClick={() => handleLinkClick(link.id, link.url)}
-              className={`w-full p-5 ${theme.button} ${theme.buttonText} ${btnStyle} font-bold text-lg transition-all flex items-center justify-between group relative overflow-hidden`}
-            >
-              <span className="flex-1 text-center">{link.title}</span>
-              <ExternalLink className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity absolute right-5" />
-            </motion.button>
-          ))}
+          {links.map((link, i) => {
+            if (link.type === 'youtube') {
+              const videoId = link.url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/)?.[1];
+              if (videoId) {
+                return (
+                  <motion.div
+                    key={link.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.1 }}
+                    className={`w-full overflow-hidden ${theme.button} ${btnStyle} border border-white/10`}
+                  >
+                    <div className="aspect-video w-full">
+                      <iframe
+                        src={`https://www.youtube.com/embed/${videoId}`}
+                        className="w-full h-full"
+                        allowFullScreen
+                        title={link.title}
+                      />
+                    </div>
+                    <div className={`p-4 font-bold text-center ${theme.buttonText}`}>
+                      {link.title}
+                    </div>
+                  </motion.div>
+                );
+              }
+            }
+
+            if (link.type === 'tiktok') {
+              return (
+                <motion.button
+                  key={link.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  onClick={() => handleLinkClick(link.id, link.url)}
+                  className={`w-full p-5 ${theme.button} ${theme.buttonText} ${btnStyle} font-bold text-lg transition-all flex items-center justify-between group relative overflow-hidden border border-white/10`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Music2 className="w-5 h-5" />
+                    <span>{link.title}</span>
+                  </div>
+                  <ExternalLink className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </motion.button>
+              );
+            }
+
+            return (
+              <motion.button
+                key={link.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.1 }}
+                onClick={() => handleLinkClick(link.id, link.url)}
+                className={`w-full p-5 ${theme.button} ${theme.buttonText} ${btnStyle} font-bold text-lg transition-all flex items-center justify-between group relative overflow-hidden border border-white/10`}
+              >
+                <span className="flex-1 text-center">{link.title}</span>
+                <ExternalLink className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity absolute right-5" />
+              </motion.button>
+            );
+          })}
         </div>
 
         {/* Action Buttons */}
