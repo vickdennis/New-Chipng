@@ -21,7 +21,6 @@ import {
   LogOut, ExternalLink, Copy, Check, Moon, Sun, Palette,
   Calendar, Youtube, Music2, Crown, CheckCircle2, TrendingUp
 } from 'lucide-react';
-import { usePaystackPayment } from 'react-paystack';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, AreaChart, Area 
@@ -335,42 +334,11 @@ const Dashboard: React.FC = () => {
     toast.success('Link copied to clipboard');
   };
 
-  const config = {
-    reference: (new Date()).getTime().toString(),
-    email: user?.email || '',
-    amount: 999 * 100, // 9.99 USD in cents (or NGN depending on currency)
-    publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
-  };
-
-  const initializePayment = usePaystackPayment(config);
-
-  const onSuccess = async (reference: any) => {
-    try {
-      const response = await fetch('/api/verify-paystack', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reference: reference.reference, userId: user?.uid }),
-      });
-      const data = await response.json();
-      if (data.status === 'success') {
-        toast.success('Upgrade successful! Welcome to Pro.');
-      } else {
-        toast.error('Verification failed. Please contact support.');
-      }
-    } catch (error) {
-      toast.error('Error verifying payment');
-    }
-  };
-
-  const onClose = () => {
-    toast.info('Payment cancelled');
-  };
-
   const handleUpgrade = () => {
     navigate('/pricing');
   };
 
-  const checkFeatureAccess = (requiredPlan: PlanType, featureName: string) => {
+  const hasAccess = (requiredPlan: PlanType) => {
     if (!profile) return false;
     
     const planHierarchy: Record<PlanType, number> = {
@@ -380,9 +348,11 @@ const Dashboard: React.FC = () => {
     };
 
     const userPlan = profile.plan || 'basic';
-    if (planHierarchy[userPlan] >= planHierarchy[requiredPlan]) {
-      return true;
-    }
+    return planHierarchy[userPlan] >= planHierarchy[requiredPlan];
+  };
+
+  const checkFeatureAccess = (requiredPlan: PlanType, featureName: string) => {
+    if (hasAccess(requiredPlan)) return true;
 
     setUpgradeModal({
       isOpen: true,
@@ -571,7 +541,7 @@ const Dashboard: React.FC = () => {
               <section className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold dark:text-white">Background</h2>
-                  {!checkFeatureAccess('pro', 'Custom Background') && (
+                  {!hasAccess('pro') && (
                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
                       <Crown className="w-3 h-3" /> PRO
                     </span>
@@ -626,13 +596,13 @@ const Dashboard: React.FC = () => {
               <section className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold dark:text-white">Social Icons</h2>
-                  {!checkFeatureAccess('pro', 'Social Icons') && (
+                  {!hasAccess('pro') && (
                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
                       <Crown className="w-3 h-3" /> PRO
                     </span>
                   )}
                 </div>
-                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${!checkFeatureAccess('pro', 'Social Icons') ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${!hasAccess('pro') ? 'opacity-50 pointer-events-none' : ''}`}>
                   {[
                     { id: 'instagram', icon: Instagram, label: 'Instagram' },
                     { id: 'twitter', icon: Twitter, label: 'Twitter' },
@@ -712,13 +682,13 @@ const Dashboard: React.FC = () => {
               <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold dark:text-white">Location & Map</h2>
-                  {!checkFeatureAccess('business', 'Google Maps') && (
+                  {!hasAccess('business') && (
                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
                       <Crown className="w-3 h-3" /> BUSINESS
                     </span>
                   )}
                 </div>
-                <div className={`space-y-6 ${!checkFeatureAccess('business', 'Google Maps') ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className={`space-y-6 ${!hasAccess('business') ? 'opacity-50 pointer-events-none' : ''}`}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-zinc-500">Latitude</label>
@@ -759,13 +729,13 @@ const Dashboard: React.FC = () => {
               <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold dark:text-white">Appointments</h2>
-                  {!checkFeatureAccess('business', 'Appointments') && (
+                  {!hasAccess('business') && (
                     <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
                       <Crown className="w-3 h-3" /> BUSINESS
                     </span>
                   )}
                 </div>
-                <div className={`space-y-6 ${!checkFeatureAccess('business', 'Appointments') ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className={`space-y-6 ${!hasAccess('business') ? 'opacity-50 pointer-events-none' : ''}`}>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-zinc-500">Enable Appointments</span>
                     <button 

@@ -47,20 +47,23 @@ async function startServer() {
     const event = req.body;
 
     if (event.event === "charge.success") {
-      const { metadata, customer } = event.data;
+      const { metadata } = event.data;
       const userId = metadata?.userId;
+      const plan = metadata?.plan;
       
       if (userId) {
         try {
           const premiumUntil = new Date();
-          premiumUntil.setDate(premiumUntil.getDate() + 30); // 30 days subscription
+          premiumUntil.setDate(premiumUntil.getDate() + 30);
           
           await db.collection('users').doc(userId).update({
+            plan: plan || 'pro',
             isPremium: true,
+            subscriptionStatus: 'active',
             premiumUntil: premiumUntil.toISOString(),
             updatedAt: new Date().toISOString()
           });
-          console.log(`User ${userId} upgraded to premium via Paystack webhook`);
+          console.log(`User ${userId} upgraded to ${plan} via Paystack webhook`);
         } catch (error) {
           console.error('Failed to update user premium status in Paystack webhook:', error);
         }
@@ -76,7 +79,7 @@ async function startServer() {
   });
 
   app.post("/api/verify-paystack", async (req, res) => {
-    const { reference, userId } = req.body;
+    const { reference, userId, plan } = req.body;
     try {
       const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
         headers: {
@@ -89,7 +92,9 @@ async function startServer() {
         premiumUntil.setDate(premiumUntil.getDate() + 30);
         
         await db.collection('users').doc(userId).update({
+          plan: plan || 'pro',
           isPremium: true,
+          subscriptionStatus: 'active',
           premiumUntil: premiumUntil.toISOString(),
           updatedAt: new Date().toISOString()
         });

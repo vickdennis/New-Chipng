@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, ArrowRight, Star, Zap, ShieldCheck } from 'lucide-react';
-import { auth, db, handleFirestoreError, OperationType } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { Check, ArrowRight, Star, Zap, ShieldCheck, Loader2 } from 'lucide-react';
+import { auth } from '../firebase';
 import { toast } from 'sonner';
 import { PlanType } from '../types';
+import { usePaystackPayment } from 'react-paystack';
 
 const PLANS = [
   {
@@ -59,34 +59,79 @@ const PLANS = [
 
 const Pricing: React.FC = () => {
   const [loading, setLoading] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
   const navigate = useNavigate();
 
-  const handleSubscribe = async (plan: PlanType) => {
+  const getAmount = (plan: PlanType) => {
+    switch (plan) {
+      case 'business': return 15000 * 100;
+      case 'pro': return 10000 * 100;
+      case 'basic': return 5000 * 100;
+      default: return 0;
+    }
+  };
+
+  const config: any = {
+    reference: (new Date()).getTime().toString(),
+    email: auth.currentUser?.email || '',
+    amount: selectedPlan ? getAmount(selectedPlan) : 0,
+    publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
+    metadata: {
+      userId: auth.currentUser?.uid,
+      plan: selectedPlan,
+    }
+  };
+
+  const initializePayment = usePaystackPayment(config);
+
+  const onSuccess = async (reference: any) => {
+    setLoading(selectedPlan);
+    try {
+      const response = await fetch('/api/verify-paystack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          reference: reference.reference, 
+          userId: auth.currentUser?.uid,
+          plan: selectedPlan
+        }),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        toast.success(`Successfully upgraded to ${selectedPlan?.toUpperCase()}!`);
+        navigate('/dashboard');
+      } else {
+        toast.error('Payment verification failed. Please contact support.');
+      }
+    } catch (error) {
+      console.error('Error verifying payment:', error);
+      toast.error('Error verifying payment');
+    } finally {
+      setLoading(null);
+      setSelectedPlan(null);
+    }
+  };
+
+  const onClose = () => {
+    toast.info('Payment cancelled');
+    setLoading(null);
+    setSelectedPlan(null);
+  };
+
+  const handleSubscribe = (plan: PlanType) => {
     if (!auth.currentUser) {
       toast.error('Please log in to upgrade your plan');
       navigate('/login');
       return;
     }
-
-    setLoading(plan);
-    try {
-      // Placeholder for real payment integration
-      // In a real app, you'd redirect to Paystack/Stripe here
-      
-      await updateDoc(doc(db, 'users', auth.currentUser.uid), {
-        plan: plan,
-        subscriptionStatus: 'active',
-      });
-
-      toast.success(`Successfully upgraded to ${plan.charAt(0).toUpperCase() + plan.slice(1)} plan!`);
-      navigate('/dashboard');
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${auth.currentUser.uid}`);
-      toast.error('Failed to upgrade plan');
-    } finally {
-      setLoading(null);
-    }
+    setSelectedPlan(plan);
   };
+
+  React.useEffect(() => {
+    if (selectedPlan) {
+      initializePayment({ onSuccess, onClose });
+    }
+  }, [selectedPlan]);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white py-24 px-6">
@@ -142,8 +187,17 @@ const Pricing: React.FC = () => {
                     : 'bg-white text-zinc-950 hover:bg-zinc-200'
                 } disabled:opacity-50`}
               >
-                {loading === plan.id ? 'Processing...' : plan.buttonText}
-                <ArrowRight className="w-5 h-5" />
+                {loading === plan.id ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    {plan.buttonText}
+                    <ArrowRight className="w-5 h-5" />
+                  </>
+                )}
               </button>
 
               <div className="space-y-4 mt-auto">
