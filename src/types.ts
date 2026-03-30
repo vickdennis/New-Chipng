@@ -48,6 +48,14 @@ export interface User {
     whatsapp?: string;
     tiktok?: string;
     reddit?: string;
+    discord?: string;
+    telegram?: string;
+    pinterest?: string;
+    spotify?: string;
+    applemusic?: string;
+    soundcloud?: string;
+    threads?: string;
+    mastodon?: string;
     github?: string;
     twitch?: string;
     snapchat?: string;

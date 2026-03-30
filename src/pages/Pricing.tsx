@@ -190,7 +190,7 @@ const Pricing: React.FC = () => {
                   className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all mb-8 ${
                     plan.popular
                       ? 'bg-lime-400 text-zinc-950 hover:bg-lime-300'
-                      : 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200'
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-950 dark:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700'
                   } disabled:opacity-50`}
                 >
                   {loading === plan.id ? (

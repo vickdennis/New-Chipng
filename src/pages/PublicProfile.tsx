@@ -12,7 +12,8 @@ import {
   ExternalLink, Link as LinkIcon, AlertCircle,
   CheckCircle2, Youtube, Music2,
   Instagram, Twitter, Linkedin, Facebook, MessageCircle,
-  MapPin, Calendar, Clock, ChevronRight, Github, Twitch, Mail, Ghost, MessageSquare
+  MapPin, Calendar, Clock, ChevronRight, Github, Twitch, Mail, Ghost, MessageSquare,
+  Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
@@ -140,7 +141,7 @@ const PublicProfile: React.FC = () => {
       <p className="text-zinc-500 mb-8 text-center max-w-md">
         The profile you are looking for doesn't exist or has been removed.
       </p>
-      <RouterLink to="/" className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 px-8 py-3 rounded-2xl font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all">
+      <RouterLink to="/" className="bg-lime-400 text-zinc-950 px-8 py-3 rounded-2xl font-bold hover:bg-lime-300 transition-all">
         Go Home
       </RouterLink>
     </div>
@@ -167,6 +168,14 @@ const PublicProfile: React.FC = () => {
     { id: 'whatsapp', icon: MessageCircle, url: (val: string) => val.startsWith('http') ? val : `https://wa.me/${val}` },
     { id: 'tiktok', icon: Music2, url: (val: string) => val.startsWith('http') ? val : `https://tiktok.com/@${val}` },
     { id: 'reddit', icon: MessageSquare, url: (val: string) => val.startsWith('http') ? val : `https://reddit.com/u/${val}` },
+    { id: 'discord', icon: Disc, url: (val: string) => val.startsWith('http') ? val : `https://discord.gg/${val}` },
+    { id: 'telegram', icon: Send, url: (val: string) => val.startsWith('http') ? val : `https://t.me/${val}` },
+    { id: 'pinterest', icon: Pin, url: (val: string) => val.startsWith('http') ? val : `https://pinterest.com/${val}` },
+    { id: 'spotify', icon: Music, url: (val: string) => val.startsWith('http') ? val : `https://open.spotify.com/user/${val}` },
+    { id: 'applemusic', icon: Apple, url: (val: string) => val.startsWith('http') ? val : `https://music.apple.com/profile/${val}` },
+    { id: 'soundcloud', icon: Cloud, url: (val: string) => val.startsWith('http') ? val : `https://soundcloud.com/${val}` },
+    { id: 'threads', icon: AtSign, url: (val: string) => val.startsWith('http') ? val : `https://threads.net/@${val}` },
+    { id: 'mastodon', icon: Hash, url: (val: string) => val.startsWith('http') ? val : `https://mastodon.social/@${val}` },
     { id: 'github', icon: Github, url: (val: string) => val.startsWith('http') ? val : `https://github.com/${val}` },
     { id: 'twitch', icon: Twitch, url: (val: string) => val.startsWith('http') ? val : `https://twitch.tv/${val}` },
     { id: 'snapchat', icon: Ghost, url: (val: string) => val.startsWith('http') ? val : `https://snapchat.com/add/${val}` },

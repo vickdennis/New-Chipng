@@ -5,9 +5,11 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+@variant dark (&:where(.dark, .dark *));
+
 @layer base {
   body {
-    @apply font-sans antialiased;
+    @apply font-sans antialiased bg-white text-zinc-950 dark:bg-zinc-950 dark:text-white transition-colors duration-300;
   }
 }
 

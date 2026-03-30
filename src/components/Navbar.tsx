@@ -61,7 +61,7 @@ const Navbar: React.FC = () => {
           <ThemeToggle />
           <Link 
             to="/signup"
-            className="bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 px-6 py-2.5 rounded-full font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all text-sm"
+            className="bg-lime-400 text-zinc-950 px-6 py-2.5 rounded-full font-bold hover:bg-lime-300 transition-all text-sm"
           >
             Get Started
           </Link>

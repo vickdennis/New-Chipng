@@ -105,7 +105,7 @@ const BlogList: React.FC = () => {
               onClick={() => setSelectedTag(null)}
               className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
                 !selectedTag 
-                  ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950' 
+                  ? 'bg-lime-400 text-zinc-950' 
                   : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'
               }`}
             >
@@ -117,7 +117,7 @@ const BlogList: React.FC = () => {
                 onClick={() => setSelectedTag(tag)}
                 className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
                   selectedTag === tag 
-                    ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950' 
+                    ? 'bg-lime-400 text-zinc-950' 
                     : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'
                 }`}
               >

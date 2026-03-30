@@ -19,7 +19,7 @@ import {
   Layout, Link as LinkIcon, User, Settings, BarChart2, 
   Plus, Trash2, GripVertical, Eye, EyeOff, Image as ImageIcon,
   LogOut, ExternalLink, Copy, Check, Moon, Sun, Palette,
-  Calendar, Youtube, Music2, Crown, CheckCircle2, TrendingUp
+  Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -33,7 +33,7 @@ import { Link, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appoi
 import { auth } from '../firebase';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import UpgradeModal from '../components/UpgradeModal';
-import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, Github, Twitch, Mail, Ghost, MessageSquare } from 'lucide-react';
+import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2 } from 'lucide-react';
 
 const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, isUploading }: { 
   link: Link; 
@@ -494,7 +494,7 @@ const Dashboard: React.FC = () => {
               <a 
                 href={`/${profile?.username}`}
                 target="_blank"
-                className="flex items-center gap-2 px-4 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 rounded-xl text-sm font-bold hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all"
+                className="flex items-center gap-2 px-4 py-2 bg-lime-400 text-zinc-950 rounded-xl text-sm font-bold hover:bg-lime-300 transition-all"
               >
                 <ExternalLink className="w-4 h-4" />
                 Preview
@@ -593,7 +593,7 @@ const Dashboard: React.FC = () => {
                     <button 
                       onClick={() => handleUpdateProfile(profileForm)}
                       disabled={isSavingProfile}
-                      className="w-full py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 rounded-xl font-bold hover:bg-zinc-800 dark:hover:bg-zinc-100 transition-all disabled:opacity-50"
+                      className="w-full py-2 bg-lime-400 text-zinc-950 rounded-xl font-bold hover:bg-lime-300 transition-all disabled:opacity-50"
                     >
                       {isSavingProfile ? 'Saving...' : 'Save Profile'}
                     </button>
@@ -646,7 +646,7 @@ const Dashboard: React.FC = () => {
                             </div>
                           )}
                         </div>
-                        <label className="flex-1 py-2 px-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 rounded-xl text-center font-bold cursor-pointer hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+                        <label className="flex-1 py-2 px-4 bg-lime-400 text-zinc-950 rounded-xl text-center font-bold cursor-pointer hover:bg-lime-300 transition-all flex items-center justify-center gap-2">
                           {isUploading ? (
                             <>
                               <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
@@ -683,6 +683,14 @@ const Dashboard: React.FC = () => {
                     { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp' },
                     { id: 'tiktok', icon: Music2, label: 'TikTok' },
                     { id: 'reddit', icon: MessageSquare, label: 'Reddit' },
+                    { id: 'discord', icon: Disc, label: 'Discord' },
+                    { id: 'telegram', icon: Send, label: 'Telegram' },
+                    { id: 'pinterest', icon: Pin, label: 'Pinterest' },
+                    { id: 'spotify', icon: Music, label: 'Spotify' },
+                    { id: 'applemusic', icon: Apple, label: 'Apple Music' },
+                    { id: 'soundcloud', icon: Cloud, label: 'SoundCloud' },
+                    { id: 'threads', icon: AtSign, label: 'Threads' },
+                    { id: 'mastodon', icon: Hash, label: 'Mastodon' },
                     { id: 'github', icon: Github, label: 'GitHub' },
                     { id: 'twitch', icon: Twitch, label: 'Twitch' },
                     { id: 'snapchat', icon: Ghost, label: 'Snapchat' },
@@ -742,7 +750,7 @@ const Dashboard: React.FC = () => {
                           : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
                       }`}
                     >
-                      <div className={`w-full h-10 bg-zinc-900 dark:bg-white ${
+                      <div className={`w-full h-10 bg-zinc-200 dark:bg-zinc-800 ${
                         style === 'rounded' ? 'rounded-xl' : style === 'pill' ? 'rounded-full' : 'rounded-none'
                       }`} />
                       <span className="block mt-4 text-sm font-bold dark:text-white capitalize">{style}</span>
@@ -966,7 +974,7 @@ const Dashboard: React.FC = () => {
                     <p className="text-zinc-500 mb-4">Upgrade to Premium to unlock detailed analytics and charts.</p>
                     <button 
                       onClick={handleUpgrade}
-                      className="px-8 py-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-bold hover:scale-105 transition-all"
+                      className="px-8 py-3 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:scale-105 transition-all"
                     >
                       Upgrade Now
                     </button>
@@ -1026,7 +1034,7 @@ const Dashboard: React.FC = () => {
                     </div>
                     <button 
                       onClick={handleUpgrade}
-                      className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-bold hover:scale-[1.02] transition-all"
+                      className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:scale-[1.02] transition-all"
                     >
                       Upgrade for $9.99/mo
                     </button>

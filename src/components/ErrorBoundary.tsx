@@ -52,7 +52,7 @@ class ErrorBoundary extends Component<Props, State> {
             <p className="text-zinc-500 dark:text-zinc-400">{errorMessage}</p>
             <button 
               onClick={() => window.location.reload()}
-              className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-bold hover:scale-[1.02] transition-all"
+              className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:scale-[1.02] transition-all"
             >
               Reload Application
             </button>
