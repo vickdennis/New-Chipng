@@ -3,7 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, Save, Eye, EyeOff, 
   Image as ImageIcon, Tag, Globe, 
-  FileText, Search, Loader2, Trash2
+  FileText, Search, Loader2, Trash2,
+  Upload, X, CheckCircle2
 } from 'lucide-react';
 import { blogService } from '../services/blogService';
 import { BlogPost } from '../types';
@@ -20,6 +21,9 @@ const AdminBlogEditor: React.FC = () => {
   const [loading, setLoading] = useState(id ? true : false);
   const [saving, setSaving] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   
   const [formData, setFormData] = useState<Omit<BlogPost, 'id' | 'createdAt' | 'updatedAt'>>({
     title: '',
@@ -85,7 +89,17 @@ const AdminBlogEditor: React.FC = () => {
 
     setSaving(true);
     try {
-      const dataToSave = { ...formData, published: isPublished };
+      let coverImageUrl = formData.coverImage;
+
+      // Upload image if a new file was selected
+      if (imageFile && user) {
+        setUploadProgress(0);
+        coverImageUrl = await blogService.uploadImage(imageFile, user.uid, (progress) => {
+          setUploadProgress(progress);
+        });
+      }
+
+      const dataToSave = { ...formData, coverImage: coverImageUrl, published: isPublished };
       if (id) {
         await blogService.updateBlogPost(id, dataToSave);
         toast.success('Post updated successfully');
@@ -95,9 +109,11 @@ const AdminBlogEditor: React.FC = () => {
       }
       navigate('/admin/blog');
     } catch (error) {
+      console.error('Save error:', error);
       toast.error('Failed to save post');
     } finally {
       setSaving(false);
+      setUploadProgress(null);
     }
   };
 
@@ -267,16 +283,105 @@ const AdminBlogEditor: React.FC = () => {
               </div>
 
               <div className="space-y-4">
-                <label className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Cover Image URL</label>
-                <div className="relative">
-                  <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 w-5 h-5" />
-                  <input 
-                    type="text"
-                    value={formData.coverImage}
-                    onChange={(e) => setFormData(prev => ({ ...prev, coverImage: e.target.value }))}
-                    placeholder="https://images.unsplash.com/..."
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-12 pr-4 py-3 text-sm focus:ring-2 focus:ring-lime-400 outline-none transition-all"
-                  />
+                <label className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Cover Image</label>
+                
+                {/* Image Preview & Actions */}
+                {(formData.coverImage || imageFile) ? (
+                  <div className="relative group aspect-video rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950">
+                    <img 
+                      src={imageFile ? URL.createObjectURL(imageFile) : formData.coverImage} 
+                      alt="Cover Preview" 
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                      <button 
+                        onClick={() => {
+                          setImageFile(null);
+                          setFormData(prev => ({ ...prev, coverImage: '' }));
+                        }}
+                        className="p-3 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                        title="Remove Image"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      const file = e.dataTransfer.files[0];
+                      if (file && file.type.startsWith('image/')) {
+                        setImageFile(file);
+                      }
+                    }}
+                    className={clsx(
+                      "aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-4 transition-all cursor-pointer",
+                      isDragging ? "border-lime-400 bg-lime-400/5" : "border-zinc-800 hover:border-zinc-700 bg-zinc-900/30"
+                    )}
+                    onClick={() => document.getElementById('file-upload')?.click()}
+                  >
+                    <div className="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-500">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-zinc-300">Click or drag to upload</p>
+                      <p className="text-xs text-zinc-500 mt-1">PNG, JPG, WEBP up to 5MB</p>
+                    </div>
+                    <input 
+                      id="file-upload"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) setImageFile(file);
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* Progress Bar */}
+                {uploadProgress !== null && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs font-bold text-zinc-500 uppercase tracking-widest">
+                      <span>Uploading...</span>
+                      <span>{Math.round(uploadProgress)}%</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-lime-400 transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-4 py-2">
+                  <div className="h-px flex-1 bg-zinc-800" />
+                  <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">OR</span>
+                  <div className="h-px flex-1 bg-zinc-800" />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Paste Image URL</label>
+                  <div className="relative">
+                    <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 w-4 h-4" />
+                    <input 
+                      type="text"
+                      value={formData.coverImage}
+                      onChange={(e) => {
+                        setFormData(prev => ({ ...prev, coverImage: e.target.value }));
+                        setImageFile(null); // Clear file if URL is pasted
+                      }}
+                      placeholder="https://images.unsplash.com/..."
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-12 pr-4 py-3 text-sm focus:ring-2 focus:ring-lime-400 outline-none transition-all"
+                    />
+                  </div>
                 </div>
               </div>
 

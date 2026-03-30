@@ -13,12 +13,55 @@ import {
   Timestamp,
   serverTimestamp
 } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { 
+  ref, 
+  uploadBytesResumable, 
+  getDownloadURL 
+} from 'firebase/storage';
+import { db, storage, handleFirestoreError, OperationType } from '../firebase';
 import { BlogPost } from '../types';
 
 const BLOGS_COLLECTION = 'blogs';
 
 export const blogService = {
+  async uploadImage(
+    file: File, 
+    userId: string, 
+    onProgress?: (progress: number) => void
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      try {
+        if (!file.type.startsWith('image/')) {
+          throw new Error('File must be an image');
+        }
+
+        const filename = `${Date.now()}-${file.name}`;
+        const storageRef = ref(storage, `blog-images/${userId}/${filename}`);
+        
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            if (onProgress) onProgress(progress);
+          },
+          (error) => {
+            console.error('Upload error:', error);
+            reject(error);
+          },
+          async () => {
+            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve(downloadURL);
+          }
+        );
+      } catch (error) {
+        console.error('Error in uploadImage:', error);
+        reject(error);
+      }
+    });
+  },
+
   async getAllBlog(includeUnpublished = false): Promise<BlogPost[]> {
     try {
       let q;
