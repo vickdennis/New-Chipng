@@ -9,11 +9,13 @@ import {
 import { blogService } from '../services/blogService';
 import { BlogPost as BlogPostType } from '../types';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 import SEO from '../components/SEO';
 import Logo from '../components/Logo';
 import ReactMarkdown from 'react-markdown';
 import { motion } from 'motion/react';
-import { toast } from 'sonner';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 const BlogPost: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -101,27 +103,9 @@ const BlogPost: React.FC = () => {
         modifiedTime={post.updatedAt}
       />
 
-      {/* Header */}
-      <header className="border-b border-zinc-900 bg-zinc-950/50 backdrop-blur-xl sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link to="/">
-            <Logo size="sm" />
-          </Link>
-          <nav className="hidden md:flex items-center gap-8">
-            <Link to="/" className="text-zinc-400 hover:text-white transition-colors font-medium">Home</Link>
-            <Link to="/blog" className="text-lime-400 font-bold">Blog</Link>
-            <Link to="/pricing" className="text-zinc-400 hover:text-white transition-colors font-medium">Pricing</Link>
-          </nav>
-          <Link 
-            to="/signup"
-            className="bg-white text-zinc-950 px-6 py-2.5 rounded-full font-bold hover:bg-zinc-200 transition-all text-sm"
-          >
-            Get Started
-          </Link>
-        </div>
-      </header>
+      <Navbar />
 
-      <main className="max-w-4xl mx-auto px-6 py-20">
+      <main className="max-w-4xl mx-auto px-6 py-40">
         {/* Back Button */}
         <Link 
           to="/blog"
@@ -261,24 +245,7 @@ const BlogPost: React.FC = () => {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-zinc-900 bg-zinc-950 py-20">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <Logo size="md" className="mb-8 mx-auto" />
-          <p className="text-zinc-500 mb-12 max-w-md mx-auto">
-            Join 10,000+ professionals growing their digital presence with Chip NG.
-          </p>
-          <div className="flex justify-center gap-8 mb-12">
-            <Link to="/" className="text-zinc-400 hover:text-white transition-colors">Home</Link>
-            <Link to="/blog" className="text-zinc-400 hover:text-white transition-colors">Blog</Link>
-            <Link to="/pricing" className="text-zinc-400 hover:text-white transition-colors">Pricing</Link>
-            <Link to="/login" className="text-zinc-400 hover:text-white transition-colors">Login</Link>
-          </div>
-          <div className="text-zinc-600 text-sm">
-            © {new Date().getFullYear()} Chip NG. All rights reserved.
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };

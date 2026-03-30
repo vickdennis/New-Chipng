@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { ArrowRight, Smartphone, Zap, Shield } from 'lucide-react';
 import Logo from '../components/Logo';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import BlogSection from '../components/BlogSection';
+import SEO from '../components/SEO';
 
 const LandingPage: React.FC = () => {
   const [username, setUsername] = React.useState('');
@@ -18,21 +22,15 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white selection:bg-lime-400 selection:text-zinc-950">
-      {/* Navigation */}
-      <nav className="max-w-7xl mx-auto px-6 py-8 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2">
-          <Logo size="sm" className="!flex-row !gap-3" />
-        </Link>
-        <div className="flex items-center gap-6">
-          <Link to="/login" className="text-zinc-400 hover:text-white transition-colors">Login</Link>
-          <Link to="/signup" className="bg-white text-zinc-950 px-6 py-2.5 rounded-full font-bold hover:bg-zinc-200 transition-all">
-            Get Started
-          </Link>
-        </div>
-      </nav>
+      <SEO 
+        title="Chip NG | The Ultimate Link-in-Bio for Creators"
+        description="Build your professional digital identity in seconds. Chip NG is the powerful link-in-bio tool for creators, entrepreneurs, and businesses in Nigeria."
+      />
+      
+      <Navbar />
 
       {/* Hero Section */}
-      <main className="max-w-7xl mx-auto px-6 pt-20 pb-32">
+      <main className="max-w-7xl mx-auto px-6 pt-40 pb-32">
         <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -113,7 +111,7 @@ const LandingPage: React.FC = () => {
         </div>
 
         {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-40">
+        <div id="features" className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-40">
           {[
             { icon: Zap, title: "Lightning Fast", desc: "Optimized for speed. Your profile loads in milliseconds." },
             { icon: Smartphone, title: "Mobile First", desc: "Designed to look stunning on every device." },
@@ -137,18 +135,38 @@ const LandingPage: React.FC = () => {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-zinc-900 py-20">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8">
-          <Logo size="sm" className="!flex-row !gap-3" />
-          <p className="text-zinc-500 text-sm">© 2026 Chip NG. Built for the next generation of creators.</p>
-          <div className="flex items-center gap-6">
-            <a href="#" className="text-zinc-500 hover:text-white transition-colors">Twitter</a>
-            <a href="#" className="text-zinc-500 hover:text-white transition-colors">Instagram</a>
-            <a href="#" className="text-zinc-500 hover:text-white transition-colors">Privacy</a>
+      {/* Blog Section */}
+      <BlogSection />
+
+      {/* CTA Section */}
+      <section className="py-32 bg-zinc-950">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="bg-lime-400 rounded-[3rem] p-12 md:p-24 text-zinc-950 text-center relative overflow-hidden">
+            <div className="relative z-10">
+              <h2 className="text-4xl md:text-7xl font-bold tracking-tighter mb-8 leading-none">
+                Ready to claim your <br />
+                digital identity?
+              </h2>
+              <p className="text-zinc-900 text-xl mb-12 max-w-xl mx-auto font-medium">
+                Join thousands of creators and businesses who use Chip NG to share their world.
+              </p>
+              <Link 
+                to="/signup"
+                className="inline-flex items-center gap-2 bg-zinc-950 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:scale-105 transition-all shadow-2xl shadow-zinc-950/20"
+              >
+                Get Started for Free
+                <ArrowRight className="w-6 h-6" />
+              </Link>
+            </div>
+            
+            {/* Decorative elements */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -mr-32 -mt-32" />
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-black/5 rounded-full blur-3xl -ml-32 -mb-32" />
           </div>
         </div>
-      </footer>
+      </section>
+
+      <Footer />
     </div>
   );
 };

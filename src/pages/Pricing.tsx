@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 import { PlanType } from '../types';
 import { usePaystackPayment } from 'react-paystack';
 
-import Logo from '../components/Logo';
-import { Link } from 'react-router-dom';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 const PLANS = [
   {
@@ -137,97 +137,98 @@ const Pricing: React.FC = () => {
   }, [selectedPlan]);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white py-24 px-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-center mb-12">
-          <Link to="/">
-            <Logo size="lg" />
-          </Link>
-        </div>
-        <div className="text-center mb-20">
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-6 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent">
-            Simple, transparent pricing
-          </h1>
-          <p className="text-zinc-400 text-xl max-w-2xl mx-auto">
-            Choose the plan that's right for you and start building your online presence today.
-          </p>
-        </div>
+    <div className="min-h-screen bg-zinc-950 text-white">
+      <Navbar />
+      
+      <main className="pt-40 pb-32 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-6 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent">
+              Simple, transparent pricing
+            </h1>
+            <p className="text-zinc-400 text-xl max-w-2xl mx-auto">
+              Choose the plan that's right for you and start building your online presence today.
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {PLANS.map((plan) => (
-            <div
-              key={plan.id}
-              className={`relative flex flex-col p-8 rounded-3xl border transition-all duration-300 hover:scale-[1.02] ${
-                plan.popular
-                  ? 'bg-zinc-900 border-lime-400/50 shadow-[0_0_40px_rgba(163,230,53,0.1)]'
-                  : 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-700'
-              }`}
-            >
-              {plan.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-lime-400 text-zinc-950 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
-                  Most Popular
-                </div>
-              )}
-
-              <div className="mb-8">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 ${
-                  plan.popular ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-800 text-zinc-400'
-                }`}>
-                  <plan.icon className="w-6 h-6" />
-                </div>
-                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                <p className="text-zinc-500 text-sm leading-relaxed">{plan.description}</p>
-              </div>
-
-              <div className="mb-8">
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold">₦{plan.price}</span>
-                  <span className="text-zinc-500">/month</span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => handleSubscribe(plan.id)}
-                disabled={loading !== null}
-                className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all mb-8 ${
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {PLANS.map((plan) => (
+              <div
+                key={plan.id}
+                className={`relative flex flex-col p-8 rounded-3xl border transition-all duration-300 hover:scale-[1.02] ${
                   plan.popular
-                    ? 'bg-lime-400 text-zinc-950 hover:bg-lime-300'
-                    : 'bg-white text-zinc-950 hover:bg-zinc-200'
-                } disabled:opacity-50`}
+                    ? 'bg-zinc-900 border-lime-400/50 shadow-[0_0_40px_rgba(163,230,53,0.1)]'
+                    : 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-700'
+                }`}
               >
-                {loading === plan.id ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    {plan.buttonText}
-                    <ArrowRight className="w-5 h-5" />
-                  </>
-                )}
-              </button>
-
-              <div className="space-y-4 mt-auto">
-                {plan.features.map((feature, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <div className="mt-1 bg-zinc-800 rounded-full p-0.5">
-                      <Check className="w-3 h-3 text-lime-400" />
-                    </div>
-                    <span className="text-sm text-zinc-400">{feature}</span>
+                {plan.popular && (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-lime-400 text-zinc-950 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
+                    Most Popular
                   </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+                )}
 
-        <div className="mt-20 text-center">
-          <p className="text-zinc-500 text-sm">
-            All prices are in Nigerian Naira (₦). Need a custom plan? <button className="text-lime-400 font-bold hover:underline">Contact sales</button>
-          </p>
+                <div className="mb-8">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 ${
+                    plan.popular ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-800 text-zinc-400'
+                  }`}>
+                    <plan.icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+                  <p className="text-zinc-500 text-sm leading-relaxed">{plan.description}</p>
+                </div>
+
+                <div className="mb-8">
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-4xl font-bold">₦{plan.price}</span>
+                    <span className="text-zinc-500">/month</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => handleSubscribe(plan.id)}
+                  disabled={loading !== null}
+                  className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all mb-8 ${
+                    plan.popular
+                      ? 'bg-lime-400 text-zinc-950 hover:bg-lime-300'
+                      : 'bg-white text-zinc-950 hover:bg-zinc-200'
+                  } disabled:opacity-50`}
+                >
+                  {loading === plan.id ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      {plan.buttonText}
+                      <ArrowRight className="w-5 h-5" />
+                    </>
+                  )}
+                </button>
+
+                <div className="space-y-4 mt-auto">
+                  {plan.features.map((feature, index) => (
+                    <div key={index} className="flex items-start gap-3">
+                      <div className="mt-1 bg-zinc-800 rounded-full p-0.5">
+                        <Check className="w-3 h-3 text-lime-400" />
+                      </div>
+                      <span className="text-sm text-zinc-400">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-20 text-center">
+            <p className="text-zinc-500 text-sm">
+              All prices are in Nigerian Naira (₦). Need a custom plan? <button className="text-lime-400 font-bold hover:underline">Contact sales</button>
+            </p>
+          </div>
         </div>
-      </div>
+      </main>
+
+      <Footer />
     </div>
   );
 };
