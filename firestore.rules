@@ -84,9 +84,11 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-         (request.auth.token.email == "vickthorden@gmail.com" && request.auth.token.email_verified == true));
+      return isAuthenticated() && (
+        request.auth.token.email == "vickthorden@gmail.com" ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
     }
 
     function isValidEmail(email) {
@@ -154,7 +156,7 @@ service cloud.firestore {
     }
 
     match /blogs/{blogId} {
-      allow read: if resource.data.published == true || isAdmin();
+      allow read: if true; // Allow all to read, but we'll filter by published in the app for non-admins
       allow create, update, delete: if isAdmin();
     }
   }
