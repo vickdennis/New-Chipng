@@ -73,6 +73,21 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleUpdatePlan = async (userId: string, newPlan: string) => {
+    try {
+      const isPremium = newPlan !== 'basic';
+      await updateDoc(doc(db, 'users', userId), { 
+        plan: newPlan,
+        isPremium: isPremium,
+        subscriptionStatus: isPremium ? 'active' : 'inactive'
+      });
+      toast.success(`User upgraded to ${newPlan.toUpperCase()}`);
+    } catch (error) {
+      console.error('Error updating plan:', error);
+      toast.error('Failed to update plan');
+    }
+  };
+
   const handleDeleteUser = async (userId: string) => {
     if (!window.confirm('Are you sure you want to delete this user? This action is irreversible.')) return;
     try {
@@ -232,20 +247,35 @@ const AdminPanel: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-8 py-6 text-zinc-500 text-sm">
-                          {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                          {(() => {
+                            const date = user.createdAt;
+                            if (!date) return 'N/A';
+                            // Handle Firestore Timestamp or string/number
+                            const d = (date as any).toDate ? (date as any).toDate() : new Date(date);
+                            return isNaN(d.getTime()) ? 'Invalid Date' : d.toLocaleDateString();
+                          })()}
                         </td>
                         <td className="px-8 py-6 text-right">
-                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex items-center justify-end gap-2">
+                            <select 
+                              value={user.plan || 'basic'}
+                              onChange={(e) => handleUpdatePlan(user.uid, e.target.value)}
+                              className="bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-xs font-bold outline-none focus:ring-2 focus:ring-lime-400 text-zinc-900 dark:text-white"
+                            >
+                              <option value="basic">Basic</option>
+                              <option value="pro">Pro</option>
+                              <option value="business">Business</option>
+                            </select>
                             <button 
-                              onClick={() => handleToggleVerify(user.uid, false)} 
-                              className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-blue-500 dark:hover:text-blue-400"
-                              title="Verify User"
+                              onClick={() => handleToggleVerify(user.uid, user.isVerified || false)} 
+                              className={`p-2 rounded-lg transition-colors ${user.isVerified ? 'text-blue-500 bg-blue-500/10' : 'text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
+                              title={user.isVerified ? 'Unverify' : 'Verify'}
                             >
                               <CheckCircle2 className="w-5 h-5" />
                             </button>
                             <button 
                               onClick={() => handleToggleStatus(user.uid, user.status)}
-                              className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
+                              className={`p-2 rounded-lg transition-colors ${user.status === 'suspended' ? 'text-red-500 bg-red-500/10' : 'text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
                               title={user.status === 'active' ? 'Suspend' : 'Activate'}
                             >
                               {user.status === 'active' ? <Ban className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
