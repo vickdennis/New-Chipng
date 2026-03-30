@@ -53,14 +53,14 @@ const BlogList: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-lime-400"></div>
+      <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-lime-500 dark:border-lime-400"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-white transition-colors duration-300">
       <SEO 
         title="Blog | Chip NG" 
         description="Insights, guides, and stories about digital identity, networking, and the future of personal branding."
@@ -84,7 +84,7 @@ const BlogList: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-5xl md:text-7xl font-bold tracking-tighter mb-6 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent"
+            className="text-5xl md:text-7xl font-bold tracking-tighter mb-6 bg-gradient-to-b from-zinc-950 dark:from-white to-zinc-500 bg-clip-text text-transparent"
           >
             Stories for the digital age
           </motion.h1>
@@ -92,7 +92,7 @@ const BlogList: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-xl text-zinc-500 max-w-2xl mx-auto"
+            className="text-xl text-zinc-600 dark:text-zinc-500 max-w-2xl mx-auto"
           >
             Exploring the intersection of identity, technology, and human connection.
           </motion.p>
@@ -104,7 +104,9 @@ const BlogList: React.FC = () => {
             <button 
               onClick={() => setSelectedTag(null)}
               className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
-                !selectedTag ? 'bg-white text-zinc-950' : 'bg-zinc-900 text-zinc-500 hover:text-white'
+                !selectedTag 
+                  ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950' 
+                  : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'
               }`}
             >
               All Posts
@@ -114,7 +116,9 @@ const BlogList: React.FC = () => {
                 key={tag}
                 onClick={() => setSelectedTag(tag)}
                 className={`px-6 py-2.5 rounded-full text-sm font-bold transition-all ${
-                  selectedTag === tag ? 'bg-white text-zinc-950' : 'bg-zinc-900 text-zinc-500 hover:text-white'
+                  selectedTag === tag 
+                    ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950' 
+                    : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'
                 }`}
               >
                 {tag}
@@ -123,13 +127,13 @@ const BlogList: React.FC = () => {
           </div>
 
           <div className="relative w-full md:w-80">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 w-5 h-5" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 dark:text-zinc-600 w-5 h-5" />
             <input 
               type="text" 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search articles..."
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-lime-400 outline-none transition-all"
+              className="w-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all text-zinc-950 dark:text-white"
             />
           </div>
         </div>
@@ -143,7 +147,7 @@ const BlogList: React.FC = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className="group bg-zinc-900/50 border border-zinc-800 rounded-[2.5rem] overflow-hidden hover:border-lime-400/50 transition-all flex flex-col"
+                className="group bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] overflow-hidden hover:border-lime-500/50 dark:hover:border-lime-400/50 transition-all flex flex-col"
               >
                 <Link to={`/blog/${post.slug}`} className="block relative aspect-[16/10] overflow-hidden">
                   {post.coverImage ? (
@@ -154,7 +158,7 @@ const BlogList: React.FC = () => {
                       referrerPolicy="no-referrer"
                     />
                   ) : (
-                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-700">
+                    <div className="w-full h-full bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 dark:text-zinc-700">
                       <FileText className="w-20 h-20" />
                     </div>
                   )}
@@ -179,15 +183,15 @@ const BlogList: React.FC = () => {
                     </div>
                   </div>
 
-                  <Link to={`/blog/${post.slug}`} className="block group-hover:text-lime-400 transition-colors">
-                    <h2 className="text-2xl font-bold mb-4 tracking-tight line-clamp-2">{post.title}</h2>
+                  <Link to={`/blog/${post.slug}`} className="block group-hover:text-lime-500 dark:group-hover:text-lime-400 transition-colors">
+                    <h2 className="text-2xl font-bold mb-4 tracking-tight line-clamp-2 text-zinc-950 dark:text-white">{post.title}</h2>
                   </Link>
                   
-                  <p className="text-zinc-500 mb-8 line-clamp-3 flex-1">{post.excerpt}</p>
+                  <p className="text-zinc-600 dark:text-zinc-500 mb-8 line-clamp-3 flex-1">{post.excerpt}</p>
 
                   <Link 
                     to={`/blog/${post.slug}`}
-                    className="inline-flex items-center gap-2 text-white font-bold group-hover:text-lime-400 transition-all"
+                    className="inline-flex items-center gap-2 text-zinc-950 dark:text-white font-bold group-hover:text-lime-500 dark:group-hover:text-lime-400 transition-all"
                   >
                     Read Article
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -198,11 +202,11 @@ const BlogList: React.FC = () => {
           </div>
         ) : (
           <div className="py-40 text-center">
-            <div className="w-20 h-20 bg-zinc-900 border border-zinc-800 rounded-3xl flex items-center justify-center mx-auto mb-6 text-zinc-700">
+            <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl flex items-center justify-center mx-auto mb-6 text-zinc-400 dark:text-zinc-700">
               <Search className="w-10 h-10" />
             </div>
-            <h3 className="text-2xl font-bold mb-2">No articles found</h3>
-            <p className="text-zinc-500">Try adjusting your search or filters.</p>
+            <h3 className="text-2xl font-bold mb-2 text-zinc-950 dark:text-white">No articles found</h3>
+            <p className="text-zinc-600 dark:text-zinc-500">Try adjusting your search or filters.</p>
           </div>
         )}
       </main>

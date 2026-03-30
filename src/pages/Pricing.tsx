@@ -137,16 +137,16 @@ const Pricing: React.FC = () => {
   }, [selectedPlan]);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-white transition-colors duration-300">
       <Navbar />
       
       <main className="pt-40 pb-32 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-6 bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-6 bg-gradient-to-b from-zinc-950 dark:from-white to-zinc-500 bg-clip-text text-transparent">
               Simple, transparent pricing
             </h1>
-            <p className="text-zinc-400 text-xl max-w-2xl mx-auto">
+            <p className="text-zinc-600 dark:text-zinc-400 text-xl max-w-2xl mx-auto">
               Choose the plan that's right for you and start building your online presence today.
             </p>
           </div>
@@ -157,8 +157,8 @@ const Pricing: React.FC = () => {
                 key={plan.id}
                 className={`relative flex flex-col p-8 rounded-3xl border transition-all duration-300 hover:scale-[1.02] ${
                   plan.popular
-                    ? 'bg-zinc-900 border-lime-400/50 shadow-[0_0_40px_rgba(163,230,53,0.1)]'
-                    : 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-700'
+                    ? 'bg-zinc-50 dark:bg-zinc-900 border-lime-500/50 dark:border-lime-400/50 shadow-[0_0_40px_rgba(163,230,53,0.1)]'
+                    : 'bg-zinc-50/50 dark:bg-zinc-900/50 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
                 }`}
               >
                 {plan.popular && (
@@ -169,17 +169,17 @@ const Pricing: React.FC = () => {
 
                 <div className="mb-8">
                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-6 ${
-                    plan.popular ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-800 text-zinc-400'
+                    plan.popular ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400'
                   }`}>
                     <plan.icon className="w-6 h-6" />
                   </div>
-                  <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
-                  <p className="text-zinc-500 text-sm leading-relaxed">{plan.description}</p>
+                  <h3 className="text-2xl font-bold mb-2 text-zinc-950 dark:text-white">{plan.name}</h3>
+                  <p className="text-zinc-600 dark:text-zinc-500 text-sm leading-relaxed">{plan.description}</p>
                 </div>
 
                 <div className="mb-8">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold">₦{plan.price}</span>
+                    <span className="text-4xl font-bold text-zinc-950 dark:text-white">₦{plan.price}</span>
                     <span className="text-zinc-500">/month</span>
                   </div>
                 </div>
@@ -190,7 +190,7 @@ const Pricing: React.FC = () => {
                   className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all mb-8 ${
                     plan.popular
                       ? 'bg-lime-400 text-zinc-950 hover:bg-lime-300'
-                      : 'bg-white text-zinc-950 hover:bg-zinc-200'
+                      : 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:bg-zinc-800 dark:hover:bg-zinc-200'
                   } disabled:opacity-50`}
                 >
                   {loading === plan.id ? (
@@ -209,10 +209,10 @@ const Pricing: React.FC = () => {
                 <div className="space-y-4 mt-auto">
                   {plan.features.map((feature, index) => (
                     <div key={index} className="flex items-start gap-3">
-                      <div className="mt-1 bg-zinc-800 rounded-full p-0.5">
-                        <Check className="w-3 h-3 text-lime-400" />
+                      <div className="mt-1 bg-zinc-200 dark:bg-zinc-800 rounded-full p-0.5">
+                        <Check className="w-3 h-3 text-lime-500 dark:text-lime-400" />
                       </div>
-                      <span className="text-sm text-zinc-400">{feature}</span>
+                      <span className="text-sm text-zinc-600 dark:text-zinc-400">{feature}</span>
                     </div>
                   ))}
                 </div>

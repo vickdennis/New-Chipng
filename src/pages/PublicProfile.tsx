@@ -12,7 +12,7 @@ import {
   ExternalLink, Link as LinkIcon, AlertCircle,
   CheckCircle2, Youtube, Music2,
   Instagram, Twitter, Linkedin, Facebook, MessageCircle,
-  MapPin, Calendar, Clock, ChevronRight
+  MapPin, Calendar, Clock, ChevronRight, Github, Twitch, Mail, Ghost, MessageSquare
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
@@ -128,19 +128,19 @@ const PublicProfile: React.FC = () => {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950">
-      <div className="w-12 h-12 border-4 border-lime-400 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950 transition-colors duration-300">
+      <div className="w-12 h-12 border-4 border-lime-500 dark:border-lime-400 border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
   if (error || !profile) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-white p-6">
-      <AlertCircle className="w-16 h-16 text-zinc-800 mb-6" />
-      <h1 className="text-4xl font-bold tracking-tighter mb-4">{error || 'Profile not found'}</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-zinc-950 text-zinc-950 dark:text-white p-6 transition-colors duration-300">
+      <AlertCircle className="w-16 h-16 text-zinc-200 dark:text-zinc-800 mb-6" />
+      <h1 className="text-4xl font-bold tracking-tighter mb-4 text-zinc-950 dark:text-white">{error || 'Profile not found'}</h1>
       <p className="text-zinc-500 mb-8 text-center max-w-md">
         The profile you are looking for doesn't exist or has been removed.
       </p>
-      <RouterLink to="/" className="bg-white text-zinc-950 px-8 py-3 rounded-2xl font-bold hover:bg-zinc-200 transition-all">
+      <RouterLink to="/" className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 px-8 py-3 rounded-2xl font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all">
         Go Home
       </RouterLink>
     </div>
@@ -165,7 +165,12 @@ const PublicProfile: React.FC = () => {
     { id: 'youtube', icon: Youtube, url: (val: string) => val.startsWith('http') ? val : `https://youtube.com/@${val}` },
     { id: 'facebook', icon: Facebook, url: (val: string) => val.startsWith('http') ? val : `https://facebook.com/${val}` },
     { id: 'whatsapp', icon: MessageCircle, url: (val: string) => val.startsWith('http') ? val : `https://wa.me/${val}` },
-    { id: 'tiktok', icon: Music2, url: (val: string) => val.startsWith('http') ? val : `https://tiktok.com/@${val}` }
+    { id: 'tiktok', icon: Music2, url: (val: string) => val.startsWith('http') ? val : `https://tiktok.com/@${val}` },
+    { id: 'reddit', icon: MessageSquare, url: (val: string) => val.startsWith('http') ? val : `https://reddit.com/u/${val}` },
+    { id: 'github', icon: Github, url: (val: string) => val.startsWith('http') ? val : `https://github.com/${val}` },
+    { id: 'twitch', icon: Twitch, url: (val: string) => val.startsWith('http') ? val : `https://twitch.tv/${val}` },
+    { id: 'snapchat', icon: Ghost, url: (val: string) => val.startsWith('http') ? val : `https://snapchat.com/add/${val}` },
+    { id: 'mail', icon: Mail, url: (val: string) => val.startsWith('mailto:') ? val : `mailto:${val}` }
   ];
 
   return (

@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { clsx } from 'clsx';
+import ThemeToggle from '../components/ThemeToggle';
 
 const AdminBlogEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -171,22 +172,25 @@ const AdminBlogEditor: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-lime-400"></div>
+      <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center transition-colors duration-300">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-lime-500 dark:border-lime-400"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-6 md:p-12">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-white p-6 md:p-12 transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
         <header className="flex items-center justify-between mb-12">
           <div className="flex items-center gap-4">
-            <Link to="/admin/blog" className="p-3 bg-zinc-900 border border-zinc-800 rounded-2xl hover:bg-zinc-800 transition-all">
-              <ArrowLeft className="w-6 h-6" />
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link to="/admin/blog" className="p-3 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all text-zinc-950 dark:text-white">
+                <ArrowLeft className="w-6 h-6" />
+              </Link>
+              <ThemeToggle />
+            </div>
             <div>
-              <h1 className="text-4xl font-bold tracking-tighter">{id ? 'Edit Post' : 'New Post'}</h1>
+              <h1 className="text-4xl font-bold tracking-tighter text-zinc-950 dark:text-white">{id ? 'Edit Post' : 'New Post'}</h1>
               <p className="text-zinc-500">{id ? 'Update your existing content' : 'Share something new with your audience'}</p>
             </div>
           </div>
@@ -194,7 +198,7 @@ const AdminBlogEditor: React.FC = () => {
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setPreview(!preview)}
-              className="flex items-center gap-2 px-6 py-3 bg-zinc-900 border border-zinc-800 rounded-2xl font-bold hover:bg-zinc-800 transition-all"
+              className="flex items-center gap-2 px-6 py-3 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl font-bold hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all text-zinc-950 dark:text-white"
             >
               {preview ? <FileText className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               {preview ? 'Editor' : 'Preview'}
@@ -202,7 +206,7 @@ const AdminBlogEditor: React.FC = () => {
             <button 
               onClick={() => handleSubmit(false)}
               disabled={saving}
-              className="flex items-center gap-2 bg-zinc-800 border border-zinc-700 text-white px-6 py-3 rounded-2xl font-bold hover:bg-zinc-700 transition-all disabled:opacity-50"
+              className="flex items-center gap-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-950 dark:text-white px-6 py-3 rounded-2xl font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
               Save Draft
@@ -222,22 +226,22 @@ const AdminBlogEditor: React.FC = () => {
           {/* Main Content Area */}
           <div className="lg:col-span-2 space-y-8">
             {preview ? (
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-[2.5rem] p-12 min-h-[600px]">
+              <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-12 min-h-[600px]">
                 {formData.coverImage && (
                   <img 
                     src={formData.coverImage} 
                     alt="Cover" 
-                    className="w-full h-80 object-cover rounded-3xl mb-12 border border-zinc-800"
+                    className="w-full h-80 object-cover rounded-3xl mb-12 border border-zinc-200 dark:border-zinc-800"
                     referrerPolicy="no-referrer"
                   />
                 )}
-                <h1 className="text-5xl font-bold mb-6 tracking-tighter">{formData.title || 'Untitled Post'}</h1>
+                <h1 className="text-5xl font-bold mb-6 tracking-tighter text-zinc-950 dark:text-white">{formData.title || 'Untitled Post'}</h1>
                 <div className="flex items-center gap-4 text-zinc-500 mb-12">
-                  <span className="font-bold text-zinc-300">{formData.author}</span>
+                  <span className="font-bold text-zinc-700 dark:text-zinc-300">{formData.author}</span>
                   <span>•</span>
                   <span>{new Date().toLocaleDateString()}</span>
                 </div>
-                <div className="prose prose-invert prose-lime max-w-none">
+                <div className="prose dark:prose-invert prose-lime max-w-none">
                   <ReactMarkdown>{formData.content || '_No content yet..._'}</ReactMarkdown>
                 </div>
               </div>
@@ -250,20 +254,20 @@ const AdminBlogEditor: React.FC = () => {
                     value={formData.title}
                     onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                     placeholder="Enter a catchy title..."
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-3xl px-8 py-6 text-2xl font-bold focus:ring-2 focus:ring-lime-400 outline-none transition-all"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl px-8 py-6 text-2xl font-bold focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all text-zinc-950 dark:text-white"
                   />
                 </div>
 
                 <div className="space-y-4">
                   <label className="text-sm font-bold text-zinc-500 uppercase tracking-widest ml-4">Slug (URL)</label>
                   <div className="relative">
-                    <Globe className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600 w-5 h-5" />
+                    <Globe className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 w-5 h-5" />
                     <input 
                       type="text"
                       value={formData.slug}
                       onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value }))}
                       placeholder="url-friendly-slug"
-                      className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl pl-16 pr-8 py-4 font-mono text-zinc-400 focus:ring-2 focus:ring-lime-400 outline-none transition-all"
+                      className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-16 pr-8 py-4 font-mono text-zinc-600 dark:text-zinc-400 focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -274,7 +278,7 @@ const AdminBlogEditor: React.FC = () => {
                     value={formData.content}
                     onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
                     placeholder="Write your story here... Markdown is supported!"
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-[2.5rem] px-8 py-8 min-h-[500px] font-mono text-zinc-300 focus:ring-2 focus:ring-lime-400 outline-none transition-all resize-none"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] px-8 py-8 min-h-[500px] font-mono text-zinc-700 dark:text-zinc-300 focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all resize-none"
                   />
                 </div>
               </div>
@@ -283,25 +287,25 @@ const AdminBlogEditor: React.FC = () => {
 
           {/* Sidebar Settings */}
           <div className="space-y-8">
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-[2.5rem] p-8 space-y-8">
+            <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-8 space-y-8">
               <div className="space-y-4">
                 <label className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Status</label>
                 <div 
                   onClick={() => setFormData(prev => ({ ...prev, published: !prev.published }))}
                   className={clsx(
                     "flex items-center justify-between p-4 rounded-2xl border cursor-pointer transition-all",
-                    formData.published ? "bg-lime-400/10 border-lime-400/50" : "bg-zinc-800 border-zinc-700"
+                    formData.published ? "bg-lime-500/10 dark:bg-lime-400/10 border-lime-500/50 dark:border-lime-400/50" : "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
                   )}
                 >
                   <div className="flex items-center gap-3">
-                    {formData.published ? <Eye className="w-5 h-5 text-lime-400" /> : <EyeOff className="w-5 h-5 text-zinc-500" />}
-                    <span className={clsx("font-bold", formData.published ? "text-lime-400" : "text-zinc-500")}>
+                    {formData.published ? <Eye className="w-5 h-5 text-lime-600 dark:text-lime-400" /> : <EyeOff className="w-5 h-5 text-zinc-400 dark:text-zinc-500" />}
+                    <span className={clsx("font-bold", formData.published ? "text-lime-600 dark:text-lime-400" : "text-zinc-400 dark:text-zinc-500")}>
                       {formData.published ? 'Published' : 'Draft'}
                     </span>
                   </div>
                   <div className={clsx(
                     "w-4 h-4 rounded-full",
-                    formData.published ? "bg-lime-400 shadow-[0_0_10px_rgba(163,230,53,0.5)]" : "bg-zinc-600"
+                    formData.published ? "bg-lime-500 dark:bg-lime-400 shadow-[0_0_10px_rgba(163,230,53,0.5)]" : "bg-zinc-300 dark:bg-zinc-600"
                   )} />
                 </div>
               </div>
@@ -311,7 +315,7 @@ const AdminBlogEditor: React.FC = () => {
                 
                 {/* Image Preview & Actions */}
                 {(formData.coverImage || previewUrl) ? (
-                  <div className="relative group aspect-video rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950">
+                  <div className="relative group aspect-video rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-950">
                     <img 
                       src={previewUrl || formData.coverImage} 
                       alt="Cover Preview" 
@@ -345,15 +349,15 @@ const AdminBlogEditor: React.FC = () => {
                     }}
                     className={clsx(
                       "aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-4 transition-all cursor-pointer",
-                      isDragging ? "border-lime-400 bg-lime-400/5" : "border-zinc-800 hover:border-zinc-700 bg-zinc-900/30"
+                      isDragging ? "border-lime-500 dark:border-lime-400 bg-lime-500/5 dark:bg-lime-400/5" : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-zinc-100 dark:bg-zinc-900/30"
                     )}
                     onClick={() => document.getElementById('file-upload')?.click()}
                   >
-                    <div className="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-500">
+                    <div className="w-12 h-12 bg-zinc-200 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-400 dark:text-zinc-500">
                       <Upload className="w-6 h-6" />
                     </div>
                     <div className="text-center">
-                      <p className="text-sm font-bold text-zinc-300">Click or drag to upload</p>
+                      <p className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Click or drag to upload</p>
                       <p className="text-xs text-zinc-500 mt-1">PNG, JPG, WEBP up to 5MB</p>
                     </div>
                     <input 
@@ -376,9 +380,9 @@ const AdminBlogEditor: React.FC = () => {
                       <span>Uploading...</span>
                       <span>{Math.round(uploadProgress)}%</span>
                     </div>
-                    <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                    <div className="h-1.5 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
                       <div 
-                        className="h-full bg-lime-400 transition-all duration-300"
+                        className="h-full bg-lime-500 dark:bg-lime-400 transition-all duration-300"
                         style={{ width: `${uploadProgress}%` }}
                       />
                     </div>
@@ -386,15 +390,15 @@ const AdminBlogEditor: React.FC = () => {
                 )}
 
                 <div className="flex items-center gap-4 py-2">
-                  <div className="h-px flex-1 bg-zinc-800" />
-                  <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">OR</span>
-                  <div className="h-px flex-1 bg-zinc-800" />
+                  <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+                  <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-[0.2em]">OR</span>
+                  <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
                 </div>
 
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Paste Image URL</label>
                   <div className="relative">
-                    <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 w-4 h-4" />
+                    <ImageIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 w-4 h-4" />
                     <input 
                       type="text"
                       value={formData.coverImage}
@@ -403,7 +407,7 @@ const AdminBlogEditor: React.FC = () => {
                         setImageFile(null); // Clear file if URL is pasted
                       }}
                       placeholder="https://images.unsplash.com/..."
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-12 pr-4 py-3 text-sm focus:ring-2 focus:ring-lime-400 outline-none transition-all"
+                      className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl pl-12 pr-4 py-3 text-sm focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all text-zinc-950 dark:text-white"
                     />
                   </div>
                 </div>
@@ -415,7 +419,7 @@ const AdminBlogEditor: React.FC = () => {
                   value={formData.excerpt}
                   onChange={(e) => setFormData(prev => ({ ...prev, excerpt: e.target.value }))}
                   placeholder="Short summary for the list view..."
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm min-h-[100px] focus:ring-2 focus:ring-lime-400 outline-none transition-all resize-none"
+                  className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm min-h-[100px] focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all resize-none text-zinc-950 dark:text-white"
                 />
               </div>
 
@@ -423,29 +427,29 @@ const AdminBlogEditor: React.FC = () => {
                 <label className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Tags</label>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {formData.tags?.map(tag => (
-                    <span key={tag} className="flex items-center gap-1 bg-zinc-800 text-zinc-300 px-3 py-1 rounded-full text-xs font-bold border border-zinc-700">
+                    <span key={tag} className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-3 py-1 rounded-full text-xs font-bold border border-zinc-200 dark:border-zinc-700">
                       {tag}
-                      <button onClick={() => removeTag(tag)} className="hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                      <button onClick={() => removeTag(tag)} className="hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
                     </span>
                   ))}
                 </div>
                 <div className="relative">
-                  <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 w-4 h-4" />
+                  <Tag className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 w-4 h-4" />
                   <input 
                     type="text"
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
                     onKeyDown={handleAddTag}
                     placeholder="Press Enter to add tag"
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-xl pl-12 pr-4 py-3 text-sm focus:ring-2 focus:ring-lime-400 outline-none transition-all"
+                    className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl pl-12 pr-4 py-3 text-sm focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all text-zinc-950 dark:text-white"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-[2.5rem] p-8 space-y-8">
-              <h3 className="text-lg font-bold flex items-center gap-2">
-                <Search className="w-5 h-5 text-lime-400" />
+            <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-8 space-y-8">
+              <h3 className="text-lg font-bold flex items-center gap-2 text-zinc-950 dark:text-white">
+                <Search className="w-5 h-5 text-lime-500 dark:text-lime-400" />
                 SEO Settings
               </h3>
 
@@ -456,7 +460,7 @@ const AdminBlogEditor: React.FC = () => {
                   value={formData.seoTitle}
                   onChange={(e) => setFormData(prev => ({ ...prev, seoTitle: e.target.value }))}
                   placeholder="Meta title for Google..."
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-lime-400 outline-none transition-all"
+                  className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all text-zinc-950 dark:text-white"
                 />
               </div>
 
@@ -466,7 +470,7 @@ const AdminBlogEditor: React.FC = () => {
                   value={formData.seoDescription}
                   onChange={(e) => setFormData(prev => ({ ...prev, seoDescription: e.target.value }))}
                   placeholder="Meta description for search results..."
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm min-h-[100px] focus:ring-2 focus:ring-lime-400 outline-none transition-all resize-none"
+                  className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm min-h-[100px] focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all resize-none text-zinc-950 dark:text-white"
                 />
               </div>
 
@@ -474,9 +478,9 @@ const AdminBlogEditor: React.FC = () => {
                 <label className="text-sm font-bold text-zinc-500 uppercase tracking-widest">SEO Keywords</label>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {formData.seoKeywords?.map(keyword => (
-                    <span key={keyword} className="flex items-center gap-1 bg-zinc-800 text-zinc-300 px-3 py-1 rounded-full text-xs font-bold border border-zinc-700">
+                    <span key={keyword} className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-3 py-1 rounded-full text-xs font-bold border border-zinc-200 dark:border-zinc-700">
                       {keyword}
-                      <button onClick={() => removeKeyword(keyword)} className="hover:text-red-400"><Trash2 className="w-3 h-3" /></button>
+                      <button onClick={() => removeKeyword(keyword)} className="hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
                     </span>
                   ))}
                 </div>
@@ -486,7 +490,7 @@ const AdminBlogEditor: React.FC = () => {
                   onChange={(e) => setKeywordInput(e.target.value)}
                   onKeyDown={handleAddKeyword}
                   placeholder="Press Enter to add keyword"
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-lime-400 outline-none transition-all"
+                  className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all text-zinc-950 dark:text-white"
                 />
               </div>
             </div>

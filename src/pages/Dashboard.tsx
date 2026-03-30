@@ -22,6 +22,7 @@ import {
   Calendar, Youtube, Music2, Crown, CheckCircle2, TrendingUp
 } from 'lucide-react';
 import Logo from '../components/Logo';
+import ThemeToggle from '../components/ThemeToggle';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, AreaChart, Area 
@@ -32,7 +33,7 @@ import { Link, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appoi
 import { auth } from '../firebase';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import UpgradeModal from '../components/UpgradeModal';
-import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock } from 'lucide-react';
+import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, Github, Twitch, Mail, Ghost, MessageSquare } from 'lucide-react';
 
 const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, isUploading }: { 
   link: Link; 
@@ -459,13 +460,19 @@ const Dashboard: React.FC = () => {
           ))}
         </nav>
 
-        <button 
-          onClick={() => auth.signOut()}
-          className="flex items-center gap-3 px-4 py-3 text-zinc-500 hover:text-red-500 transition-colors mt-auto"
-        >
-          <LogOut className="w-5 h-5" />
-          Logout
-        </button>
+        <div className="mt-auto space-y-4">
+          <div className="px-4 py-2 flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Theme</span>
+            <ThemeToggle />
+          </div>
+          <button 
+            onClick={() => auth.signOut()}
+            className="w-full flex items-center gap-3 px-4 py-3 text-zinc-500 hover:text-red-500 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            Logout
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -674,7 +681,12 @@ const Dashboard: React.FC = () => {
                     { id: 'youtube', icon: Youtube, label: 'YouTube' },
                     { id: 'facebook', icon: Facebook, label: 'Facebook' },
                     { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp' },
-                    { id: 'tiktok', icon: Music2, label: 'TikTok' }
+                    { id: 'tiktok', icon: Music2, label: 'TikTok' },
+                    { id: 'reddit', icon: MessageSquare, label: 'Reddit' },
+                    { id: 'github', icon: Github, label: 'GitHub' },
+                    { id: 'twitch', icon: Twitch, label: 'Twitch' },
+                    { id: 'snapchat', icon: Ghost, label: 'Snapchat' },
+                    { id: 'mail', icon: Mail, label: 'Email' }
                   ].map((social) => (
                     <div key={social.id} className="space-y-2">
                       <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">

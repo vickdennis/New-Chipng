@@ -47,6 +47,11 @@ export interface User {
     facebook?: string;
     whatsapp?: string;
     tiktok?: string;
+    reddit?: string;
+    github?: string;
+    twitch?: string;
+    snapchat?: string;
+    mail?: string;
   };
 }
 

@@ -81,8 +81,8 @@ const BlogPost: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-lime-400"></div>
+      <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-lime-500 dark:border-lime-400"></div>
       </div>
     );
   }
@@ -90,7 +90,7 @@ const BlogPost: React.FC = () => {
   if (!post) return null;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-white transition-colors duration-300">
       <SEO 
         title={post.seoTitle || post.title}
         description={post.seoDescription || post.excerpt}
@@ -109,7 +109,7 @@ const BlogPost: React.FC = () => {
         {/* Back Button */}
         <Link 
           to="/blog"
-          className="inline-flex items-center gap-2 text-zinc-500 hover:text-white transition-colors mb-12 font-bold group"
+          className="inline-flex items-center gap-2 text-zinc-500 dark:text-zinc-500 hover:text-zinc-950 dark:hover:text-white transition-colors mb-12 font-bold group"
         >
           <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
           Back to Blog
@@ -129,13 +129,13 @@ const BlogPost: React.FC = () => {
             {post.title}
           </h1>
 
-          <div className="flex flex-wrap items-center justify-between gap-8 py-8 border-y border-zinc-900">
+          <div className="flex flex-wrap items-center justify-between gap-8 py-8 border-y border-zinc-200 dark:border-zinc-900">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-zinc-800 rounded-full flex items-center justify-center text-zinc-600 border border-zinc-700">
+              <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-400 dark:text-zinc-600 border border-zinc-200 dark:border-zinc-700">
                 <User className="w-6 h-6" />
               </div>
               <div>
-                <div className="font-bold text-lg">{post.author}</div>
+                <div className="font-bold text-lg text-zinc-950 dark:text-white">{post.author}</div>
                 <div className="text-zinc-500 text-sm flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
                   {format(new Date(post.createdAt), 'MMMM dd, yyyy')}
@@ -149,24 +149,24 @@ const BlogPost: React.FC = () => {
             <div className="flex items-center gap-3">
               <button 
                 onClick={shareOnTwitter}
-                className="p-3 bg-zinc-900 border border-zinc-800 rounded-2xl hover:bg-zinc-800 transition-all text-zinc-400 hover:text-white"
+                className="p-3 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                 title="Share on Twitter"
               >
                 <Twitter className="w-5 h-5" />
               </button>
               <button 
                 onClick={shareOnLinkedIn}
-                className="p-3 bg-zinc-900 border border-zinc-800 rounded-2xl hover:bg-zinc-800 transition-all text-zinc-400 hover:text-white"
+                className="p-3 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                 title="Share on LinkedIn"
               >
                 <Linkedin className="w-5 h-5" />
               </button>
               <button 
                 onClick={handleCopyLink}
-                className="p-3 bg-zinc-900 border border-zinc-800 rounded-2xl hover:bg-zinc-800 transition-all text-zinc-400 hover:text-white"
+                className="p-3 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                 title="Copy Link"
               >
-                {copied ? <Check className="w-5 h-5 text-lime-400" /> : <Copy className="w-5 h-5" />}
+                {copied ? <Check className="w-5 h-5 text-lime-500 dark:text-lime-400" /> : <Copy className="w-5 h-5" />}
               </button>
             </div>
           </div>
@@ -185,20 +185,20 @@ const BlogPost: React.FC = () => {
         )}
 
         {/* Article Content */}
-        <article className="prose prose-invert prose-lime prose-xl max-w-none mb-20">
+        <article className="prose dark:prose-invert prose-lime prose-xl max-w-none mb-20 text-zinc-800 dark:text-zinc-300">
           <ReactMarkdown>{post.content}</ReactMarkdown>
         </article>
 
         {/* Article Footer */}
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-[3rem] p-12 text-center mb-20">
-          <h2 className="text-3xl font-bold mb-4 tracking-tight">Enjoyed this article?</h2>
-          <p className="text-zinc-500 mb-8 max-w-md mx-auto">
+        <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[3rem] p-12 text-center mb-20">
+          <h2 className="text-3xl font-bold mb-4 tracking-tight text-zinc-950 dark:text-white">Enjoyed this article?</h2>
+          <p className="text-zinc-600 dark:text-zinc-500 mb-8 max-w-md mx-auto">
             Share it with your network or join Chip NG to start building your own digital identity.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <button 
               onClick={shareOnTwitter}
-              className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-6 py-3 rounded-2xl font-bold transition-all"
+              className="flex items-center gap-2 bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 px-6 py-3 rounded-2xl font-bold transition-all text-zinc-950 dark:text-white"
             >
               <Twitter className="w-5 h-5" />
               Share on Twitter
@@ -216,25 +216,25 @@ const BlogPost: React.FC = () => {
         {/* Related Posts */}
         {relatedPosts.length > 0 && (
           <div className="mb-20">
-            <h2 className="text-3xl font-bold mb-12 tracking-tight">Related Articles</h2>
+            <h2 className="text-3xl font-bold mb-12 tracking-tight text-zinc-950 dark:text-white">Related Articles</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {relatedPosts.map((relatedPost) => (
                 <Link 
                   key={relatedPost.id}
                   to={`/blog/${relatedPost.slug}`}
-                  className="group bg-zinc-900/50 border border-zinc-800 rounded-[2.5rem] p-8 hover:border-lime-400/50 transition-all flex flex-col"
+                  className="group bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-8 hover:border-lime-500/50 dark:hover:border-lime-400/50 transition-all flex flex-col"
                 >
                   <div className="flex items-center gap-4 text-zinc-500 text-xs font-bold uppercase tracking-widest mb-4">
                     <Calendar className="w-3.5 h-3.5" />
                     {format(new Date(relatedPost.createdAt), 'MMM dd, yyyy')}
                   </div>
-                  <h3 className="text-xl font-bold mb-4 group-hover:text-lime-400 transition-colors line-clamp-2">
+                  <h3 className="text-xl font-bold mb-4 group-hover:text-lime-500 dark:group-hover:text-lime-400 transition-colors line-clamp-2 text-zinc-950 dark:text-white">
                     {relatedPost.title}
                   </h3>
-                  <p className="text-zinc-500 text-sm line-clamp-2 mb-6 flex-1">
+                  <p className="text-zinc-600 dark:text-zinc-500 text-sm line-clamp-2 mb-6 flex-1">
                     {relatedPost.excerpt}
                   </p>
-                  <div className="flex items-center gap-2 text-white font-bold group-hover:text-lime-400 transition-all text-sm">
+                  <div className="flex items-center gap-2 text-zinc-950 dark:text-white font-bold group-hover:text-lime-500 dark:group-hover:text-lime-400 transition-all text-sm">
                     Read More
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </div>

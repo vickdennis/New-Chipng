@@ -36,7 +36,7 @@ const BlogSection: React.FC = () => {
   if (posts.length === 0) return null;
 
   return (
-    <section className="py-32 bg-zinc-950">
+    <section className="py-32 bg-white dark:bg-zinc-950 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex flex-col md:flex-row items-end justify-between gap-8 mb-20">
           <div className="max-w-2xl">
@@ -54,7 +54,7 @@ const BlogSection: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.1 }}
-              className="text-4xl md:text-6xl font-bold tracking-tighter"
+              className="text-4xl md:text-6xl font-bold tracking-tighter text-zinc-950 dark:text-white"
             >
               Latest Articles
             </motion.h2>
@@ -67,7 +67,7 @@ const BlogSection: React.FC = () => {
           >
             <Link 
               to="/blog"
-              className="group flex items-center gap-2 text-white font-bold hover:text-lime-400 transition-colors"
+              className="group flex items-center gap-2 text-zinc-950 dark:text-white font-bold hover:text-lime-500 dark:hover:text-lime-400 transition-colors"
             >
               View All Articles
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -83,7 +83,7 @@ const BlogSection: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="group bg-zinc-900/50 border border-zinc-800 rounded-[2.5rem] overflow-hidden hover:border-lime-400/50 transition-all flex flex-col"
+              className="group bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] overflow-hidden hover:border-lime-500/50 dark:hover:border-lime-400/50 transition-all flex flex-col"
             >
               <Link to={`/blog/${post.slug}`} className="block relative aspect-[16/10] overflow-hidden">
                 {post.coverImage ? (
@@ -119,15 +119,15 @@ const BlogSection: React.FC = () => {
                   </div>
                 </div>
 
-                <Link to={`/blog/${post.slug}`} className="block group-hover:text-lime-400 transition-colors">
-                  <h3 className="text-2xl font-bold mb-4 tracking-tight line-clamp-2">{post.title}</h3>
+                <Link to={`/blog/${post.slug}`} className="block group-hover:text-lime-500 dark:group-hover:text-lime-400 transition-colors">
+                  <h3 className="text-2xl font-bold mb-4 tracking-tight line-clamp-2 text-zinc-950 dark:text-white">{post.title}</h3>
                 </Link>
                 
-                <p className="text-zinc-500 mb-8 line-clamp-3 flex-1">{post.excerpt}</p>
+                <p className="text-zinc-600 dark:text-zinc-500 mb-8 line-clamp-3 flex-1">{post.excerpt}</p>
 
                 <Link 
                   to={`/blog/${post.slug}`}
-                  className="inline-flex items-center gap-2 text-white font-bold group-hover:text-lime-400 transition-all"
+                  className="inline-flex items-center gap-2 text-zinc-950 dark:text-white font-bold group-hover:text-lime-500 dark:group-hover:text-lime-400 transition-all"
                 >
                   Read More
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

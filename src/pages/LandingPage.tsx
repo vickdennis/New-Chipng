@@ -21,7 +21,7 @@ const LandingPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white selection:bg-lime-400 selection:text-zinc-950">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-white selection:bg-lime-400 selection:text-zinc-950 transition-colors duration-300">
       <SEO 
         title="Chip NG | The Ultimate Link-in-Bio for Creators"
         description="Build your professional digital identity in seconds. Chip NG is the powerful link-in-bio tool for creators, entrepreneurs, and businesses in Nigeria."
@@ -36,9 +36,9 @@ const LandingPage: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-4 py-2 rounded-full text-sm text-zinc-400 mb-8"
+            className="inline-flex items-center gap-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-4 py-2 rounded-full text-sm text-zinc-500 dark:text-zinc-400 mb-8"
           >
-            <span className="w-2 h-2 bg-lime-400 rounded-full animate-pulse" />
+            <span className="w-2 h-2 bg-lime-500 dark:bg-lime-400 rounded-full animate-pulse" />
             Join 10,000+ creators in Nigeria
           </motion.div>
           
@@ -49,14 +49,14 @@ const LandingPage: React.FC = () => {
             className="text-6xl md:text-8xl font-bold tracking-tighter mb-8 leading-[0.9]"
           >
             Everything you are. <br />
-            <span className="text-zinc-500">In one simple link.</span>
+            <span className="text-zinc-400 dark:text-zinc-500">In one simple link.</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-xl text-zinc-400 mb-12 max-w-2xl"
+            className="text-xl text-zinc-600 dark:text-zinc-400 mb-12 max-w-2xl"
           >
             Chip NG is the powerful link-in-bio tool for creators, entrepreneurs, and businesses. 
             Build your professional page in seconds.
@@ -72,7 +72,7 @@ const LandingPage: React.FC = () => {
               {/* Focus Glow Effect */}
               <div className="absolute -inset-0.5 bg-gradient-to-r from-lime-400 to-emerald-400 rounded-2xl blur opacity-0 group-focus-within:opacity-20 transition duration-500"></div>
               
-              <div className="relative flex items-center w-full h-16 bg-zinc-900 border border-zinc-800 rounded-2xl px-6 transition-all duration-300 group-focus-within:border-lime-400/50 group-focus-within:bg-zinc-900/80 backdrop-blur-sm">
+              <div className="relative flex items-center w-full h-16 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-6 transition-all duration-300 group-focus-within:border-lime-500/50 dark:group-focus-within:border-lime-400/50 group-focus-within:bg-white dark:group-focus-within:bg-zinc-900/80 backdrop-blur-sm">
                 <span className="text-zinc-500 font-medium select-none whitespace-nowrap text-lg">chipng.com/</span>
                 <div className="relative flex-1 h-full flex items-center ml-1">
                   {!username && (
@@ -82,7 +82,7 @@ const LandingPage: React.FC = () => {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.3 }}
-                      className="absolute text-zinc-700 pointer-events-none text-lg"
+                      className="absolute text-zinc-400 dark:text-zinc-700 pointer-events-none text-lg"
                     >
                       {placeholders[placeholderIndex]}
                     </motion.span>
@@ -91,7 +91,7 @@ const LandingPage: React.FC = () => {
                     type="text" 
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-transparent border-none outline-none text-white font-bold text-lg"
+                    className="w-full bg-transparent border-none outline-none text-zinc-950 dark:text-white font-bold text-lg"
                   />
                 </div>
               </div>
@@ -123,13 +123,13 @@ const LandingPage: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="bg-zinc-900/50 border border-zinc-800 p-8 rounded-[2.5rem] hover:border-zinc-700 transition-all"
+              className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-8 rounded-[2.5rem] hover:border-zinc-300 dark:hover:border-zinc-700 transition-all"
             >
-              <div className="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center mb-6">
-                <feature.icon className="text-lime-400 w-6 h-6" />
+              <div className="w-12 h-12 bg-zinc-200 dark:bg-zinc-800 rounded-2xl flex items-center justify-center mb-6">
+                <feature.icon className="text-lime-600 dark:text-lime-400 w-6 h-6" />
               </div>
               <h3 className="text-xl font-bold mb-4">{feature.title}</h3>
-              <p className="text-zinc-400 leading-relaxed">{feature.desc}</p>
+              <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">{feature.desc}</p>
             </motion.div>
           ))}
         </div>
@@ -139,7 +139,7 @@ const LandingPage: React.FC = () => {
       <BlogSection />
 
       {/* CTA Section */}
-      <section className="py-32 bg-zinc-950">
+      <section className="py-32 bg-white dark:bg-zinc-950">
         <div className="max-w-7xl mx-auto px-6">
           <div className="bg-lime-400 rounded-[3rem] p-12 md:p-24 text-zinc-950 text-center relative overflow-hidden">
             <div className="relative z-10">

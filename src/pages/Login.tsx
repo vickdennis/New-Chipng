@@ -6,6 +6,7 @@ import { auth, db, getUserByUsername } from '../firebase';
 import { toast } from 'sonner';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 import Logo from '../components/Logo';
+import ThemeToggle from '../components/ThemeToggle';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -78,43 +79,46 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-white flex items-center justify-center p-6 transition-colors duration-300">
+      <div className="fixed top-6 right-6">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-md">
         <div className="text-center mb-12">
           <Link to="/">
             <Logo size="lg" className="mb-6" />
           </Link>
-          <h1 className="text-4xl font-bold tracking-tighter mb-2">Welcome back</h1>
+          <h1 className="text-4xl font-bold tracking-tighter mb-2 text-zinc-950 dark:text-white">Welcome back</h1>
           <p className="text-zinc-500">Log in to manage your Chip NG profile</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-400 ml-1">Email Address</label>
+            <label className="text-sm font-medium text-zinc-500 dark:text-zinc-400 ml-1">Email Address</label>
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 w-5 h-5" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 w-5 h-5" />
               <input 
                 type="email" 
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com"
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl pl-12 pr-4 py-4 focus:ring-2 focus:ring-lime-400 outline-none transition-all"
+                className="w-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-12 pr-4 py-4 focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all text-zinc-950 dark:text-white"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-400 ml-1">Password</label>
+            <label className="text-sm font-medium text-zinc-500 dark:text-zinc-400 ml-1">Password</label>
             <div className="relative">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 w-5 h-5" />
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 w-5 h-5" />
               <input 
                 type="password" 
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-zinc-900 border border-zinc-800 rounded-2xl pl-12 pr-4 py-4 focus:ring-2 focus:ring-lime-400 outline-none transition-all"
+                className="w-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-12 pr-4 py-4 focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all text-zinc-950 dark:text-white"
               />
             </div>
           </div>
@@ -130,17 +134,17 @@ const Login: React.FC = () => {
 
         <div className="relative my-8">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-zinc-800"></div>
+            <div className="w-full border-t border-zinc-200 dark:border-zinc-800"></div>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-zinc-950 text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Or continue with</span>
+            <span className="px-2 bg-white dark:bg-zinc-950 text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Or continue with</span>
           </div>
         </div>
 
         <button 
           onClick={handleGoogleLogin}
           disabled={loading}
-          className="w-full bg-zinc-900 border border-zinc-800 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-zinc-800 transition-all disabled:opacity-50"
+          className="w-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-950 dark:text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all disabled:opacity-50"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
