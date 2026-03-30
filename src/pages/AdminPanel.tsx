@@ -7,7 +7,7 @@ import {
 import { 
   Users, Shield, Trash2, Ban, CheckCircle, 
   Search, ArrowLeft, BarChart2, TrendingUp,
-  DollarSign, Crown, CheckCircle2
+  DollarSign, Crown, CheckCircle2, FileText
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { 
@@ -24,7 +24,7 @@ const AdminPanel: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'users' | 'revenue' | 'brand'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'revenue' | 'brand' | 'blog'>('users');
 
   const LogoBox = ({ title, children, dark = false }: { title: string, children: React.ReactNode, dark?: boolean }) => (
     <div className={`flex flex-col items-center justify-center p-8 rounded-[2rem] border border-zinc-800 ${dark ? 'bg-zinc-950' : 'bg-white text-zinc-950'}`}>
@@ -158,6 +158,13 @@ const AdminPanel: React.FC = () => {
           >
             Brand Assets
           </button>
+          <Link 
+            to="/admin/blog"
+            className="px-8 py-3 rounded-2xl font-bold bg-zinc-900 text-zinc-500 hover:text-white transition-all flex items-center gap-2"
+          >
+            <FileText className="w-4 h-4" />
+            Blog Manager
+          </Link>
         </div>
 
         {activeTab === 'users' ? (
