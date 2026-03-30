@@ -73,6 +73,23 @@ export interface ThemeConfig {
   accent: string;
 }
 
+export interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt: string;
+  coverImage?: string;
+  tags?: string[];
+  author: string;
+  createdAt: string;
+  updatedAt: string;
+  published: boolean;
+  seoTitle?: string;
+  seoDescription?: string;
+  seoKeywords?: string[];
+}
+
 export const THEMES: Record<ThemeType, ThemeConfig> = {
   minimal: {
     name: 'minimal',

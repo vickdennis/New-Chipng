@@ -90,6 +90,28 @@
         "date": { "type": "string" }
       },
       "required": ["userId", "timestamp", "date"]
+    },
+    "Blog": {
+      "title": "Blog",
+      "description": "A blog post for content marketing and SEO.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "slug": { "type": "string" },
+        "content": { "type": "string" },
+        "excerpt": { "type": "string" },
+        "coverImage": { "type": "string", "format": "uri" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "author": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "published": { "type": "boolean" },
+        "seoTitle": { "type": "string" },
+        "seoDescription": { "type": "string" },
+        "seoKeywords": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["title", "slug", "content", "excerpt", "author", "createdAt", "updatedAt", "published"]
     }
   },
   "firestore": {
@@ -104,6 +126,10 @@
     "/analytics/{analyticsId}": {
       "schema": "Analytics",
       "description": "Analytics events."
+    },
+    "/blogs/{blogId}": {
+      "schema": "Blog",
+      "description": "Blog posts."
     }
   }
 }

@@ -49,6 +49,22 @@
 //   - timestamp: timestamp (required)
 //   - date: string (required)
 //
+// Collection: /blogs/{blogId}
+// Fields:
+//   - title: string (required)
+//   - slug: string (required, unique)
+//   - content: string (required)
+//   - excerpt: string (required)
+//   - author: string (required)
+//   - createdAt: timestamp (required)
+//   - updatedAt: timestamp (required)
+//   - published: boolean (required)
+//   - coverImage: string (optional)
+//   - tags: array (optional)
+//   - seoTitle: string (optional)
+//   - seoDescription: string (optional)
+//   - seoKeywords: array (optional)
+//
 // ===============================================================
 
 rules_version = '2';
@@ -135,6 +151,11 @@ service cloud.firestore {
     match /analytics/{analyticsId} {
       allow read: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
       allow create: if true; // Public click tracking
+    }
+
+    match /blogs/{blogId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow create, update, delete: if isAdmin();
     }
   }
 }
