@@ -24,6 +24,7 @@ const AdminBlogEditor: React.FC = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   
   const [formData, setFormData] = useState<Omit<BlogPost, 'id' | 'createdAt' | 'updatedAt'>>({
     title: '',
@@ -41,6 +42,16 @@ const AdminBlogEditor: React.FC = () => {
 
   const [tagInput, setTagInput] = useState('');
   const [keywordInput, setKeywordInput] = useState('');
+
+  useEffect(() => {
+    if (imageFile) {
+      const url = URL.createObjectURL(imageFile);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [imageFile]);
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -94,23 +105,36 @@ const AdminBlogEditor: React.FC = () => {
       // Upload image if a new file was selected
       if (imageFile && user) {
         setUploadProgress(0);
-        coverImageUrl = await blogService.uploadImage(imageFile, user.uid, (progress) => {
-          setUploadProgress(progress);
-        });
+        try {
+          coverImageUrl = await blogService.uploadImage(imageFile, user.uid, (progress) => {
+            setUploadProgress(progress);
+          });
+        } catch (uploadError: any) {
+          console.error('Upload error:', uploadError);
+          toast.error(`Image upload failed: ${uploadError.message || 'Unknown error'}`);
+          setSaving(false);
+          setUploadProgress(null);
+          return;
+        }
       }
 
       const dataToSave = { ...formData, coverImage: coverImageUrl, published: isPublished };
-      if (id) {
-        await blogService.updateBlogPost(id, dataToSave);
-        toast.success('Post updated successfully');
-      } else {
-        await blogService.createBlogPost(dataToSave);
-        toast.success('Post created successfully');
+      try {
+        if (id) {
+          await blogService.updateBlogPost(id, dataToSave);
+          toast.success('Post updated successfully');
+        } else {
+          await blogService.createBlogPost(dataToSave);
+          toast.success('Post created successfully');
+        }
+        navigate('/admin/blog');
+      } catch (saveError: any) {
+        console.error('Save error:', saveError);
+        toast.error(`Failed to save post: ${saveError.message || 'Permission denied'}`);
       }
-      navigate('/admin/blog');
-    } catch (error) {
-      console.error('Save error:', error);
-      toast.error('Failed to save post');
+    } catch (error: any) {
+      console.error('General error:', error);
+      toast.error('An unexpected error occurred');
     } finally {
       setSaving(false);
       setUploadProgress(null);
@@ -286,10 +310,10 @@ const AdminBlogEditor: React.FC = () => {
                 <label className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Cover Image</label>
                 
                 {/* Image Preview & Actions */}
-                {(formData.coverImage || imageFile) ? (
+                {(formData.coverImage || previewUrl) ? (
                   <div className="relative group aspect-video rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950">
                     <img 
-                      src={imageFile ? URL.createObjectURL(imageFile) : formData.coverImage} 
+                      src={previewUrl || formData.coverImage} 
                       alt="Cover Preview" 
                       className="w-full h-full object-cover"
                       referrerPolicy="no-referrer"

@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore';
 import { 
   ref, 
-  uploadBytesResumable, 
+  uploadBytes, 
   getDownloadURL 
 } from 'firebase/storage';
 import { db, storage, handleFirestoreError, OperationType } from '../firebase';
@@ -29,37 +29,29 @@ export const blogService = {
     userId: string, 
     onProgress?: (progress: number) => void
   ): Promise<string> {
-    return new Promise((resolve, reject) => {
-      try {
-        if (!file.type.startsWith('image/')) {
-          throw new Error('File must be an image');
-        }
-
-        const filename = `${Date.now()}-${file.name}`;
-        const storageRef = ref(storage, `blog-images/${userId}/${filename}`);
-        
-        const uploadTask = uploadBytesResumable(storageRef, file);
-
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            if (onProgress) onProgress(progress);
-          },
-          (error) => {
-            console.error('Upload error:', error);
-            reject(error);
-          },
-          async () => {
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-            resolve(downloadURL);
-          }
-        );
-      } catch (error) {
-        console.error('Error in uploadImage:', error);
-        reject(error);
+    try {
+      if (!file.type.startsWith('image/')) {
+        throw new Error('File must be an image');
       }
-    });
+
+      const filename = `${Date.now()}-${file.name}`;
+      const storageRef = ref(storage, `blog-images/${userId}/${filename}`);
+      
+      if (onProgress) onProgress(10); // Start progress
+      
+      const result = await uploadBytes(storageRef, file);
+      
+      if (onProgress) onProgress(90); // Upload complete, getting URL
+      
+      const downloadURL = await getDownloadURL(result.ref);
+      
+      if (onProgress) onProgress(100); // Done
+      
+      return downloadURL;
+    } catch (error) {
+      console.error('Error in uploadImage:', error);
+      throw error;
+    }
   },
 
   async getAllBlog(includeUnpublished = false): Promise<BlogPost[]> {
