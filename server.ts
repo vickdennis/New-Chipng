@@ -18,11 +18,16 @@ if (fs.existsSync(configPath)) {
   if (!admin.apps?.length) {
     admin.initializeApp({
       projectId: firebaseConfig.projectId,
+      storageBucket: firebaseConfig.storageBucket,
     });
   }
 }
 
 const db = admin.firestore();
+const bucket = admin.storage().bucket();
+
+import multer from "multer";
+const upload = multer({ storage: multer.memoryStorage() });
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || "sk_test_mock";
 
@@ -141,6 +146,37 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
   // API Routes
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  app.post("/api/upload", upload.single('file'), async (req, res) => {
+    try {
+      const file = req.file;
+      const { folder, userId, fileName } = req.body;
+
+      if (!file || !folder || !userId || !fileName) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const storagePath = `${folder}/${userId}/${fileName}`;
+      const blob = bucket.file(storagePath);
+      
+      await blob.save(file.buffer, {
+        metadata: {
+          contentType: file.mimetype,
+        },
+      });
+
+      // Make the file public or get a signed URL
+      // For simplicity in this app, we'll use the standard Firebase Storage URL format
+      // which matches what the client expects.
+      const encodedPath = encodeURIComponent(storagePath);
+      const publicUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodedPath}?alt=media`;
+
+      res.json({ url: publicUrl });
+    } catch (error: any) {
+      console.error("Server upload error:", error);
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.post("/api/verify-paystack", async (req, res) => {
