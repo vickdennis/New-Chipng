@@ -369,7 +369,15 @@ const AdminBlogEditor: React.FC = () => {
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) setImageFile(file);
+                        if (file) {
+                          if (file.size > 5 * 1024 * 1024) {
+                            toast.error('File size too large (max 5MB)');
+                            return;
+                          }
+                          setImageFile(file);
+                          // Clear the input value so the same file can be selected again
+                          e.target.value = '';
+                        }
                       }}
                     />
                   </div>
