@@ -32,6 +32,8 @@ const BlogPost: React.FC = () => {
         const data = await blogService.getPostBySlug(slug);
         if (data) {
           setPost(data);
+          // Increment views
+          blogService.incrementViews(data.id);
           // Fetch related posts
           if (data.tags && data.tags.length > 0) {
             const related = await blogService.getRelatedPosts(data.id, data.tags);

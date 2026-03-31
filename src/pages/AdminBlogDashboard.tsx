@@ -3,8 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { 
   Plus, Edit, Trash2, Eye, EyeOff, 
   ArrowLeft, Search, Calendar, Tag,
-  FileText, CheckCircle2, AlertCircle
+  FileText, CheckCircle2, AlertCircle,
+  BarChart2, TrendingUp, Users
 } from 'lucide-react';
+import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, 
+  Tooltip, ResponsiveContainer, Cell 
+} from 'recharts';
 import { blogService } from '../services/blogService';
 import { BlogPost } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -67,6 +72,21 @@ const AdminBlogDashboard: React.FC = () => {
     p.excerpt.toLowerCase().includes(search.toLowerCase())
   );
 
+  const stats = {
+    total: posts.length,
+    published: posts.filter(p => p.published).length,
+    drafts: posts.filter(p => !p.published).length,
+    totalViews: posts.reduce((acc, p) => acc + (p.views || 0), 0)
+  };
+
+  const chartData = posts
+    .sort((a, b) => (b.views || 0) - (a.views || 0))
+    .slice(0, 5)
+    .map(p => ({
+      name: p.title.length > 20 ? p.title.substring(0, 20) + '...' : p.title,
+      views: p.views || 0
+    }));
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white dark:bg-zinc-950 flex items-center justify-center transition-colors duration-300">
@@ -113,6 +133,103 @@ const AdminBlogDashboard: React.FC = () => {
           </div>
         </header>
 
+        {/* Analytics Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-lime-400/10 rounded-2xl flex items-center justify-center text-lime-600 dark:text-lime-400">
+                <FileText className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-sm text-zinc-500 font-bold uppercase tracking-wider">Total Posts</div>
+                <div className="text-3xl font-bold text-zinc-950 dark:text-white">{stats.total}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-sm text-zinc-500 font-bold uppercase tracking-wider">Published</div>
+                <div className="text-3xl font-bold text-zinc-950 dark:text-white">{stats.published}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-600 dark:text-orange-400">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-sm text-zinc-500 font-bold uppercase tracking-wider">Drafts</div>
+                <div className="text-3xl font-bold text-zinc-950 dark:text-white">{stats.drafts}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-600 dark:text-purple-400">
+                <TrendingUp className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-sm text-zinc-500 font-bold uppercase tracking-wider">Total Views</div>
+                <div className="text-3xl font-bold text-zinc-950 dark:text-white">{stats.totalViews}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Views Chart */}
+        {chartData.length > 0 && (
+          <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-8 mb-12">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">Top Performing Posts</h2>
+              <div className="flex items-center gap-2 text-zinc-500 text-sm">
+                <BarChart2 className="w-4 h-4" />
+                Views per post
+              </div>
+            </div>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#71717a', fontSize: 12 }}
+                    dy={10}
+                  />
+                  <YAxis 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#71717a', fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(163, 230, 53, 0.1)' }}
+                    contentStyle={{ 
+                      backgroundColor: '#18181b', 
+                      border: '1px solid #27272a',
+                      borderRadius: '12px',
+                      color: '#fff'
+                    }}
+                  />
+                  <Bar dataKey="views" radius={[6, 6, 0, 0]}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={index === 0 ? '#a3e635' : '#3f3f46'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-6">
           {filteredPosts.length > 0 ? (
             <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] overflow-hidden">
@@ -122,6 +239,7 @@ const AdminBlogDashboard: React.FC = () => {
                     <tr className="border-b border-zinc-200 dark:border-zinc-800">
                       <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Post</th>
                       <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Status</th>
+                      <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider text-center">Views</th>
                       <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Date</th>
                       <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider text-right">Actions</th>
                     </tr>
@@ -168,6 +286,10 @@ const AdminBlogDashboard: React.FC = () => {
                             {post.published ? <CheckCircle2 className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
                             {post.published ? 'Published' : 'Draft'}
                           </button>
+                        </td>
+                        <td className="px-8 py-6 text-center">
+                          <div className="font-bold text-zinc-950 dark:text-white">{post.views || 0}</div>
+                          <div className="text-[10px] text-zinc-500 uppercase tracking-widest">Views</div>
                         </td>
                         <td className="px-8 py-6 text-zinc-500 text-sm">
                           <div className="flex items-center gap-2">

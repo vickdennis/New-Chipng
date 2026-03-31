@@ -101,6 +101,7 @@ export interface BlogPost {
   seoTitle?: string;
   seoDescription?: string;
   seoKeywords?: string[];
+  views?: number;
 }
 
 export const THEMES: Record<ThemeType, ThemeConfig> = {

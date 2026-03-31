@@ -11,7 +11,8 @@ import {
   orderBy, 
   limit,
   Timestamp,
-  serverTimestamp
+  serverTimestamp,
+  increment
 } from 'firebase/firestore';
 import { 
   ref, 
@@ -118,11 +119,23 @@ export const blogService = {
         ...post,
         createdAt: now,
         updatedAt: now,
+        views: 0,
       });
       return docRef.id;
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, BLOGS_COLLECTION);
       throw error;
+    }
+  },
+
+  async incrementViews(id: string): Promise<void> {
+    try {
+      const docRef = doc(db, BLOGS_COLLECTION, id);
+      await updateDoc(docRef, {
+        views: increment(1)
+      });
+    } catch (error) {
+      console.error('Error incrementing views:', error);
     }
   },
 
