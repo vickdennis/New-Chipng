@@ -7,7 +7,7 @@ import {
 import { 
   Users, Shield, Trash2, Ban, CheckCircle, 
   Search, ArrowLeft, BarChart2, TrendingUp,
-  DollarSign, Crown, CheckCircle2, FileText
+  DollarSign, Crown, BadgeCheck, FileText
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -268,10 +268,10 @@ const AdminPanel: React.FC = () => {
                             </select>
                             <button 
                               onClick={() => handleToggleVerify(user.uid, user.isVerified || false)} 
-                              className={`p-2 rounded-lg transition-colors ${user.isVerified ? 'text-blue-500 bg-blue-500/10' : 'text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
+                              className={`p-2 rounded-lg transition-colors ${user.isVerified ? 'text-[#0095f6] bg-[#0095f6]/10' : 'text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
                               title={user.isVerified ? 'Unverify' : 'Verify'}
                             >
-                              <CheckCircle2 className="w-5 h-5" />
+                              <BadgeCheck className="w-5 h-5" />
                             </button>
                             <button 
                               onClick={() => handleToggleStatus(user.uid, user.status)}

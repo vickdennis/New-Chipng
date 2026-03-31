@@ -10,7 +10,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { 
   Share2, QrCode, X, Copy, Check, 
   ExternalLink, Link as LinkIcon, AlertCircle,
-  CheckCircle2, Youtube, Music2,
+  BadgeCheck, Youtube, Music2, UserPlus,
   Instagram, Twitter, Linkedin, Facebook, MessageCircle,
   MapPin, Calendar, Clock, ChevronRight, Github, Twitch, Mail, Ghost, MessageSquare,
   Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash
@@ -128,6 +128,41 @@ const PublicProfile: React.FC = () => {
     toast.success('Link copied to clipboard');
   };
 
+  const saveContact = () => {
+    if (!profile) return;
+    
+    const vcardLines = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      `FN:${profile.displayName || profile.username}`,
+      `N:;${profile.displayName || profile.username};;;`,
+      profile.email ? `EMAIL;TYPE=INTERNET:${profile.email}` : '',
+      profile.bio ? `NOTE:${profile.bio}` : '',
+      `URL:${window.location.href}`,
+    ];
+
+    // Add WhatsApp as phone if available
+    if (profile.socialLinks?.whatsapp) {
+      const phone = profile.socialLinks.whatsapp.replace(/\D/g, '');
+      if (phone) {
+        vcardLines.push(`TEL;TYPE=CELL:${phone}`);
+      }
+    }
+
+    vcardLines.push('END:VCARD');
+    const vcard = vcardLines.join('\n');
+
+    const blob = new Blob([vcard], { type: 'text/vcard' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${profile.username || 'contact'}.vcf`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Contact file downloaded');
+  };
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950 transition-colors duration-300">
       <div className="w-12 h-12 border-4 border-lime-500 dark:border-lime-400 border-t-transparent rounded-full animate-spin" />
@@ -224,7 +259,7 @@ const PublicProfile: React.FC = () => {
           <div className="flex items-center gap-2 mb-2">
             <h1 className="text-2xl font-bold tracking-tight">@{profile.username}</h1>
             {profile.isVerified && (
-              <CheckCircle2 className="w-5 h-5 text-blue-500 fill-blue-500/10" />
+              <BadgeCheck className="w-6 h-6 text-[#0095f6] fill-white" />
             )}
           </div>
           {profile.displayName && <h2 className="text-lg opacity-80 mb-4">{profile.displayName}</h2>}
@@ -396,16 +431,25 @@ const PublicProfile: React.FC = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/20 backdrop-blur-xl border border-white/10 p-2 rounded-full">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/20 backdrop-blur-xl border border-white/10 p-2 rounded-full shadow-2xl">
           <button 
             onClick={() => setShowQR(true)}
             className="p-3 hover:bg-white/10 rounded-full transition-colors"
+            title="Show QR Code"
           >
             <QrCode className="w-6 h-6" />
           </button>
           <button 
+            onClick={saveContact}
+            className="p-3 hover:bg-white/10 rounded-full transition-colors"
+            title="Save Contact"
+          >
+            <UserPlus className="w-6 h-6" />
+          </button>
+          <button 
             onClick={copyLink}
             className="p-3 hover:bg-white/10 rounded-full transition-colors"
+            title="Copy Link"
           >
             {copied ? <Check className="w-6 h-6 text-lime-400" /> : <Share2 className="w-6 h-6" />}
           </button>

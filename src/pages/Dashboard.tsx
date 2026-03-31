@@ -360,9 +360,14 @@ const Dashboard: React.FC = () => {
     const timestamp = Date.now();
     const storageRef = ref(storage, `${folder}/${user.uid}/${timestamp}_${file.name}`);
     
+    console.log(`Starting upload to: ${folder}/${user.uid}/${timestamp}_${file.name}`);
+    console.log('File info:', { name: file.name, size: file.size, type: file.type });
+
     try {
       const snapshot = await uploadBytes(storageRef, file);
+      console.log('Upload successful, getting download URL...');
       const url = await getDownloadURL(snapshot.ref);
+      console.log('Download URL obtained:', url);
       
       if (type === 'profile') {
         await handleUpdateProfile({ photoURL: url });

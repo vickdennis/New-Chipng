@@ -106,10 +106,12 @@ const AdminBlogEditor: React.FC = () => {
       // Upload image if a new file was selected
       if (imageFile && user) {
         setUploadProgress(0);
+        console.log('Starting blog image upload:', imageFile.name);
         try {
           coverImageUrl = await blogService.uploadImage(imageFile, user.uid, (progress) => {
             setUploadProgress(progress);
           });
+          console.log('Blog image upload successful:', coverImageUrl);
         } catch (uploadError: any) {
           console.error('Upload error:', uploadError);
           toast.error(`Image upload failed: ${uploadError.message || 'Unknown error'}`);
