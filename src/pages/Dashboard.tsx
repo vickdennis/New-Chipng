@@ -359,44 +359,44 @@ const Dashboard: React.FC = () => {
     const folder = type === 'profile' ? 'profiles' : type === 'background' ? 'backgrounds' : 'link-icons';
     const timestamp = Date.now();
     const fileName = `${timestamp}_${file.name}`;
+    const storagePath = `${folder}/${user.uid}/${fileName}`;
     
-    console.log(`Starting server-side upload for: ${folder}/${user.uid}/${fileName}`);
+    const storageRef = ref(storage, storagePath);
+    const uploadTask = uploadBytesResumable(storageRef, file);
 
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('folder', folder);
-      formData.append('userId', user.uid);
-      formData.append('fileName', fileName);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        console.log(`Upload is ${progress}% done`);
+      },
+      (error) => {
+        console.error('Upload task error:', error);
+        toast.error(`Upload failed: ${error.message}`);
+        setIsUploading(false);
+      },
+      async () => {
+        try {
+          const url = await getDownloadURL(uploadTask.snapshot.ref);
+          console.log('Download URL obtained:', url);
+          
+          if (type === 'profile') {
+            await handleUpdateProfile({ photoURL: url });
+          } else if (type === 'background') {
+            await handleUpdateProfile({ backgroundImage: url, backgroundType: 'image' });
+          } else if (type === 'link-icon' && linkId) {
+            await handleUpdateLink(linkId, { icon: url });
+          }
+          toast.success(`${type.replace('-', ' ')} updated`);
+        } catch (error: any) {
+          console.error('Upload error:', error);
+          toast.error(`Upload failed: ${error.message}`);
+        } finally {
+          setIsUploading(false);
+          e.target.value = '';
+        }
       }
-
-      const { url } = await response.json();
-      console.log('Download URL obtained from server:', url);
-      
-      if (type === 'profile') {
-        await handleUpdateProfile({ photoURL: url });
-      } else if (type === 'background') {
-        await handleUpdateProfile({ backgroundImage: url, backgroundType: 'image' });
-      } else if (type === 'link-icon' && linkId) {
-        await handleUpdateLink(linkId, { icon: url });
-      }
-      toast.success(`${type.replace('-', ' ')} updated`);
-    } catch (error: any) {
-      console.error('Upload error:', error);
-      toast.error(`Upload failed: ${error.message}`);
-    } finally {
-      setIsUploading(false);
-      e.target.value = '';
-    }
+    );
   };
 
   const copyLink = () => {

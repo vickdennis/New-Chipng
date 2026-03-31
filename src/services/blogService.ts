@@ -42,29 +42,34 @@ export const blogService = {
       // Generate unique filename: blog-images/{userId}/{timestamp_filename}
       const timestamp = Date.now();
       const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-      const filename = `${timestamp}_${cleanFileName}`;
+      const filename = `blog-images/${userId}/${timestamp}_${cleanFileName}`;
       
-      console.log(`Starting server-side upload for blog image: blog-images/${userId}/${filename}`);
-      
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('folder', 'blog-images');
-      formData.append('userId', userId);
-      formData.append('fileName', filename);
+      const storageRef = ref(storage, filename);
+      const uploadTask = uploadBytesResumable(storageRef, file);
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
+      return new Promise((resolve, reject) => {
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            if (onProgress) onProgress(progress);
+          },
+          (error) => {
+            console.error('Upload task error:', error);
+            reject(error);
+          },
+          async () => {
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              console.log('Blog image upload successful, URL:', downloadURL);
+              resolve(downloadURL);
+            } catch (error) {
+              console.error('Error getting download URL:', error);
+              reject(error);
+            }
+          }
+        );
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      const { url } = await response.json();
-      console.log('Blog image upload successful, URL:', url);
-      return url;
     } catch (error: any) {
       console.error('Error in uploadImage:', error);
       throw new Error(error.message || 'Failed to upload image');
