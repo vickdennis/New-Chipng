@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore';
 import { 
   ref, 
-  uploadBytesResumable, 
+  uploadBytes, 
   getDownloadURL 
 } from 'firebase/storage';
 import { db, storage, handleFirestoreError, OperationType } from '../firebase';
@@ -31,48 +31,27 @@ export const blogService = {
     onProgress?: (progress: number) => void
   ): Promise<string> {
     try {
-      if (!file) {
-        throw new Error('No file provided');
-      }
-
       if (!file.type.startsWith('image/')) {
         throw new Error('File must be an image');
       }
 
-      // Generate unique filename: blog-images/{userId}/{timestamp_filename}
-      const timestamp = Date.now();
-      const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-      const filename = `blog-images/${userId}/${timestamp}_${cleanFileName}`;
+      const filename = `${Date.now()}-${file.name}`;
+      const storageRef = ref(storage, `blog-images/${userId}/${filename}`);
       
-      const storageRef = ref(storage, filename);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-
-      return new Promise((resolve, reject) => {
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            if (onProgress) onProgress(progress);
-          },
-          (error) => {
-            console.error('Upload task error:', error);
-            reject(error);
-          },
-          async () => {
-            try {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              console.log('Blog image upload successful, URL:', downloadURL);
-              resolve(downloadURL);
-            } catch (error) {
-              console.error('Error getting download URL:', error);
-              reject(error);
-            }
-          }
-        );
-      });
-    } catch (error: any) {
+      if (onProgress) onProgress(10); // Start progress
+      
+      const result = await uploadBytes(storageRef, file);
+      
+      if (onProgress) onProgress(90); // Upload complete, getting URL
+      
+      const downloadURL = await getDownloadURL(result.ref);
+      
+      if (onProgress) onProgress(100); // Done
+      
+      return downloadURL;
+    } catch (error) {
       console.error('Error in uploadImage:', error);
-      throw new Error(error.message || 'Failed to upload image');
+      throw error;
     }
   },
 
