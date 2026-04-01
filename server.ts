@@ -18,11 +18,13 @@ if (fs.existsSync(configPath)) {
   if (!admin.apps?.length) {
     admin.initializeApp({
       projectId: firebaseConfig.projectId,
+      storageBucket: firebaseConfig.storageBucket,
     });
   }
 }
 
 const db = admin.firestore();
+const bucket = admin.storage().bucket();
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || "sk_test_mock";
 

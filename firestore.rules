@@ -129,9 +129,9 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if true; // Public profiles
-      allow create: if isAuthenticated() && isOwner(userId) && 
+      allow create: if isAdmin() || (isAuthenticated() && isOwner(userId) && 
                       request.resource.data.role == 'user' &&
-                      request.resource.data.keys().hasAll(['email', 'username', 'role', 'createdAt']);
+                      request.resource.data.keys().hasAll(['email', 'username', 'role', 'createdAt']));
       allow update: if isAdmin() || 
                       (isOwner(userId) && 
                        (!('role' in resource.data) || request.resource.data.role == resource.data.role) && 

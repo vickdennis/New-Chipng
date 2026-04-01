@@ -62,7 +62,9 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 }
 
 export const getUserByUsername = async (username: string) => {
-  const cleanUsername = username.toLowerCase().trim();
+  const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
+  if (!cleanUsername) return null;
+  
   const q = query(
     collection(db, 'users'),
     where('username', '==', cleanUsername),

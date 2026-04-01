@@ -47,6 +47,7 @@ const PublicProfile: React.FC = () => {
         }
 
         const userId = userData.uid;
+        setProfile(userData as unknown as User);
         const profileRef = doc(db, 'users', userId);
 
         // Track profile view

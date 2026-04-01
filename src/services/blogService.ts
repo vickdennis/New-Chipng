@@ -42,11 +42,10 @@ export const blogService = {
       // Generate unique filename: blog-images/{userId}/{timestamp_filename}
       const timestamp = Date.now();
       const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-      const filename = `${timestamp}_${cleanFileName}`;
-      const storageRef = ref(storage, `blog-images/${userId}/${filename}`);
+      const filename = `blog-images/${userId}/${timestamp}_${cleanFileName}`;
       
-      console.log(`Starting upload to: blog-images/${userId}/${filename}`);
-      
+      const storageRef = ref(storage, filename);
+      console.log('Uploading to storage path:', filename);
       const uploadTask = uploadBytesResumable(storageRef, file);
 
       return new Promise((resolve, reject) => {
@@ -54,20 +53,21 @@ export const blogService = {
           'state_changed',
           (snapshot) => {
             const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log(`Blog upload progress: ${progress.toFixed(2)}%`);
             if (onProgress) onProgress(progress);
           },
           (error) => {
             console.error('Upload task error:', error);
-            reject(new Error(error.message || 'Failed to upload image'));
+            reject(error);
           },
           async () => {
             try {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              console.log('Upload successful, URL:', downloadURL);
+              console.log('Blog image upload successful, URL:', downloadURL);
               resolve(downloadURL);
-            } catch (urlError: any) {
-              console.error('Error getting download URL:', urlError);
-              reject(new Error(urlError.message || 'Failed to get download URL'));
+            } catch (error) {
+              console.error('Error getting download URL:', error);
+              reject(error);
             }
           }
         );
