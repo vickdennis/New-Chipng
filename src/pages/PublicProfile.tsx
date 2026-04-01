@@ -259,7 +259,10 @@ const PublicProfile: React.FC = () => {
           <div className="flex items-center gap-2 mb-2">
             <h1 className="text-2xl font-bold tracking-tight">@{profile.username}</h1>
             {profile.isVerified && (
-              <BadgeCheck className="w-6 h-6 text-[#0095f6] fill-white" />
+              <div className="relative flex items-center justify-center">
+                <BadgeCheck className="w-6 h-6 text-[#0095f6] fill-[#0095f6]" />
+                <Check className="w-3 h-3 text-white absolute" strokeWidth={4} />
+              </div>
             )}
           </div>
           {profile.displayName && <h2 className="text-lg opacity-80 mb-4">{profile.displayName}</h2>}

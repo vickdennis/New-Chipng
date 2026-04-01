@@ -5,7 +5,7 @@ import {
   collection, query, where, orderBy, onSnapshot, 
   addDoc, updateDoc, deleteDoc, doc, writeBatch, getDoc
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { 
   DndContext, closestCenter, KeyboardSensor, PointerSensor, 
   useSensor, useSensors 
@@ -364,19 +364,39 @@ const Dashboard: React.FC = () => {
     console.log('File info:', { name: file.name, size: file.size, type: file.type });
 
     try {
-      const snapshot = await uploadBytes(storageRef, file);
-      console.log('Upload successful, getting download URL...');
-      const url = await getDownloadURL(snapshot.ref);
-      console.log('Download URL obtained:', url);
-      
-      if (type === 'profile') {
-        await handleUpdateProfile({ photoURL: url });
-      } else if (type === 'background') {
-        await handleUpdateProfile({ backgroundImage: url, backgroundType: 'image' });
-      } else if (type === 'link-icon' && linkId) {
-        await handleUpdateLink(linkId, { icon: url });
-      }
-      toast.success(`${type.replace('-', ' ')} updated`);
+      const uploadTask = uploadBytesResumable(storageRef, file);
+
+      await new Promise((resolve, reject) => {
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log(`Upload progress: ${progress}%`);
+          },
+          (error) => {
+            console.error('Upload task error:', error);
+            reject(error);
+          },
+          async () => {
+            try {
+              const url = await getDownloadURL(uploadTask.snapshot.ref);
+              console.log('Download URL obtained:', url);
+              
+              if (type === 'profile') {
+                await handleUpdateProfile({ photoURL: url });
+              } else if (type === 'background') {
+                await handleUpdateProfile({ backgroundImage: url, backgroundType: 'image' });
+              } else if (type === 'link-icon' && linkId) {
+                await handleUpdateLink(linkId, { icon: url });
+              }
+              toast.success(`${type.replace('-', ' ')} updated`);
+              resolve(url);
+            } catch (urlError) {
+              reject(urlError);
+            }
+          }
+        );
+      });
     } catch (error) {
       console.error('Upload error:', error);
       toast.error(`Failed to upload ${type.replace('-', ' ')} image. Please check your connection.`);
