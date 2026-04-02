@@ -46,6 +46,7 @@ export const blogService = {
       
       const storageRef = ref(storage, filename);
       console.log('Uploading to storage path:', filename);
+      
       const uploadTask = uploadBytesResumable(storageRef, file);
 
       return new Promise((resolve, reject) => {
@@ -53,28 +54,31 @@ export const blogService = {
           'state_changed',
           (snapshot) => {
             const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            console.log(`Blog upload progress: ${progress.toFixed(2)}%`);
             if (onProgress) onProgress(progress);
           },
-          (error) => {
+          (error: any) => {
             console.error('Upload task error:', error);
-            reject(error);
+            if (error.code === 'storage/unauthorized') {
+              reject(new Error('Upload failed: You do not have permission to upload files.'));
+            } else if (error.code === 'storage/quota-exceeded') {
+              reject(new Error('Upload failed: Storage quota exceeded.'));
+            } else {
+              reject(new Error(error.message || 'Failed to upload image. Please check your connection.'));
+            }
           },
           async () => {
             try {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              console.log('Blog image upload successful, URL:', downloadURL);
               resolve(downloadURL);
-            } catch (error) {
-              console.error('Error getting download URL:', error);
-              reject(error);
+            } catch (error: any) {
+              reject(new Error(error.message || 'Failed to get download URL'));
             }
           }
         );
       });
     } catch (error: any) {
       console.error('Error in uploadImage:', error);
-      throw new Error(error.message || 'Failed to upload image');
+      throw error;
     }
   },
 

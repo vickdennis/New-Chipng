@@ -1,5 +1,6 @@
 export type UserRole = 'user' | 'admin';
-export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset';
+export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'customImage';
+export type LayoutType = 'stack' | 'grid' | 'left';
 export type ButtonStyle = 'rounded' | 'pill' | 'square';
 export type BackgroundType = 'solid' | 'gradient' | 'image';
 export type PlanType = 'basic' | 'pro' | 'business';
@@ -32,6 +33,7 @@ export interface User {
   isVerified?: boolean;
   plan: PlanType;
   subscriptionStatus: 'active' | 'inactive';
+  layout: LayoutType;
   location?: {
     lat: number;
     lng: number;
@@ -144,5 +146,29 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20',
     buttonText: 'text-white',
     accent: 'bg-orange-200',
+  },
+  ocean: {
+    name: 'ocean',
+    background: 'bg-gradient-to-br from-blue-600 to-cyan-400',
+    text: 'text-white',
+    button: 'bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30',
+    buttonText: 'text-white',
+    accent: 'bg-blue-200',
+  },
+  forest: {
+    name: 'forest',
+    background: 'bg-gradient-to-br from-emerald-600 to-teal-800',
+    text: 'text-white',
+    button: 'bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20',
+    buttonText: 'text-white',
+    accent: 'bg-emerald-200',
+  },
+  customImage: {
+    name: 'customImage',
+    background: 'bg-zinc-900', // Fallback
+    text: 'text-white',
+    button: 'bg-black/40 backdrop-blur-md border border-white/20 hover:bg-black/60',
+    buttonText: 'text-white',
+    accent: 'bg-white',
   },
 };

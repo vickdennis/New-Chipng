@@ -16,6 +16,7 @@ import AdminBlogEditor from './pages/AdminBlogEditor';
 import { Toaster } from 'sonner';
 
 import ErrorBoundary from './components/ErrorBoundary';
+import SupportChatbot from './components/SupportChatbot';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean }> = ({ children, adminOnly }) => {
   const { user, loading } = useAuth();
@@ -49,6 +50,7 @@ const App: React.FC = () => {
             </Routes>
           </Router>
           <Toaster position="top-center" richColors />
+          <SupportChatbot />
         </AuthProvider>
       </ThemeProvider>
     </ErrorBoundary>

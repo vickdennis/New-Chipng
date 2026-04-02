@@ -47,7 +47,6 @@ const PublicProfile: React.FC = () => {
         }
 
         const userId = userData.uid;
-        setProfile(userData as unknown as User);
         const profileRef = doc(db, 'users', userId);
 
         // Track profile view
@@ -221,14 +220,15 @@ const PublicProfile: React.FC = () => {
   return (
     <div className={`min-h-screen relative ${theme.background} ${theme.text} selection:bg-white selection:text-black`}>
       {/* Custom Background Image */}
-      {profile.backgroundType === 'image' && profile.backgroundImage && (
+      {(profile.backgroundType === 'image' || profile.theme === 'customImage') && profile.backgroundImage && (
         <div 
-          className="fixed inset-0 z-0 opacity-40 pointer-events-none"
+          className="fixed inset-0 z-0 pointer-events-none"
           style={{ 
             backgroundImage: `url(${profile.backgroundImage})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            filter: 'blur(10px)'
+            opacity: profile.theme === 'customImage' ? 0.6 : 0.4,
+            filter: profile.theme === 'customImage' ? 'none' : 'blur(10px)'
           }}
         />
       )}
@@ -292,8 +292,14 @@ const PublicProfile: React.FC = () => {
         </motion.div>
 
         {/* Links List */}
-        <div className="w-full space-y-4">
+        <div className={`w-full ${
+          profile.layout === 'grid' 
+            ? 'grid grid-cols-1 sm:grid-cols-2 gap-4' 
+            : 'flex flex-col gap-4'
+        }`}>
           {links.map((link, i) => {
+            const isFullWidth = profile.layout !== 'grid' || link.type === 'youtube';
+            
             if (link.type === 'youtube') {
               const videoId = link.url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/)?.[1];
               if (videoId) {
@@ -303,7 +309,7 @@ const PublicProfile: React.FC = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
-                    className={`w-full overflow-hidden ${theme.button} ${btnStyle} border border-white/10`}
+                    className={`w-full overflow-hidden ${theme.button} ${btnStyle} border border-white/10 ${profile.layout === 'grid' ? 'sm:col-span-2' : ''}`}
                   >
                     <div className="aspect-video w-full">
                       <iframe
@@ -321,25 +327,6 @@ const PublicProfile: React.FC = () => {
               }
             }
 
-            if (link.type === 'tiktok') {
-              return (
-                <motion.button
-                  key={link.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  onClick={() => handleLinkClick(link.id, link.url)}
-                  className={`w-full p-5 ${theme.button} ${theme.buttonText} ${btnStyle} font-bold text-lg transition-all flex items-center justify-between group relative overflow-hidden border border-white/10`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Music2 className="w-5 h-5" />
-                    <span>{link.title}</span>
-                  </div>
-                  <ExternalLink className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </motion.button>
-              );
-            }
-
             return (
               <motion.button
                 key={link.id}
@@ -347,20 +334,28 @@ const PublicProfile: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 onClick={() => handleLinkClick(link.id, link.url)}
-                className={`w-full p-5 ${theme.button} ${theme.buttonText} ${btnStyle} font-bold text-lg transition-all flex items-center justify-between group relative overflow-hidden border border-white/10`}
+                className={`w-full p-5 ${theme.button} ${theme.buttonText} ${btnStyle} font-bold text-lg transition-all flex items-center justify-between group relative overflow-hidden border border-white/10 ${
+                  profile.layout === 'left' ? 'justify-start' : 'justify-center'
+                }`}
               >
-                <div className="flex items-center gap-4 w-full">
+                <div className={`flex items-center gap-4 w-full ${
+                  profile.layout === 'left' ? 'justify-start' : 'justify-center'
+                }`}>
                   {(link.icon || getFavicon(link.url)) && (
                     <img 
                       src={link.icon || getFavicon(link.url)!} 
                       alt="" 
-                      className="w-6 h-6 rounded-md object-cover"
+                      className="w-6 h-6 rounded-md object-cover shrink-0"
                       referrerPolicy="no-referrer"
                     />
                   )}
-                  <span className="flex-1 text-center pr-6">{link.title}</span>
+                  <span className={`truncate ${profile.layout === 'left' ? '' : 'flex-1 text-center pr-6'}`}>
+                    {link.title}
+                  </span>
                 </div>
-                <ExternalLink className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity absolute right-5" />
+                <ExternalLink className={`w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ${
+                  profile.layout === 'left' ? 'ml-auto' : 'absolute right-5'
+                }`} />
               </motion.button>
             );
           })}
