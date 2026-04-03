@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   MessageCircle, X, Send, Mic, MicOff, 
   Volume2, VolumeX, Loader2, Sparkles,
-  User, Bot, Headphones, CheckCircle2
+  User, Bot, Headphones, CheckCircle2,
+  Cpu, Orbit, Zap, MessageSquareMore
 } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { GoogleGenAI, Modality, LiveServerMessage, Type, FunctionDeclaration } from "@google/genai";
@@ -79,19 +80,23 @@ const ChatBot: React.FC = () => {
 
     try {
       const apiKey = process.env.GEMINI_API_KEY;
+      console.log('ChatBot: Sending message...', { hasApiKey: !!apiKey });
+      
       if (!apiKey) {
-        throw new Error('Gemini API key is not configured');
+        throw new Error('Gemini API key is not configured. Please add it in the settings.');
       }
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: userMsg,
+        contents: [{ role: 'user', parts: [{ text: userMsg }] }],
         config: {
           systemInstruction: "You are a helpful assistant for Chip NG, a link-in-bio platform in Nigeria. You help users with their profiles, analytics, and subscriptions. You also assist admins in blog management by generating blog posts, meta descriptions, tags, and slugs. When asked for blog help, use the provided tools to generate structured suggestions.",
           tools: [{ functionDeclarations: [suggestBlogContent, suggestSEOMetadata] }]
         }
       });
+
+      console.log('ChatBot: AI Response received', { hasFunctionCalls: !!response.functionCalls });
 
       if (response.functionCalls && response.functionCalls.length > 0) {
         for (const call of response.functionCalls) {
@@ -100,36 +105,54 @@ const ChatBot: React.FC = () => {
             // Use Pro model for complex content generation
             const genResponse = await ai.models.generateContent({
               model: "gemini-3.1-pro-preview",
-              contents: `Generate a full blog post structure for the topic: "${topic}" with a ${tone || 'professional'} tone. Return as JSON with fields: title, content, excerpt, tags (array), slug, seoTitle, seoDescription, seoKeywords (array).`,
+              contents: [{ 
+                role: 'user', 
+                parts: [{ text: `Generate a full blog post structure for the topic: "${topic}" with a ${tone || 'professional'} tone. Return as JSON with fields: title, content, excerpt, tags (array), slug, seoTitle, seoDescription, seoKeywords (array).` }] 
+              }],
               config: { responseMimeType: "application/json" }
             });
             
-            if (genResponse.text) {
+            const responseText = genResponse.text;
+            if (responseText) {
               // Sanitize JSON response (remove markdown blocks if present)
-              const cleanJson = genResponse.text.replace(/```json\n?|```/g, '').trim();
-              const suggestion = JSON.parse(cleanJson);
-              setMessages(prev => [...prev, { 
-                role: 'bot', 
-                content: `I've generated a blog post suggestion for "**${suggestion.title}**". You can see the details below and apply them to your editor.`,
-                suggestion 
-              }]);
+              const cleanJson = responseText.replace(/```json\n?|```/g, '').trim();
+              try {
+                const suggestion = JSON.parse(cleanJson);
+                setMessages(prev => [...prev, { 
+                  role: 'bot', 
+                  content: `I've generated a blog post suggestion for "**${suggestion.title}**". You can see the details below and apply them to your editor.`,
+                  suggestion 
+                }]);
+              } catch (parseError) {
+                console.error('JSON Parse Error:', parseError);
+                setMessages(prev => [...prev, { role: 'bot', content: "I generated a suggestion but had trouble formatting it. Please try again." }]);
+              }
             }
           } else if (call.name === 'suggestSEOMetadata') {
             const { content } = call.args as any;
             const genResponse = await ai.models.generateContent({
               model: "gemini-3-flash-preview",
-              contents: `Generate SEO metadata for this content: "${content.substring(0, 500)}...". Return as JSON with fields: seoTitle, seoDescription, seoKeywords (array).`,
+              contents: [{
+                role: 'user',
+                parts: [{ text: `Generate SEO metadata for this content: "${content.substring(0, 500)}...". Return as JSON with fields: seoTitle, seoDescription, seoKeywords (array).` }]
+              }],
               config: { responseMimeType: "application/json" }
             });
             
-            if (genResponse.text) {
-              const cleanJson = genResponse.text.replace(/```json\n?|```/g, '').trim();
-              const suggestion = JSON.parse(cleanJson);
-              setMessages(prev => [...prev, { 
-                role: 'bot', 
-                content: `Here is the suggested SEO metadata for your post:`,
-                suggestion 
-              }]);
+            const responseText = genResponse.text;
+            if (responseText) {
+              const cleanJson = responseText.replace(/```json\n?|```/g, '').trim();
+              try {
+                const suggestion = JSON.parse(cleanJson);
+                setMessages(prev => [...prev, { 
+                  role: 'bot', 
+                  content: `Here is the suggested SEO metadata for your post:`,
+                  suggestion 
+                }]);
+              } catch (parseError) {
+                console.error('JSON Parse Error:', parseError);
+                setMessages(prev => [...prev, { role: 'bot', content: "I generated SEO metadata but had trouble formatting it." }]);
+              }
             }
           }
         }
@@ -156,7 +179,11 @@ const ChatBot: React.FC = () => {
   // Voice Chat Logic (Live API)
   const startLiveSession = async () => {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('Gemini API key is not configured. Please add it in the settings.');
+      }
+      const ai = new GoogleGenAI({ apiKey });
       
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
       
@@ -337,7 +364,7 @@ const ChatBot: React.FC = () => {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-lime-400 text-zinc-950 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-all z-[9999] group"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-lime-400 to-lime-500 text-zinc-950 rounded-2xl shadow-[0_0_20px_rgba(163,230,53,0.3)] flex items-center justify-center hover:scale-110 hover:shadow-[0_0_30px_rgba(163,230,53,0.5)] transition-all z-[9999] group border border-lime-300/50"
       >
         <AnimatePresence mode="wait">
           {isOpen ? (
@@ -357,7 +384,10 @@ const ChatBot: React.FC = () => {
               exit={{ rotate: -90, opacity: 0 }}
               className="relative"
             >
-              <MessageCircle className="w-6 h-6" />
+              <Orbit className="w-6 h-6 animate-[spin_10s_linear_infinite]" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                <Zap className="w-3 h-3 fill-current" />
+              </div>
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-lime-400 animate-pulse" />
             </motion.div>
           )}
@@ -376,8 +406,8 @@ const ChatBot: React.FC = () => {
             {/* Header */}
             <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/50">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-lime-400 rounded-2xl flex items-center justify-center">
-                  <Bot className="w-6 h-6 text-zinc-950" />
+                <div className="w-10 h-10 bg-gradient-to-br from-lime-400 to-lime-500 rounded-2xl flex items-center justify-center shadow-lg shadow-lime-400/20">
+                  <Cpu className="w-6 h-6 text-zinc-950" />
                 </div>
                 <div>
                   <h3 className="font-bold dark:text-white">Chip Assistant</h3>
