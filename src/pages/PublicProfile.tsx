@@ -3,7 +3,7 @@ import { useParams, Link as RouterLink } from 'react-router-dom';
 import { db, getUserByUsername, handleFirestoreError, OperationType } from '../firebase';
 import { 
   collection, query, where, orderBy, onSnapshot, 
-  doc, updateDoc, increment 
+  doc, updateDoc, increment, limit 
 } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -36,44 +36,38 @@ const PublicProfile: React.FC = () => {
     let unsubProfile: () => void = () => {};
     let unsubLinks: () => void = () => {};
 
-    const fetchProfile = async () => {
-      try {
-        const userData = await getUserByUsername(username);
+    const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
+    const userQuery = query(
+      collection(db, 'users'),
+      where('username', '==', cleanUsername),
+      limit(1)
+    );
+
+    unsubProfile = onSnapshot(userQuery, (snapshot) => {
+      if (!snapshot.empty) {
+        const userData = { uid: snapshot.docs[0].id, ...snapshot.docs[0].data() } as User;
+        setProfile(userData);
+        setError(null);
         
-        if (!userData) {
-          setError('Profile not found');
-          setLoading(false);
-          return;
-        }
-
-        const userId = userData.uid;
-        const profileRef = doc(db, 'users', userId);
-
-        // Track profile view
+        // Track profile view (only once per session or on first load)
+        const profileRef = doc(db, 'users', userData.uid);
         updateDoc(profileRef, {
           totalClicks: increment(1)
         }).catch(err => {
           console.error('Failed to track profile view:', err);
         });
 
-        unsubProfile = onSnapshot(profileRef, (doc) => {
-          if (doc.exists()) {
-            setProfile(doc.data() as User);
-          } else {
-            setError('Profile no longer exists');
-          }
-        }, (error) => {
-          handleFirestoreError(error, OperationType.GET, profileRef.path);
-        });
-
-        const q = query(
+        // Fetch links
+        const linksQuery = query(
           collection(db, 'links'), 
-          where('userId', '==', userId), 
+          where('userId', '==', userData.uid), 
           where('active', '==', true),
           orderBy('position', 'asc')
         );
-        unsubLinks = onSnapshot(q, (snapshot) => {
-          const allLinks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Link));
+
+        if (unsubLinks) unsubLinks();
+        unsubLinks = onSnapshot(linksQuery, (linkSnapshot) => {
+          const allLinks = linkSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Link));
           
           // Filter by scheduling
           const now = new Date();
@@ -94,14 +88,15 @@ const PublicProfile: React.FC = () => {
         }, (error) => {
           handleFirestoreError(error, OperationType.LIST, 'links');
         });
-      } catch (err) {
-        console.error(err);
-        setError('Something went wrong');
+      } else {
+        setError('Profile not found');
         setLoading(false);
       }
-    };
-
-    fetchProfile();
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'users');
+      setError('Something went wrong');
+      setLoading(false);
+    });
 
     return () => {
       unsubProfile();

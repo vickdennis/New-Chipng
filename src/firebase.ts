@@ -62,18 +62,34 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 }
 
 export const getUserByUsername = async (username: string) => {
+  console.log('Fetching user by username:', username);
   const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
-  if (!cleanUsername) return null;
+  console.log('Cleaned username:', cleanUsername);
   
-  const q = query(
-    collection(db, 'users'),
-    where('username', '==', cleanUsername),
-    limit(1)
-  );
+  if (!cleanUsername) {
+    console.warn('Empty cleaned username, returning null');
+    return null;
+  }
   
-  const querySnapshot = await getDocs(q);
-  if (querySnapshot.empty) return null;
-  
-  const doc = querySnapshot.docs[0];
-  return { uid: doc.id, ...doc.data() };
+  try {
+    const q = query(
+      collection(db, 'users'),
+      where('username', '==', cleanUsername),
+      limit(1)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
+      console.log('No user found with username:', cleanUsername);
+      return null;
+    }
+    
+    const doc = querySnapshot.docs[0];
+    const data = { uid: doc.id, ...doc.data() };
+    console.log('User found:', data);
+    return data;
+  } catch (error) {
+    console.error('Error in getUserByUsername:', error);
+    return null;
+  }
 };
