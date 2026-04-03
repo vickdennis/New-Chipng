@@ -5,6 +5,7 @@ import {
   Volume2, VolumeX, Loader2, Sparkles,
   User, Bot, Headphones, CheckCircle2
 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { GoogleGenAI, Modality, LiveServerMessage, Type, FunctionDeclaration } from "@google/genai";
 import ReactMarkdown from 'react-markdown';
 import { toast } from 'sonner';
@@ -42,10 +43,11 @@ const suggestSEOMetadata: FunctionDeclaration = {
 };
 
 const ChatBot: React.FC = () => {
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<'text' | 'voice'>('text');
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'bot', content: 'Hello! I am your Chip NG assistant. I can help you with your profile or even assist in managing your blog. How can I help you today?' }
+    { role: 'bot', content: 'Hello! I am your Chip NG assistant. I can help you with your profile. How can I assist you today?' }
   ]);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -314,6 +316,21 @@ const ChatBot: React.FC = () => {
     }
     return pcmData;
   };
+
+  // Check if current page is a public profile
+  const isPublicProfile = () => {
+    const path = location.pathname;
+    const reservedPaths = ['/', '/login', '/signup', '/dashboard', '/pricing', '/blog', '/admin'];
+    
+    // Check if it's exactly one of the reserved paths or starts with one followed by /
+    const isReserved = reservedPaths.some(p => path === p || path.startsWith(p + '/'));
+    
+    // If it's not reserved and matches /:username (one segment)
+    const segments = path.split('/').filter(Boolean);
+    return !isReserved && segments.length === 1;
+  };
+
+  if (isPublicProfile()) return null;
 
   return (
     <>
