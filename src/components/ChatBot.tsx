@@ -76,7 +76,12 @@ const ChatBot: React.FC = () => {
     setIsTyping(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        throw new Error('Gemini API key is not configured');
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: userMsg,
@@ -86,22 +91,27 @@ const ChatBot: React.FC = () => {
         }
       });
 
-      if (response.functionCalls) {
+      if (response.functionCalls && response.functionCalls.length > 0) {
         for (const call of response.functionCalls) {
           if (call.name === 'suggestBlogContent') {
             const { topic, tone } = call.args as any;
-            // Simulate AI generating content based on function call
+            // Use Pro model for complex content generation
             const genResponse = await ai.models.generateContent({
-              model: "gemini-3-flash-preview",
+              model: "gemini-3.1-pro-preview",
               contents: `Generate a full blog post structure for the topic: "${topic}" with a ${tone || 'professional'} tone. Return as JSON with fields: title, content, excerpt, tags (array), slug, seoTitle, seoDescription, seoKeywords (array).`,
               config: { responseMimeType: "application/json" }
             });
-            const suggestion = JSON.parse(genResponse.text);
-            setMessages(prev => [...prev, { 
-              role: 'bot', 
-              content: `I've generated a blog post suggestion for "**${suggestion.title}**". You can see the details below and apply them to your editor.`,
-              suggestion 
-            }]);
+            
+            if (genResponse.text) {
+              // Sanitize JSON response (remove markdown blocks if present)
+              const cleanJson = genResponse.text.replace(/```json\n?|```/g, '').trim();
+              const suggestion = JSON.parse(cleanJson);
+              setMessages(prev => [...prev, { 
+                role: 'bot', 
+                content: `I've generated a blog post suggestion for "**${suggestion.title}**". You can see the details below and apply them to your editor.`,
+                suggestion 
+              }]);
+            }
           } else if (call.name === 'suggestSEOMetadata') {
             const { content } = call.args as any;
             const genResponse = await ai.models.generateContent({
@@ -109,20 +119,27 @@ const ChatBot: React.FC = () => {
               contents: `Generate SEO metadata for this content: "${content.substring(0, 500)}...". Return as JSON with fields: seoTitle, seoDescription, seoKeywords (array).`,
               config: { responseMimeType: "application/json" }
             });
-            const suggestion = JSON.parse(genResponse.text);
-            setMessages(prev => [...prev, { 
-              role: 'bot', 
-              content: `Here is the suggested SEO metadata for your post:`,
-              suggestion 
-            }]);
+            
+            if (genResponse.text) {
+              const cleanJson = genResponse.text.replace(/```json\n?|```/g, '').trim();
+              const suggestion = JSON.parse(cleanJson);
+              setMessages(prev => [...prev, { 
+                role: 'bot', 
+                content: `Here is the suggested SEO metadata for your post:`,
+                suggestion 
+              }]);
+            }
           }
         }
       } else {
-        setMessages(prev => [...prev, { role: 'bot', content: response.text || "I'm sorry, I couldn't process that." }]);
+        const botText = response.text || "I'm sorry, I couldn't process that. Please try rephrasing your request.";
+        setMessages(prev => [...prev, { role: 'bot', content: botText }]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Chat error:', error);
-      toast.error('Failed to get response from AI');
+      const errorMsg = error.message || 'Failed to get response from AI';
+      toast.error(errorMsg);
+      setMessages(prev => [...prev, { role: 'bot', content: `Error: ${errorMsg}. Please check your connection or try again later.` }]);
     } finally {
       setIsTyping(false);
     }
@@ -303,7 +320,7 @@ const ChatBot: React.FC = () => {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-lime-400 text-zinc-950 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-all z-50 group"
+        className="fixed bottom-6 right-6 w-14 h-14 bg-lime-400 text-zinc-950 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-all z-[9999] group"
       >
         <AnimatePresence mode="wait">
           {isOpen ? (
@@ -337,7 +354,7 @@ const ChatBot: React.FC = () => {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-24 right-6 w-[90vw] sm:w-[400px] h-[600px] max-h-[70vh] bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden z-50"
+            className="fixed bottom-24 right-6 w-[90vw] sm:w-[400px] h-[600px] max-h-[70vh] bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl border border-zinc-200 dark:border-zinc-800 flex flex-col overflow-hidden z-[9999]"
           >
             {/* Header */}
             <div className="p-6 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/50">
