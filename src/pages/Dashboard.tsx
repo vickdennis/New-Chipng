@@ -407,7 +407,6 @@ const Dashboard: React.FC = () => {
 
   const hasAccess = (requiredPlan: PlanType) => {
     if (!profile) return false;
-    if (profile.role === 'admin') return true;
     
     const planHierarchy: Record<PlanType, number> = {
       'basic': 0,
@@ -549,37 +548,17 @@ const Dashboard: React.FC = () => {
             <div className="space-y-12">
               {/* Profile Section */}
               <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-bold dark:text-white">Profile</h2>
-                    {profile.photoURL && (
-                      <button 
-                        onClick={() => handleUpdateProfile({ photoURL: '' })}
-                        className="text-xs text-red-500 hover:text-red-600 font-bold transition-colors"
-                      >
-                        Remove Photo
-                      </button>
-                    )}
-                  </div>
+                <h2 className="text-xl font-bold dark:text-white">Profile</h2>
                 
                 {/* Cover Image */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-medium text-zinc-500">Cover Image</label>
-                    <div className="flex items-center gap-2">
-                      {profile.coverImage && (
-                        <button 
-                          onClick={() => handleUpdateProfile({ coverImage: '' })}
-                          className="text-xs text-red-500 hover:text-red-600 font-bold transition-colors"
-                        >
-                          Remove
-                        </button>
-                      )}
-                      {!hasAccess('pro') && (
-                        <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                          <Crown className="w-3 h-3" /> PRO
-                        </span>
-                      )}
-                    </div>
+                    {!hasAccess('pro') && (
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
+                        <Crown className="w-3 h-3" /> PRO
+                      </span>
+                    )}
                   </div>
                   <div className="relative group h-32 w-full bg-zinc-100 dark:bg-zinc-800 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
                     {profile.coverImage ? (

@@ -20,7 +20,6 @@ import { toast } from 'sonner';
 import { User } from '../types';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { handleFirestoreError, OperationType } from '../firebase';
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -134,7 +133,7 @@ const AdminPanel: React.FC = () => {
       await updateDoc(doc(db, 'users', userId), { status: newStatus });
       toast.success(`User ${newStatus === 'active' ? 'activated' : 'suspended'}`);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+      toast.error('Failed to update status');
     }
   };
 
@@ -148,7 +147,7 @@ const AdminPanel: React.FC = () => {
       await updateDoc(doc(db, 'users', userId), { role: newRole });
       toast.success(`User role updated to ${newRole}`);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+      toast.error('Failed to update role');
     }
   };
 
@@ -162,7 +161,8 @@ const AdminPanel: React.FC = () => {
       });
       toast.success(`User upgraded to ${newPlan.toUpperCase()}`);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+      console.error('Error updating plan:', error);
+      toast.error('Failed to update plan');
     }
   };
 
@@ -190,14 +190,13 @@ const AdminPanel: React.FC = () => {
       await updateDoc(doc(db, 'users', userId), { isVerified: !currentStatus });
       toast.success(`User ${!currentStatus ? 'verified' : 'unverified'}`);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${userId}`);
+      toast.error('Failed to update verification status');
     }
   };
 
   const filteredUsers = users.filter(u => 
     u.email.toLowerCase().includes(search.toLowerCase()) || 
-    u.uid.toLowerCase().includes(search.toLowerCase()) ||
-    (u.username && u.username.toLowerCase().includes(search.toLowerCase()))
+    u.uid.toLowerCase().includes(search.toLowerCase())
   );
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950 text-zinc-950 dark:text-white transition-colors duration-300">Loading...</div>;
@@ -318,18 +317,7 @@ const AdminPanel: React.FC = () => {
                             <div className="font-bold text-zinc-950 dark:text-white">{user.email}</div>
                             {user.role === 'admin' && <Shield className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400" />}
                           </div>
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className="text-xs text-zinc-400 dark:text-zinc-600 font-mono">{user.uid}</div>
-                            <span className="text-zinc-300 dark:text-zinc-700">•</span>
-                            <a 
-                              href={`/${user.username}`} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="text-xs text-lime-600 dark:text-lime-400 hover:underline font-medium"
-                            >
-                              @{user.username}
-                            </a>
-                          </div>
+                          <div className="text-xs text-zinc-400 dark:text-zinc-600 font-mono mt-1">{user.uid}</div>
                         </td>
                         <td className="px-8 py-6">
                           <span className={`px-3 py-1 rounded-full text-xs font-bold ${

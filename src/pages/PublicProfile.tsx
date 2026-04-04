@@ -221,7 +221,7 @@ const PublicProfile: React.FC = () => {
     <div className={`min-h-screen relative ${theme.background} ${theme.text} selection:bg-white selection:text-black`}>
       {/* Cover Image Banner */}
       {profile.coverImage && (
-        <div className="absolute top-0 left-0 w-full h-64 z-[1] overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-64 z-0 overflow-hidden">
           <img 
             src={profile.coverImage} 
             alt="" 
@@ -394,7 +394,7 @@ const PublicProfile: React.FC = () => {
                   height="100%"
                   frameBorder="0"
                   style={{ border: 0 }}
-                  src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&q=${profile.location.lat},${profile.location.lng}`}
+                  src={`https://www.google.com/maps/embed/v1/place?key=${process.env.VITE_GOOGLE_MAPS_API_KEY}&q=${profile.location.lat},${profile.location.lng}`}
                   allowFullScreen
                 />
               </div>
