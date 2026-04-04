@@ -3,7 +3,7 @@ import { useParams, Link as RouterLink } from 'react-router-dom';
 import { db, getUserByUsername, handleFirestoreError, OperationType } from '../firebase';
 import { 
   collection, query, where, orderBy, onSnapshot, 
-  doc, updateDoc, increment, limit 
+  doc, updateDoc, increment 
 } from 'firebase/firestore';
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
@@ -36,38 +36,44 @@ const PublicProfile: React.FC = () => {
     let unsubProfile: () => void = () => {};
     let unsubLinks: () => void = () => {};
 
-    const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
-    const userQuery = query(
-      collection(db, 'users'),
-      where('username', '==', cleanUsername),
-      limit(1)
-    );
-
-    unsubProfile = onSnapshot(userQuery, (snapshot) => {
-      if (!snapshot.empty) {
-        const userData = { uid: snapshot.docs[0].id, ...snapshot.docs[0].data() } as User;
-        setProfile(userData);
-        setError(null);
+    const fetchProfile = async () => {
+      try {
+        const userData = await getUserByUsername(username);
         
-        // Track profile view (only once per session or on first load)
-        const profileRef = doc(db, 'users', userData.uid);
+        if (!userData) {
+          setError('Profile not found');
+          setLoading(false);
+          return;
+        }
+
+        const userId = userData.uid;
+        const profileRef = doc(db, 'users', userId);
+
+        // Track profile view
         updateDoc(profileRef, {
           totalClicks: increment(1)
         }).catch(err => {
           console.error('Failed to track profile view:', err);
         });
 
-        // Fetch links
-        const linksQuery = query(
+        unsubProfile = onSnapshot(profileRef, (doc) => {
+          if (doc.exists()) {
+            setProfile(doc.data() as User);
+          } else {
+            setError('Profile no longer exists');
+          }
+        }, (error) => {
+          handleFirestoreError(error, OperationType.GET, profileRef.path);
+        });
+
+        const q = query(
           collection(db, 'links'), 
-          where('userId', '==', userData.uid), 
+          where('userId', '==', userId), 
           where('active', '==', true),
           orderBy('position', 'asc')
         );
-
-        if (unsubLinks) unsubLinks();
-        unsubLinks = onSnapshot(linksQuery, (linkSnapshot) => {
-          const allLinks = linkSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Link));
+        unsubLinks = onSnapshot(q, (snapshot) => {
+          const allLinks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Link));
           
           // Filter by scheduling
           const now = new Date();
@@ -88,15 +94,14 @@ const PublicProfile: React.FC = () => {
         }, (error) => {
           handleFirestoreError(error, OperationType.LIST, 'links');
         });
-      } else {
-        setError('Profile not found');
+      } catch (err) {
+        console.error(err);
+        setError('Something went wrong');
         setLoading(false);
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'users');
-      setError('Something went wrong');
-      setLoading(false);
-    });
+    };
+
+    fetchProfile();
 
     return () => {
       unsubProfile();
@@ -214,16 +219,28 @@ const PublicProfile: React.FC = () => {
 
   return (
     <div className={`min-h-screen relative ${theme.background} ${theme.text} selection:bg-white selection:text-black`}>
+      {/* Cover Image Banner */}
+      {profile.coverImage && (
+        <div className="absolute top-0 left-0 w-full h-64 z-0 overflow-hidden">
+          <img 
+            src={profile.coverImage} 
+            alt="" 
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60" />
+        </div>
+      )}
+
       {/* Custom Background Image */}
-      {(profile.backgroundType === 'image' || profile.theme === 'customImage') && profile.backgroundImage && (
+      {profile.backgroundType === 'image' && profile.backgroundImage && (
         <div 
-          className="fixed inset-0 z-0 pointer-events-none"
+          className="fixed inset-0 z-0 opacity-40 pointer-events-none"
           style={{ 
             backgroundImage: `url(${profile.backgroundImage})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            opacity: profile.theme === 'customImage' ? 0.6 : 0.4,
-            filter: profile.theme === 'customImage' ? 'none' : 'blur(10px)'
+            filter: 'blur(10px)'
           }}
         />
       )}
@@ -236,14 +253,14 @@ const PublicProfile: React.FC = () => {
         {profile.photoURL && <meta property="og:image" content={profile.photoURL} />}
       </Helmet>
 
-      <div className="max-w-2xl mx-auto px-6 py-20 flex flex-col items-center relative z-10">
+      <div className={`max-w-2xl mx-auto px-6 ${profile.coverImage ? 'pt-40 pb-20' : 'py-20'} flex flex-col items-center relative z-10`}>
         {/* Profile Header */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col items-center text-center mb-12 w-full"
         >
-          <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 border-white/20 shadow-2xl mb-6">
+          <div className={`w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 ${profile.coverImage ? 'border-white dark:border-zinc-950' : 'border-white/20'} shadow-2xl mb-6`}>
             {profile.photoURL ? (
               <img src={profile.photoURL} alt={profile.username} className="w-full h-full object-cover" />
             ) : (
@@ -255,10 +272,7 @@ const PublicProfile: React.FC = () => {
           <div className="flex items-center gap-2 mb-2">
             <h1 className="text-2xl font-bold tracking-tight">@{profile.username}</h1>
             {profile.isVerified && (
-              <div className="relative flex items-center justify-center">
-                <BadgeCheck className="w-6 h-6 text-[#0095f6] fill-[#0095f6]" />
-                <Check className="w-3 h-3 text-white absolute" strokeWidth={4} />
-              </div>
+              <BadgeCheck className="w-6 h-6 text-[#0095f6] fill-white" />
             )}
           </div>
           {profile.displayName && <h2 className="text-lg opacity-80 mb-4">{profile.displayName}</h2>}
@@ -287,14 +301,8 @@ const PublicProfile: React.FC = () => {
         </motion.div>
 
         {/* Links List */}
-        <div className={`w-full ${
-          profile.layout === 'grid' 
-            ? 'grid grid-cols-1 sm:grid-cols-2 gap-4' 
-            : 'flex flex-col gap-4'
-        }`}>
+        <div className="w-full space-y-4">
           {links.map((link, i) => {
-            const isFullWidth = profile.layout !== 'grid' || link.type === 'youtube';
-            
             if (link.type === 'youtube') {
               const videoId = link.url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/)?.[1];
               if (videoId) {
@@ -304,7 +312,7 @@ const PublicProfile: React.FC = () => {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
-                    className={`w-full overflow-hidden ${theme.button} ${btnStyle} border border-white/10 ${profile.layout === 'grid' ? 'sm:col-span-2' : ''}`}
+                    className={`w-full overflow-hidden ${theme.button} ${btnStyle} border border-white/10`}
                   >
                     <div className="aspect-video w-full">
                       <iframe
@@ -322,6 +330,25 @@ const PublicProfile: React.FC = () => {
               }
             }
 
+            if (link.type === 'tiktok') {
+              return (
+                <motion.button
+                  key={link.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  onClick={() => handleLinkClick(link.id, link.url)}
+                  className={`w-full p-5 ${theme.button} ${theme.buttonText} ${btnStyle} font-bold text-lg transition-all flex items-center justify-between group relative overflow-hidden border border-white/10`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Music2 className="w-5 h-5" />
+                    <span>{link.title}</span>
+                  </div>
+                  <ExternalLink className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </motion.button>
+              );
+            }
+
             return (
               <motion.button
                 key={link.id}
@@ -329,28 +356,20 @@ const PublicProfile: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 onClick={() => handleLinkClick(link.id, link.url)}
-                className={`w-full p-5 ${theme.button} ${theme.buttonText} ${btnStyle} font-bold text-lg transition-all flex items-center justify-between group relative overflow-hidden border border-white/10 ${
-                  profile.layout === 'left' ? 'justify-start' : 'justify-center'
-                }`}
+                className={`w-full p-5 ${theme.button} ${theme.buttonText} ${btnStyle} font-bold text-lg transition-all flex items-center justify-between group relative overflow-hidden border border-white/10`}
               >
-                <div className={`flex items-center gap-4 w-full ${
-                  profile.layout === 'left' ? 'justify-start' : 'justify-center'
-                }`}>
+                <div className="flex items-center gap-4 w-full">
                   {(link.icon || getFavicon(link.url)) && (
                     <img 
                       src={link.icon || getFavicon(link.url)!} 
                       alt="" 
-                      className="w-6 h-6 rounded-md object-cover shrink-0"
+                      className="w-6 h-6 rounded-md object-cover"
                       referrerPolicy="no-referrer"
                     />
                   )}
-                  <span className={`truncate ${profile.layout === 'left' ? '' : 'flex-1 text-center pr-6'}`}>
-                    {link.title}
-                  </span>
+                  <span className="flex-1 text-center pr-6">{link.title}</span>
                 </div>
-                <ExternalLink className={`w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ${
-                  profile.layout === 'left' ? 'ml-auto' : 'absolute right-5'
-                }`} />
+                <ExternalLink className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity absolute right-5" />
               </motion.button>
             );
           })}

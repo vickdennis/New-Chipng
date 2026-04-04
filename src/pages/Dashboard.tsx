@@ -5,7 +5,7 @@ import {
   collection, query, where, orderBy, onSnapshot, 
   addDoc, updateDoc, deleteDoc, doc, writeBatch, getDoc
 } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   DndContext, closestCenter, KeyboardSensor, PointerSensor, 
   useSensor, useSensors 
@@ -29,7 +29,7 @@ import {
 } from 'recharts';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { toast } from 'sonner';
-import { Link, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment, LayoutType } from '../types';
+import { Link, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment } from '../types';
 import { auth } from '../firebase';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import UpgradeModal from '../components/UpgradeModal';
@@ -341,12 +341,17 @@ const Dashboard: React.FC = () => {
 
   const [isUploading, setIsUploading] = useState(false);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'background' | 'link-icon', linkId?: string) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'cover' | 'background' | 'link-icon', linkId?: string) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
     if (type === 'background' && !hasAccess('pro')) {
       checkFeatureAccess('pro', 'Custom Background');
+      return;
+    }
+
+    if (type === 'cover' && !hasAccess('pro')) {
+      checkFeatureAccess('pro', 'Cover Image');
       return;
     }
 
@@ -356,7 +361,7 @@ const Dashboard: React.FC = () => {
     }
 
     setIsUploading(true);
-    const folder = type === 'profile' ? 'profiles' : type === 'background' ? 'backgrounds' : 'link-icons';
+    const folder = type === 'profile' ? 'profiles' : type === 'cover' ? 'covers' : type === 'background' ? 'backgrounds' : 'link-icons';
     const timestamp = Date.now();
     const storageRef = ref(storage, `${folder}/${user.uid}/${timestamp}_${file.name}`);
     
@@ -364,39 +369,21 @@ const Dashboard: React.FC = () => {
     console.log('File info:', { name: file.name, size: file.size, type: file.type });
 
     try {
-      const uploadTask = uploadBytesResumable(storageRef, file);
-
-      await new Promise((resolve, reject) => {
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            console.log(`Upload progress: ${progress}%`);
-          },
-          (error) => {
-            console.error('Upload task error:', error);
-            reject(error);
-          },
-          async () => {
-            try {
-              const url = await getDownloadURL(uploadTask.snapshot.ref);
-              console.log('Download URL obtained:', url);
-              
-              if (type === 'profile') {
-                await handleUpdateProfile({ photoURL: url });
-              } else if (type === 'background') {
-                await handleUpdateProfile({ backgroundImage: url, backgroundType: 'image' });
-              } else if (type === 'link-icon' && linkId) {
-                await handleUpdateLink(linkId, { icon: url });
-              }
-              toast.success(`${type.replace('-', ' ')} updated`);
-              resolve(url);
-            } catch (urlError) {
-              reject(urlError);
-            }
-          }
-        );
-      });
+      const snapshot = await uploadBytes(storageRef, file);
+      console.log('Upload successful, getting download URL...');
+      const url = await getDownloadURL(snapshot.ref);
+      console.log('Download URL obtained:', url);
+      
+      if (type === 'profile') {
+        await handleUpdateProfile({ photoURL: url });
+      } else if (type === 'cover') {
+        await handleUpdateProfile({ coverImage: url });
+      } else if (type === 'background') {
+        await handleUpdateProfile({ backgroundImage: url, backgroundType: 'image' });
+      } else if (type === 'link-icon' && linkId) {
+        await handleUpdateLink(linkId, { icon: url });
+      }
+      toast.success(`${type.replace('-', ' ')} updated`);
     } catch (error) {
       console.error('Upload error:', error);
       toast.error(`Failed to upload ${type.replace('-', ' ')} image. Please check your connection.`);
@@ -562,6 +549,39 @@ const Dashboard: React.FC = () => {
               {/* Profile Section */}
               <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
                 <h2 className="text-xl font-bold dark:text-white">Profile</h2>
+                
+                {/* Cover Image */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-zinc-500">Cover Image</label>
+                    {!hasAccess('pro') && (
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
+                        <Crown className="w-3 h-3" /> PRO
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative group h-32 w-full bg-zinc-100 dark:bg-zinc-800 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                    {profile.coverImage ? (
+                      <img src={profile.coverImage} alt="Cover" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-zinc-400">
+                        <ImageIcon className="w-8 h-8" />
+                      </div>
+                    )}
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                      {isUploading ? (
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
+                      ) : (
+                        <div className="flex flex-col items-center gap-2">
+                          <Plus className="w-6 h-6" />
+                          <span className="text-xs font-bold">Change Cover</span>
+                        </div>
+                      )}
+                      <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'cover')} accept="image/*" disabled={isUploading} />
+                    </label>
+                  </div>
+                </div>
+
                 <div className="flex items-center gap-8">
                   <div className="relative group">
                     <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 border-zinc-50 dark:border-zinc-950 shadow-xl">
@@ -742,9 +762,7 @@ const Dashboard: React.FC = () => {
 
               {/* Themes Section */}
               <section className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Themes</h2>
-                </div>
+                <h2 className="text-xl font-bold dark:text-white">Themes</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                   {(Object.keys(THEMES) as ThemeType[]).map((themeKey) => (
                     <button
@@ -756,61 +774,8 @@ const Dashboard: React.FC = () => {
                           : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
                       }`}
                     >
-                      <div 
-                        className={`w-full aspect-square rounded-xl ${THEMES[themeKey].background} border border-zinc-200 dark:border-zinc-800 overflow-hidden`}
-                        style={themeKey === 'customImage' && profile.backgroundImage ? { 
-                          backgroundImage: `url(${profile.backgroundImage})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center'
-                        } : {}}
-                      />
+                      <div className={`w-full aspect-square rounded-xl ${THEMES[themeKey].background} border border-zinc-200 dark:border-zinc-800`} />
                       <span className="text-sm font-bold dark:text-white capitalize">{themeKey}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {/* Layout Selection */}
-              <section className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Layout</h2>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  {(['stack', 'grid', 'left'] as LayoutType[]).map((layout) => (
-                    <button
-                      key={layout}
-                      onClick={() => handleUpdateProfile({ layout })}
-                      className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${
-                        profile.layout === layout 
-                          ? 'border-lime-400 bg-lime-400/5' 
-                          : 'border-zinc-100 dark:border-zinc-800 hover:border-zinc-200 dark:hover:border-zinc-700'
-                      }`}
-                    >
-                      <div className="w-full aspect-video bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden p-2 flex flex-col gap-1">
-                        {layout === 'stack' && (
-                          <div className="flex flex-col gap-1 w-full">
-                            <div className="h-1.5 w-full bg-zinc-300 dark:bg-zinc-600 rounded-full" />
-                            <div className="h-1.5 w-full bg-zinc-300 dark:bg-zinc-600 rounded-full" />
-                            <div className="h-1.5 w-full bg-zinc-300 dark:bg-zinc-600 rounded-full" />
-                          </div>
-                        )}
-                        {layout === 'grid' && (
-                          <div className="grid grid-cols-2 gap-1 h-full w-full">
-                            <div className="bg-zinc-300 dark:bg-zinc-600 rounded-sm h-3" />
-                            <div className="bg-zinc-300 dark:bg-zinc-600 rounded-sm h-3" />
-                            <div className="bg-zinc-300 dark:bg-zinc-600 rounded-sm h-3" />
-                            <div className="bg-zinc-300 dark:bg-zinc-600 rounded-sm h-3" />
-                          </div>
-                        )}
-                        {layout === 'left' && (
-                          <div className="flex flex-col gap-1 w-full items-start">
-                            <div className="h-1.5 w-2/3 bg-zinc-300 dark:bg-zinc-600 rounded-full" />
-                            <div className="h-1.5 w-1/2 bg-zinc-300 dark:bg-zinc-600 rounded-full" />
-                            <div className="h-1.5 w-3/4 bg-zinc-300 dark:bg-zinc-600 rounded-full" />
-                          </div>
-                        )}
-                      </div>
-                      <span className="text-xs font-bold capitalize dark:text-white">{layout}</span>
                     </button>
                   ))}
                 </div>
