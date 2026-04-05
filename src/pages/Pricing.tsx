@@ -33,7 +33,6 @@ const PLANS = [
     icon: Star,
     features: [
       'Everything in Basic',
-      'Cover image banner',
       'Custom background image',
       'Add social icons',
       'Basic analytics (click count)',

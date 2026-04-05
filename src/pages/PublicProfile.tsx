@@ -13,7 +13,7 @@ import {
   BadgeCheck, Youtube, Music2, UserPlus,
   Instagram, Twitter, Linkedin, Facebook, MessageCircle,
   MapPin, Calendar, Clock, ChevronRight, Github, Twitch, Mail, Ghost, MessageSquare,
-  Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash, Globe
+  Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
@@ -214,8 +214,7 @@ const PublicProfile: React.FC = () => {
     { id: 'github', icon: Github, url: (val: string) => val.startsWith('http') ? val : `https://github.com/${val}` },
     { id: 'twitch', icon: Twitch, url: (val: string) => val.startsWith('http') ? val : `https://twitch.tv/${val}` },
     { id: 'snapchat', icon: Ghost, url: (val: string) => val.startsWith('http') ? val : `https://snapchat.com/add/${val}` },
-    { id: 'mail', icon: Mail, url: (val: string) => val.startsWith('mailto:') ? val : `mailto:${val}` },
-    { id: 'website', icon: Globe, url: (val: string) => val.startsWith('http') ? val : `https://${val}` }
+    { id: 'mail', icon: Mail, url: (val: string) => val.startsWith('mailto:') ? val : `mailto:${val}` }
   ];
 
   return (
@@ -277,18 +276,7 @@ const PublicProfile: React.FC = () => {
             )}
           </div>
           {profile.displayName && <h2 className="text-lg opacity-80 mb-4">{profile.displayName}</h2>}
-          {profile.bio && <p className="text-base opacity-70 max-w-sm leading-relaxed mb-4">{profile.bio}</p>}
-          {profile.website && (
-            <a 
-              href={profile.website.startsWith('http') ? profile.website : `https://${profile.website}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm font-medium opacity-80 hover:opacity-100 transition-opacity mb-8"
-            >
-              <Globe className="w-4 h-4" />
-              {profile.website.replace(/^https?:\/\//, '')}
-            </a>
-          )}
+          {profile.bio && <p className="text-base opacity-70 max-w-sm leading-relaxed mb-8">{profile.bio}</p>}
 
           {/* Social Icons */}
           {profile.socialLinks && Object.values(profile.socialLinks).some(v => v) && (

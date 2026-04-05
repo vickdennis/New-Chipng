@@ -112,8 +112,7 @@ service cloud.firestore {
              (!('theme' in data) || data.theme in ['minimal', 'neon', 'glassmorphism', 'dark', 'sunset', 'ocean', 'forest', 'customImage']) &&
              (!('buttonStyle' in data) || data.buttonStyle in ['rounded', 'pill', 'square']) &&
              (!('layout' in data) || data.layout in ['stack', 'grid', 'left']) &&
-             (!('backgroundType' in data) || data.backgroundType in ['solid', 'gradient', 'image']) &&
-             (!('coverImage' in data) || (data.coverImage is string && (data.coverImage.size() == 0 || isValidUrl(data.coverImage))));
+             (!('backgroundType' in data) || data.backgroundType in ['solid', 'gradient', 'image']);
     }
 
     function isValidLink(data) {
