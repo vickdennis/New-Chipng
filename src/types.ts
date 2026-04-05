@@ -18,7 +18,6 @@ export interface User {
   displayName?: string;
   bio?: string;
   photoURL?: string;
-  coverImage?: string;
   role: UserRole;
   createdAt: string;
   status: 'active' | 'suspended';

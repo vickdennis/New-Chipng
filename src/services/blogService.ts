@@ -16,7 +16,7 @@ import {
 } from 'firebase/firestore';
 import { 
   ref, 
-  uploadBytesResumable, 
+  uploadBytes, 
   getDownloadURL 
 } from 'firebase/storage';
 import { db, storage, handleFirestoreError, OperationType } from '../firebase';
@@ -31,52 +31,25 @@ export const blogService = {
     onProgress?: (progress: number) => void
   ): Promise<string> {
     try {
-      if (!file) {
-        throw new Error('No file provided');
-      }
-
       if (!file.type.startsWith('image/')) {
         throw new Error('File must be an image');
       }
 
-      // Generate unique filename: blog-images/{userId}/{timestamp_filename}
-      const timestamp = Date.now();
-      const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-      const filename = `blog-images/${userId}/${timestamp}_${cleanFileName}`;
+      const filename = `${Date.now()}-${file.name}`;
+      const storageRef = ref(storage, `blog-images/${userId}/${filename}`);
       
-      const storageRef = ref(storage, filename);
-      console.log('Uploading to storage path:', filename);
+      if (onProgress) onProgress(10); // Start progress
       
-      const uploadTask = uploadBytesResumable(storageRef, file);
-
-      return new Promise((resolve, reject) => {
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            if (onProgress) onProgress(progress);
-          },
-          (error: any) => {
-            console.error('Upload task error:', error);
-            if (error.code === 'storage/unauthorized') {
-              reject(new Error('Upload failed: You do not have permission to upload files.'));
-            } else if (error.code === 'storage/quota-exceeded') {
-              reject(new Error('Upload failed: Storage quota exceeded.'));
-            } else {
-              reject(new Error(error.message || 'Failed to upload image. Please check your connection.'));
-            }
-          },
-          async () => {
-            try {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              resolve(downloadURL);
-            } catch (error: any) {
-              reject(new Error(error.message || 'Failed to get download URL'));
-            }
-          }
-        );
-      });
-    } catch (error: any) {
+      const result = await uploadBytes(storageRef, file);
+      
+      if (onProgress) onProgress(90); // Upload complete, getting URL
+      
+      const downloadURL = await getDownloadURL(result.ref);
+      
+      if (onProgress) onProgress(100); // Done
+      
+      return downloadURL;
+    } catch (error) {
       console.error('Error in uploadImage:', error);
       throw error;
     }

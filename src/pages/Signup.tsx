@@ -70,8 +70,7 @@ const Signup: React.FC = () => {
           backgroundColor: '#ffffff',
           totalClicks: 0,
           plan: 'basic',
-          subscriptionStatus: 'active',
-          layout: 'stack'
+          subscriptionStatus: 'active'
         });
       } catch (error) {
         handleFirestoreError(error, OperationType.CREATE, `users/${uid}`);
@@ -132,8 +131,7 @@ const Signup: React.FC = () => {
             backgroundColor: '#ffffff',
             totalClicks: 0,
             plan: 'basic',
-            subscriptionStatus: 'active',
-            layout: 'stack'
+            subscriptionStatus: 'active'
           });
         } catch (error) {
           handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}`);

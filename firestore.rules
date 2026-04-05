@@ -109,10 +109,9 @@ service cloud.firestore {
              (!('role' in data) || data.role in ['user', 'admin']) &&
              (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
              (!('username' in data) || (data.username is string && data.username.size() >= 3 && data.username.size() <= 30)) &&
-             (!('theme' in data) || data.theme in ['minimal', 'neon', 'glassmorphism', 'dark', 'sunset', 'ocean', 'forest', 'customImage']) &&
+             (!('theme' in data) || data.theme in ['minimal', 'neon', 'glassmorphism', 'dark', 'sunset']) &&
              (!('buttonStyle' in data) || data.buttonStyle in ['rounded', 'pill', 'square']) &&
-             (!('layout' in data) || data.layout in ['stack', 'grid', 'left']) &&
-             (!('backgroundType' in data) || data.backgroundType in ['solid', 'gradient', 'image']);
+             (!('backgroundType' in data) || data.backgroundType in ['solid', 'gradient']);
     }
 
     function isValidLink(data) {

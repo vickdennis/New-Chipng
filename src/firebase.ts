@@ -7,7 +7,7 @@ import firebaseConfig from '../firebase-applet-config.json';
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const storage = getStorage(app, `gs://${firebaseConfig.storageBucket}`);
+export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export enum OperationType {
@@ -62,34 +62,16 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 }
 
 export const getUserByUsername = async (username: string) => {
-  console.log('Fetching user by username:', username);
-  const cleanUsername = username.toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
-  console.log('Cleaned username:', cleanUsername);
+  const cleanUsername = username.toLowerCase().trim();
+  const q = query(
+    collection(db, 'users'),
+    where('username', '==', cleanUsername),
+    limit(1)
+  );
   
-  if (!cleanUsername) {
-    console.warn('Empty cleaned username, returning null');
-    return null;
-  }
+  const querySnapshot = await getDocs(q);
+  if (querySnapshot.empty) return null;
   
-  try {
-    const q = query(
-      collection(db, 'users'),
-      where('username', '==', cleanUsername),
-      limit(1)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) {
-      console.log('No user found with username:', cleanUsername);
-      return null;
-    }
-    
-    const doc = querySnapshot.docs[0];
-    const data = { uid: doc.id, ...doc.data() };
-    console.log('User found:', data);
-    return data;
-  } catch (error) {
-    console.error('Error in getUserByUsername:', error);
-    return null;
-  }
+  const doc = querySnapshot.docs[0];
+  return { uid: doc.id, ...doc.data() };
 };

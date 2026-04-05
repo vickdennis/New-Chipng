@@ -341,17 +341,12 @@ const Dashboard: React.FC = () => {
 
   const [isUploading, setIsUploading] = useState(false);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'cover' | 'background' | 'link-icon', linkId?: string) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'background' | 'link-icon', linkId?: string) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
     if (type === 'background' && !hasAccess('pro')) {
       checkFeatureAccess('pro', 'Custom Background');
-      return;
-    }
-
-    if (type === 'cover' && !hasAccess('pro')) {
-      checkFeatureAccess('pro', 'Cover Image');
       return;
     }
 
@@ -361,7 +356,7 @@ const Dashboard: React.FC = () => {
     }
 
     setIsUploading(true);
-    const folder = type === 'profile' ? 'profiles' : type === 'cover' ? 'covers' : type === 'background' ? 'backgrounds' : 'link-icons';
+    const folder = type === 'profile' ? 'profiles' : type === 'background' ? 'backgrounds' : 'link-icons';
     const timestamp = Date.now();
     const storageRef = ref(storage, `${folder}/${user.uid}/${timestamp}_${file.name}`);
     
@@ -376,8 +371,6 @@ const Dashboard: React.FC = () => {
       
       if (type === 'profile') {
         await handleUpdateProfile({ photoURL: url });
-      } else if (type === 'cover') {
-        await handleUpdateProfile({ coverImage: url });
       } else if (type === 'background') {
         await handleUpdateProfile({ backgroundImage: url, backgroundType: 'image' });
       } else if (type === 'link-icon' && linkId) {
@@ -549,39 +542,6 @@ const Dashboard: React.FC = () => {
               {/* Profile Section */}
               <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
                 <h2 className="text-xl font-bold dark:text-white">Profile</h2>
-                
-                {/* Cover Image */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-zinc-500">Cover Image</label>
-                    {!hasAccess('pro') && (
-                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                        <Crown className="w-3 h-3" /> PRO
-                      </span>
-                    )}
-                  </div>
-                  <div className="relative group h-32 w-full bg-zinc-100 dark:bg-zinc-800 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                    {profile.coverImage ? (
-                      <img src={profile.coverImage} alt="Cover" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-zinc-400">
-                        <ImageIcon className="w-8 h-8" />
-                      </div>
-                    )}
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                      {isUploading ? (
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
-                      ) : (
-                        <div className="flex flex-col items-center gap-2">
-                          <Plus className="w-6 h-6" />
-                          <span className="text-xs font-bold">Change Cover</span>
-                        </div>
-                      )}
-                      <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'cover')} accept="image/*" disabled={isUploading} />
-                    </label>
-                  </div>
-                </div>
-
                 <div className="flex items-center gap-8">
                   <div className="relative group">
                     <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 border-zinc-50 dark:border-zinc-950 shadow-xl">

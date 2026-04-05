@@ -7,8 +7,7 @@ import {
 import { 
   Users, Shield, Trash2, Ban, CheckCircle, 
   Search, ArrowLeft, BarChart2, TrendingUp,
-  DollarSign, Crown, BadgeCheck, FileText,
-  UserPlus, X
+  DollarSign, Crown, BadgeCheck, FileText
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -27,69 +26,6 @@ const AdminPanel: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'users' | 'revenue' | 'brand' | 'blog'>('users');
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newUser, setNewUser] = useState({
-    email: '',
-    username: '',
-    role: 'user' as 'user' | 'admin',
-    plan: 'basic' as 'basic' | 'pro' | 'business'
-  });
-
-  const handleCreateUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newUser.email || !newUser.username) {
-      toast.error('Email and Username are required');
-      return;
-    }
-
-    try {
-      // Check if username exists
-      const q = query(collection(db, 'users'), where('username', '==', newUser.username.toLowerCase()));
-      const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        toast.error('Username already taken');
-        return;
-      }
-
-      // Check if email exists
-      const eq = query(collection(db, 'users'), where('email', '==', newUser.email.toLowerCase()));
-      const eSnapshot = await getDocs(eq);
-      if (!eSnapshot.empty) {
-        toast.error('User with this email already exists');
-        return;
-      }
-
-      // Create user document
-      const userRef = doc(collection(db, 'users'));
-      const { setDoc } = await import('firebase/firestore');
-      await setDoc(userRef, {
-        uid: userRef.id,
-        email: newUser.email.toLowerCase(),
-        username: newUser.username.toLowerCase(),
-        displayName: newUser.username,
-        role: newUser.role,
-        createdAt: new Date().toISOString(),
-        status: 'active',
-        isPremium: newUser.plan !== 'basic',
-        subscriptionStatus: newUser.plan !== 'basic' ? 'active' : 'inactive',
-        plan: newUser.plan,
-        theme: 'minimal',
-        buttonStyle: 'rounded',
-        backgroundType: 'solid',
-        backgroundColor: '#ffffff',
-        totalClicks: 0,
-        isVerified: false,
-        bio: 'Welcome to my Chip NG profile!'
-      });
-
-      toast.success('User profile created successfully');
-      setShowCreateModal(false);
-      setNewUser({ email: '', username: '', role: 'user', plan: 'basic' });
-    } catch (error) {
-      console.error('Error creating user:', error);
-      toast.error('Failed to create user profile');
-    }
-  };
 
   const LogoBox = ({ title, children, dark = false }: { title: string, children: React.ReactNode, dark?: boolean }) => (
     <div className={`flex flex-col items-center justify-center p-8 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 transition-colors duration-300 ${dark ? 'bg-zinc-950 text-white' : 'bg-white text-zinc-950'}`}>
@@ -134,20 +70,6 @@ const AdminPanel: React.FC = () => {
       toast.success(`User ${newStatus === 'active' ? 'activated' : 'suspended'}`);
     } catch (error) {
       toast.error('Failed to update status');
-    }
-  };
-
-  const handleToggleRole = async (userId: string, currentRole: string, userEmail: string) => {
-    if (userEmail === 'vickthorden@gmail.com' && currentRole === 'admin') {
-      toast.error('Cannot remove admin role from the main administrator');
-      return;
-    }
-    const newRole = currentRole === 'admin' ? 'user' : 'admin';
-    try {
-      await updateDoc(doc(db, 'users', userId), { role: newRole });
-      toast.success(`User role updated to ${newRole}`);
-    } catch (error) {
-      toast.error('Failed to update role');
     }
   };
 
@@ -223,24 +145,15 @@ const AdminPanel: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center gap-4">
-            <button 
-              onClick={() => setShowCreateModal(true)}
-              className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-500 transition-all"
-            >
-              <UserPlus className="w-5 h-5" />
-              Create User
-            </button>
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 w-5 h-5" />
-              <input 
-                type="text" 
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search users by email or ID..."
-                className="w-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-12 pr-4 py-4 focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all text-zinc-950 dark:text-white"
-              />
-            </div>
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-600 w-5 h-5" />
+            <input 
+              type="text" 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search users by email or ID..."
+              className="w-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-12 pr-4 py-4 focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all text-zinc-950 dark:text-white"
+            />
           </div>
         </header>
 
@@ -353,13 +266,6 @@ const AdminPanel: React.FC = () => {
                               <option value="pro">Pro</option>
                               <option value="business">Business</option>
                             </select>
-                            <button 
-                              onClick={() => handleToggleRole(user.uid, user.role, user.email)}
-                              className={`p-2 rounded-lg transition-colors ${user.role === 'admin' ? 'text-purple-500 bg-purple-500/10' : 'text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
-                              title={user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
-                            >
-                              <Shield className="w-5 h-5" />
-                            </button>
                             <button 
                               onClick={() => handleToggleVerify(user.uid, user.isVerified || false)} 
                               className={`p-2 rounded-lg transition-colors ${user.isVerified ? 'text-[#0095f6] bg-[#0095f6]/10' : 'text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
@@ -521,82 +427,6 @@ const AdminPanel: React.FC = () => {
           </div>
         )}
       </div>
-
-      {/* Create User Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 p-8 shadow-2xl">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold tracking-tight">Create User Account</h2>
-              <button 
-                onClick={() => setShowCreateModal(false)}
-                className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateUser} className="space-y-6">
-              <div>
-                <label className="block text-sm font-bold mb-2 text-zinc-500 uppercase tracking-wider">Email Address</label>
-                <input 
-                  type="email" 
-                  required
-                  value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  placeholder="user@example.com"
-                  className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold mb-2 text-zinc-500 uppercase tracking-wider">Username</label>
-                <input 
-                  type="text" 
-                  required
-                  value={newUser.username}
-                  onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                  placeholder="username"
-                  className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 transition-all"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold mb-2 text-zinc-500 uppercase tracking-wider">Role</label>
-                  <select 
-                    value={newUser.role}
-                    onChange={(e) => setNewUser({ ...newUser, role: e.target.value as any })}
-                    className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 transition-all"
-                  >
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold mb-2 text-zinc-500 uppercase tracking-wider">Plan</label>
-                  <select 
-                    value={newUser.plan}
-                    onChange={(e) => setNewUser({ ...newUser, plan: e.target.value as any })}
-                    className="w-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 transition-all"
-                  >
-                    <option value="basic">Basic</option>
-                    <option value="pro">Pro</option>
-                    <option value="business">Business</option>
-                  </select>
-                </div>
-              </div>
-
-              <button 
-                type="submit"
-                className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-500 transition-all shadow-lg shadow-lime-400/20"
-              >
-                Create Account
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

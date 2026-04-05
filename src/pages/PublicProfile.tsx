@@ -219,19 +219,6 @@ const PublicProfile: React.FC = () => {
 
   return (
     <div className={`min-h-screen relative ${theme.background} ${theme.text} selection:bg-white selection:text-black`}>
-      {/* Cover Image Banner */}
-      {profile.coverImage && (
-        <div className="absolute top-0 left-0 w-full h-64 z-0 overflow-hidden">
-          <img 
-            src={profile.coverImage} 
-            alt="" 
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/60" />
-        </div>
-      )}
-
       {/* Custom Background Image */}
       {profile.backgroundType === 'image' && profile.backgroundImage && (
         <div 
@@ -253,14 +240,14 @@ const PublicProfile: React.FC = () => {
         {profile.photoURL && <meta property="og:image" content={profile.photoURL} />}
       </Helmet>
 
-      <div className={`max-w-2xl mx-auto px-6 ${profile.coverImage ? 'pt-40 pb-20' : 'py-20'} flex flex-col items-center relative z-10`}>
+      <div className="max-w-2xl mx-auto px-6 py-20 flex flex-col items-center relative z-10">
         {/* Profile Header */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-col items-center text-center mb-12 w-full"
         >
-          <div className={`w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 ${profile.coverImage ? 'border-white dark:border-zinc-950' : 'border-white/20'} shadow-2xl mb-6`}>
+          <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 border-white/20 shadow-2xl mb-6">
             {profile.photoURL ? (
               <img src={profile.photoURL} alt={profile.username} className="w-full h-full object-cover" />
             ) : (

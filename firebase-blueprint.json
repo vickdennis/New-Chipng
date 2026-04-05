@@ -16,9 +16,8 @@
         "status": { "type": "string", "enum": ["active", "suspended"] },
         "isPremium": { "type": "boolean" },
         "premiumUntil": { "type": "string", "format": "date-time" },
-        "theme": { "type": "string", "enum": ["minimal", "neon", "glassmorphism", "dark", "sunset", "ocean", "forest", "customImage"] },
+        "theme": { "type": "string", "enum": ["minimal", "neon", "glassmorphism", "dark", "sunset"] },
         "buttonStyle": { "type": "string", "enum": ["rounded", "pill", "square"] },
-        "layout": { "type": "string", "enum": ["stack", "grid", "left"] },
         "backgroundType": { "type": "string", "enum": ["solid", "gradient", "image"] },
         "backgroundColor": { "type": "string" },
         "backgroundImage": { "type": "string" },
@@ -60,7 +59,7 @@
           }
         }
       },
-      "required": ["email", "role", "createdAt", "username", "theme", "buttonStyle", "layout", "backgroundType", "plan", "subscriptionStatus"]
+      "required": ["email", "role", "createdAt", "username", "theme", "buttonStyle", "backgroundType", "plan", "subscriptionStatus"]
     },
     "Link": {
       "title": "Link",
