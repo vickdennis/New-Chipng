@@ -19,6 +19,7 @@ export interface User {
   bio?: string;
   photoURL?: string;
   coverImage?: string;
+  website?: string;
   role: UserRole;
   createdAt: string;
   status: 'active' | 'suspended';
@@ -61,6 +62,7 @@ export interface User {
     twitch?: string;
     snapchat?: string;
     mail?: string;
+    website?: string;
   };
 }
 

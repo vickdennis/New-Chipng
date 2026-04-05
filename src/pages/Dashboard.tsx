@@ -19,7 +19,7 @@ import {
   Layout, Link as LinkIcon, User, Settings, BarChart2, 
   Plus, Trash2, GripVertical, Eye, EyeOff, Image as ImageIcon,
   LogOut, ExternalLink, Copy, Check, Moon, Sun, Palette,
-  Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash
+  Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash, Globe
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -195,7 +195,8 @@ const Dashboard: React.FC = () => {
   const [profileForm, setProfileForm] = useState({
     username: '',
     displayName: '',
-    bio: ''
+    bio: '',
+    website: ''
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [links, setLinks] = useState<Link[]>([]);
@@ -224,7 +225,8 @@ const Dashboard: React.FC = () => {
         setProfileForm({
           username: data.username || '',
           displayName: data.displayName || '',
-          bio: data.bio || ''
+          bio: data.bio || '',
+          website: data.website || ''
         });
       }
     }, (error) => {
@@ -635,6 +637,16 @@ const Dashboard: React.FC = () => {
                         placeholder="Tell your story..."
                       />
                     </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-zinc-500">Website</label>
+                      <input 
+                        type="url" 
+                        value={profileForm.website}
+                        onChange={(e) => setProfileForm({ ...profileForm, website: e.target.value })}
+                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                        placeholder="https://yourwebsite.com"
+                      />
+                    </div>
                     <button 
                       onClick={() => handleUpdateProfile(profileForm)}
                       disabled={isSavingProfile}
@@ -739,7 +751,8 @@ const Dashboard: React.FC = () => {
                     { id: 'github', icon: Github, label: 'GitHub' },
                     { id: 'twitch', icon: Twitch, label: 'Twitch' },
                     { id: 'snapchat', icon: Ghost, label: 'Snapchat' },
-                    { id: 'mail', icon: Mail, label: 'Email' }
+                    { id: 'mail', icon: Mail, label: 'Email' },
+                    { id: 'website', icon: Globe, label: 'Website' }
                   ].map((social) => (
                     <div key={social.id} className="space-y-2">
                       <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
