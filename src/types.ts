@@ -1,5 +1,5 @@
 export type UserRole = 'user' | 'admin';
-export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset';
+export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'coffee' | 'lavender' | 'midnight' | 'retro';
 export type ButtonStyle = 'rounded' | 'pill' | 'square';
 export type BackgroundType = 'solid' | 'gradient' | 'image';
 export type PlanType = 'basic' | 'pro' | 'business';
@@ -18,6 +18,7 @@ export interface User {
   displayName?: string;
   bio?: string;
   photoURL?: string;
+  coverImageUrl?: string;
   role: UserRole;
   createdAt: string;
   status: 'active' | 'suspended';
@@ -144,5 +145,61 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20',
     buttonText: 'text-white',
     accent: 'bg-orange-200',
+  },
+  ocean: {
+    name: 'ocean',
+    background: 'bg-gradient-to-br from-blue-600 to-cyan-500',
+    text: 'text-white',
+    button: 'bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/40',
+    buttonText: 'text-white',
+    accent: 'bg-cyan-300',
+  },
+  forest: {
+    name: 'forest',
+    background: 'bg-gradient-to-br from-emerald-600 to-teal-700',
+    text: 'text-white',
+    button: 'bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20',
+    buttonText: 'text-white',
+    accent: 'bg-emerald-400',
+  },
+  royal: {
+    name: 'royal',
+    background: 'bg-gradient-to-br from-indigo-900 via-purple-900 to-fuchsia-900',
+    text: 'text-white',
+    button: 'bg-amber-400/10 border border-amber-400/50 hover:bg-amber-400/20',
+    buttonText: 'text-amber-400',
+    accent: 'bg-amber-400',
+  },
+  coffee: {
+    name: 'coffee',
+    background: 'bg-gradient-to-br from-stone-800 to-stone-900',
+    text: 'text-stone-100',
+    button: 'bg-stone-700 hover:bg-stone-600 border border-stone-600',
+    buttonText: 'text-stone-100',
+    accent: 'bg-orange-200',
+  },
+  lavender: {
+    name: 'lavender',
+    background: 'bg-gradient-to-br from-violet-200 to-pink-200',
+    text: 'text-violet-900',
+    button: 'bg-white/50 backdrop-blur-md border border-violet-300 hover:bg-white/70',
+    buttonText: 'text-violet-900',
+    accent: 'bg-violet-400',
+  },
+  midnight: {
+    name: 'midnight',
+    background: 'bg-zinc-950',
+    text: 'text-zinc-100',
+    button: 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700',
+    buttonText: 'text-zinc-100',
+    accent: 'bg-indigo-500',
+  },
+  retro: {
+    name: 'retro',
+    background: 'bg-gradient-to-br from-yellow-400 via-orange-500 to-red-600',
+    text: 'text-white',
+    button: 'bg-black/20 backdrop-blur-md border border-black/30 hover:bg-black/40',
+    buttonText: 'text-white',
+    accent: 'bg-yellow-200',
   },
 };

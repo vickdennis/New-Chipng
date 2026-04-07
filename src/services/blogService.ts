@@ -21,6 +21,7 @@ import {
 } from 'firebase/storage';
 import { db, storage, handleFirestoreError, OperationType } from '../firebase';
 import { BlogPost } from '../types';
+import { safeUpdateDoc, safeDeleteDoc, createBackup } from './backupService';
 
 const BLOGS_COLLECTION = 'blogs';
 
@@ -115,12 +116,17 @@ export const blogService = {
   async createBlogPost(post: Omit<BlogPost, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
       const now = new Date().toISOString();
-      const docRef = await addDoc(collection(db, BLOGS_COLLECTION), {
+      const data = {
         ...post,
         createdAt: now,
         updatedAt: now,
         views: 0,
-      });
+      };
+      const docRef = await addDoc(collection(db, BLOGS_COLLECTION), data);
+      
+      // Create initial backup for creation
+      await createBackup(BLOGS_COLLECTION, docRef.id, 'create', data);
+      
       return docRef.id;
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, BLOGS_COLLECTION);
@@ -141,8 +147,7 @@ export const blogService = {
 
   async updateBlogPost(id: string, post: Partial<BlogPost>): Promise<void> {
     try {
-      const docRef = doc(db, BLOGS_COLLECTION, id);
-      await updateDoc(docRef, {
+      await safeUpdateDoc(BLOGS_COLLECTION, id, {
         ...post,
         updatedAt: new Date().toISOString(),
       });
@@ -154,8 +159,7 @@ export const blogService = {
 
   async deleteBlogPost(id: string): Promise<void> {
     try {
-      const docRef = doc(db, BLOGS_COLLECTION, id);
-      await deleteDoc(docRef);
+      await safeDeleteDoc(BLOGS_COLLECTION, id);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `${BLOGS_COLLECTION}/${id}`);
       throw error;

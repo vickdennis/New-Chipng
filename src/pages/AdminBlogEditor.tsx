@@ -45,6 +45,26 @@ const AdminBlogEditor: React.FC = () => {
   const [keywordInput, setKeywordInput] = useState('');
 
   useEffect(() => {
+    const handleAISuggestion = (e: any) => {
+      const suggestion = e.detail;
+      setFormData(prev => ({
+        ...prev,
+        title: suggestion.title || prev.title,
+        content: suggestion.content || prev.content,
+        excerpt: suggestion.excerpt || prev.excerpt,
+        slug: suggestion.slug || prev.slug,
+        tags: suggestion.tags || prev.tags,
+        seoTitle: suggestion.seoTitle || prev.seoTitle,
+        seoDescription: suggestion.seoDescription || prev.seoDescription,
+        seoKeywords: suggestion.seoKeywords || prev.seoKeywords
+      }));
+    };
+
+    window.addEventListener('apply-blog-suggestion', handleAISuggestion);
+    return () => window.removeEventListener('apply-blog-suggestion', handleAISuggestion);
+  }, []);
+
+  useEffect(() => {
     if (imageFile) {
       const url = URL.createObjectURL(imageFile);
       setPreviewUrl(url);
@@ -369,7 +389,15 @@ const AdminBlogEditor: React.FC = () => {
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) setImageFile(file);
+                        if (file) {
+                          if (file.size > 5 * 1024 * 1024) {
+                            toast.error('File size too large (max 5MB)');
+                            return;
+                          }
+                          setImageFile(file);
+                          // Clear the input value so the same file can be selected again
+                          e.target.value = '';
+                        }
                       }}
                     />
                   </div>
