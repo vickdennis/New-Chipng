@@ -11,6 +11,7 @@
         "displayName": { "type": "string" },
         "bio": { "type": "string" },
         "photoURL": { "type": "string" },
+        "coverImageUrl": { "type": "string" },
         "role": { "type": "string", "enum": ["user", "admin"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "status": { "type": "string", "enum": ["active", "suspended"] },
@@ -130,6 +131,18 @@
     "/blogs/{blogId}": {
       "schema": "Blog",
       "description": "Blog posts."
+    },
+    "/users_backup/{backupId}": {
+      "schema": "object",
+      "description": "Backups for user documents."
+    },
+    "/blogs_backup/{backupId}": {
+      "schema": "object",
+      "description": "Backups for blog documents."
+    },
+    "/links_backup/{backupId}": {
+      "schema": "object",
+      "description": "Backups for link documents."
     }
   }
 }

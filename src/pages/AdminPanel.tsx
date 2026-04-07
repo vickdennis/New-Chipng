@@ -4,10 +4,11 @@ import {
   collection, query, orderBy, onSnapshot, 
   doc, updateDoc, deleteDoc, getDocs, getDoc, where, writeBatch 
 } from 'firebase/firestore';
+import { getVersionHistory, rollbackDocument, BackupDocument } from '../services/backupService';
 import { 
   Users, Shield, Trash2, Ban, CheckCircle, 
   Search, ArrowLeft, BarChart2, TrendingUp,
-  DollarSign, Crown, BadgeCheck, FileText
+  DollarSign, Crown, BadgeCheck, FileText, History, RotateCcw
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -25,7 +26,10 @@ const AdminPanel: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'users' | 'revenue' | 'brand' | 'blog'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'revenue' | 'brand' | 'blog' | 'backups'>('users');
+  const [selectedUserForBackup, setSelectedUserForBackup] = useState<string | null>(null);
+  const [backupHistory, setBackupHistory] = useState<(BackupDocument & { id: string })[]>([]);
+  const [isRollingBack, setIsRollingBack] = useState(false);
 
   const LogoBox = ({ title, children, dark = false }: { title: string, children: React.ReactNode, dark?: boolean }) => (
     <div className={`flex flex-col items-center justify-center p-8 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 transition-colors duration-300 ${dark ? 'bg-zinc-950 text-white' : 'bg-white text-zinc-950'}`}>
@@ -116,8 +120,36 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleViewHistory = async (userId: string) => {
+    setSelectedUserForBackup(userId);
+    setActiveTab('backups');
+    try {
+      const history = await getVersionHistory('users', userId);
+      setBackupHistory(history);
+    } catch (error) {
+      toast.error('Failed to load backup history');
+    }
+  };
+
+  const handleRollback = async (userId: string) => {
+    if (!window.confirm('Are you sure you want to rollback to this version?')) return;
+    setIsRollingBack(true);
+    try {
+      await rollbackDocument('users', userId);
+      toast.success('User restored successfully');
+      // Refresh history
+      const history = await getVersionHistory('users', userId);
+      setBackupHistory(history);
+    } catch (error) {
+      toast.error('Rollback failed');
+    } finally {
+      setIsRollingBack(false);
+    }
+  };
+
   const filteredUsers = users.filter(u => 
     u.email.toLowerCase().includes(search.toLowerCase()) || 
+    u.username.toLowerCase().includes(search.toLowerCase()) ||
     u.uid.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -177,6 +209,12 @@ const AdminPanel: React.FC = () => {
           >
             Brand Assets
           </button>
+          <button 
+            onClick={() => setActiveTab('backups')}
+            className={`px-8 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${activeTab === 'backups' ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'}`}
+          >
+            Backups
+          </button>
           <Link 
             to="/admin/blog"
             className="px-8 py-3 rounded-2xl font-bold bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white transition-all flex items-center gap-2 whitespace-nowrap"
@@ -230,7 +268,8 @@ const AdminPanel: React.FC = () => {
                             <div className="font-bold text-zinc-950 dark:text-white">{user.email}</div>
                             {user.role === 'admin' && <Shield className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400" />}
                           </div>
-                          <div className="text-xs text-zinc-400 dark:text-zinc-600 font-mono mt-1">{user.uid}</div>
+                          <div className="text-xs text-lime-600 dark:text-lime-400 font-bold mt-0.5">@{user.username}</div>
+                          <div className="text-[10px] text-zinc-400 dark:text-zinc-600 font-mono mt-0.5">{user.uid}</div>
                         </td>
                         <td className="px-8 py-6">
                           <span className={`px-3 py-1 rounded-full text-xs font-bold ${
@@ -274,6 +313,13 @@ const AdminPanel: React.FC = () => {
                               <BadgeCheck className="w-5 h-5" />
                             </button>
                             <button 
+                              onClick={() => handleViewHistory(user.uid)}
+                              className="p-2 text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                              title="View History"
+                            >
+                              <History className="w-5 h-5" />
+                            </button>
+                            <button 
                               onClick={() => handleToggleStatus(user.uid, user.status)}
                               className={`p-2 rounded-lg transition-colors ${user.status === 'suspended' ? 'text-red-500 bg-red-500/10' : 'text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
                               title={user.status === 'active' ? 'Suspend' : 'Activate'}
@@ -301,6 +347,86 @@ const AdminPanel: React.FC = () => {
               )}
             </div>
           </>
+        ) : activeTab === 'backups' ? (
+          <div className="space-y-8">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-zinc-950 dark:text-white">Backup & Rollback</h2>
+              {selectedUserForBackup && (
+                <button 
+                  onClick={() => setSelectedUserForBackup(null)}
+                  className="text-sm text-zinc-500 hover:text-zinc-950 dark:hover:text-white flex items-center gap-2"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Clear Selection
+                </button>
+              )}
+            </div>
+
+            {selectedUserForBackup ? (
+              <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] overflow-hidden">
+                <div className="p-8 border-b border-zinc-200 dark:border-zinc-800">
+                  <h3 className="font-bold text-zinc-900 dark:text-white">History for User: {selectedUserForBackup}</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-zinc-200 dark:border-zinc-800">
+                        <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Timestamp</th>
+                        <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Action</th>
+                        <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Performed By</th>
+                        <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider text-right">Restore</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                      {backupHistory.map((backup) => (
+                        <tr key={backup.id} className="hover:bg-zinc-100 dark:hover:bg-zinc-800/30 transition-colors">
+                          <td className="px-8 py-6 text-zinc-900 dark:text-white">
+                            {backup.timestamp?.toDate ? backup.timestamp.toDate().toLocaleString() : 'N/A'}
+                          </td>
+                          <td className="px-8 py-6">
+                            <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
+                              backup.action === 'create' ? 'bg-blue-100 text-blue-700' :
+                              backup.action === 'update' ? 'bg-amber-100 text-amber-700' :
+                              backup.action === 'delete' ? 'bg-red-100 text-red-700' :
+                              'bg-purple-100 text-purple-700'
+                            }`}>
+                              {backup.action}
+                            </span>
+                          </td>
+                          <td className="px-8 py-6 text-zinc-500 text-sm font-mono">
+                            {backup.performedBy}
+                          </td>
+                          <td className="px-8 py-6 text-right">
+                            <button 
+                              onClick={() => handleRollback(backup.originalId)}
+                              disabled={isRollingBack}
+                              className="p-2 text-lime-600 hover:bg-lime-50 rounded-lg transition-colors disabled:opacity-50"
+                              title="Restore this version"
+                            >
+                              <RotateCcw className="w-5 h-5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {backupHistory.length === 0 && (
+                  <div className="p-20 text-center text-zinc-500">
+                    No backup history found for this user.
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-12 rounded-[2.5rem] text-center">
+                <History className="w-12 h-12 text-zinc-300 dark:text-zinc-700 mx-auto mb-4" />
+                <h3 className="text-xl font-bold mb-2 text-zinc-950 dark:text-white">No User Selected</h3>
+                <p className="text-zinc-500 max-w-md mx-auto">
+                  Select a user from the Users tab and click the history icon to view and restore previous versions of their profile.
+                </p>
+              </div>
+            )}
+          </div>
         ) : activeTab === 'revenue' ? (
           <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

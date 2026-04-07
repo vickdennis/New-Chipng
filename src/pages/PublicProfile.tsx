@@ -219,6 +219,19 @@ const PublicProfile: React.FC = () => {
 
   return (
     <div className={`min-h-screen relative ${theme.background} ${theme.text} selection:bg-white selection:text-black`}>
+      {/* Cover Image */}
+      {profile.coverImageUrl && (
+        <div className="h-48 w-full relative z-0">
+          <img 
+            src={profile.coverImageUrl} 
+            alt="" 
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent" />
+        </div>
+      )}
+
       {/* Custom Background Image */}
       {profile.backgroundType === 'image' && profile.backgroundImage && (
         <div 
@@ -245,9 +258,9 @@ const PublicProfile: React.FC = () => {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center text-center mb-12 w-full"
+          className={`flex flex-col items-center text-center mb-12 w-full ${profile.coverImageUrl ? '-mt-12' : ''}`}
         >
-          <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 border-white/20 shadow-2xl mb-6">
+          <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 border-white shadow-2xl mb-6 relative z-10">
             {profile.photoURL ? (
               <img src={profile.photoURL} alt={profile.username} className="w-full h-full object-cover" />
             ) : (
@@ -256,10 +269,18 @@ const PublicProfile: React.FC = () => {
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-1.5 mb-2">
             <h1 className="text-2xl font-bold tracking-tight">@{profile.username}</h1>
             {profile.isVerified && (
-              <BadgeCheck className="w-6 h-6 text-[#0095f6] fill-white" />
+              <div className="flex items-center justify-center text-[#0095f6]">
+                <BadgeCheck className="w-6 h-6 fill-current text-white" />
+                <style dangerouslySetInnerHTML={{ __html: `
+                  .lucide-badge-check {
+                    fill: #0095f6;
+                    color: white;
+                  }
+                `}} />
+              </div>
             )}
           </div>
           {profile.displayName && <h2 className="text-lg opacity-80 mb-4">{profile.displayName}</h2>}

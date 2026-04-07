@@ -60,6 +60,7 @@ const Signup: React.FC = () => {
           username: finalUsername,
           displayName: finalUsername,
           bio: 'Welcome to my Chip NG profile!',
+          website: '',
           photoURL: null,
           role: 'user',
           createdAt: serverTimestamp(),
@@ -70,7 +71,8 @@ const Signup: React.FC = () => {
           backgroundColor: '#ffffff',
           totalClicks: 0,
           plan: 'basic',
-          subscriptionStatus: 'active'
+          subscriptionStatus: 'active',
+          layout: 'stack'
         });
       } catch (error) {
         handleFirestoreError(error, OperationType.CREATE, `users/${uid}`);
@@ -122,6 +124,7 @@ const Signup: React.FC = () => {
             displayName: user.displayName || finalUsername,
             photoURL: user.photoURL || null,
             bio: 'Welcome to my Chip NG profile!',
+            website: '',
             role: 'user',
             createdAt: serverTimestamp(),
             status: 'active',
@@ -131,7 +134,8 @@ const Signup: React.FC = () => {
             backgroundColor: '#ffffff',
             totalClicks: 0,
             plan: 'basic',
-            subscriptionStatus: 'active'
+            subscriptionStatus: 'active',
+            layout: 'stack'
           });
         } catch (error) {
           handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}`);
