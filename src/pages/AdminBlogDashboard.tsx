@@ -17,8 +17,6 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
-import BlogGeneratorChatbot, { BlogGeneratorChatbotRef } from '../components/BlogGeneratorChatbot';
-import { Sparkles as SparklesIcon } from 'lucide-react';
 
 const AdminBlogDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -26,7 +24,6 @@ const AdminBlogDashboard: React.FC = () => {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const chatbotRef = React.useRef<BlogGeneratorChatbotRef>(null);
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -126,13 +123,6 @@ const AdminBlogDashboard: React.FC = () => {
                 className="w-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all text-zinc-950 dark:text-white"
               />
             </div>
-            <button 
-              onClick={() => chatbotRef.current?.open()}
-              className="flex items-center gap-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 px-6 py-3 rounded-2xl font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all whitespace-nowrap"
-            >
-              <SparklesIcon className="w-5 h-5 text-lime-400" />
-              Generate with AI
-            </button>
             <Link 
               to="/admin/blog/new"
               className="flex items-center gap-2 bg-lime-400 text-zinc-950 px-6 py-3 rounded-2xl font-bold hover:bg-lime-300 transition-all whitespace-nowrap"
@@ -357,7 +347,6 @@ const AdminBlogDashboard: React.FC = () => {
           )}
         </div>
       </div>
-      <BlogGeneratorChatbot ref={chatbotRef} />
     </div>
   );
 };

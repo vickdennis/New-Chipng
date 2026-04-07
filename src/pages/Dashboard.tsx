@@ -3,9 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { db, storage, getUserByUsername, handleFirestoreError, OperationType } from '../firebase';
 import { 
   collection, query, where, orderBy, onSnapshot, 
-  addDoc, doc, writeBatch, getDoc
+  addDoc, updateDoc, deleteDoc, doc, writeBatch, getDoc
 } from 'firebase/firestore';
-import { safeUpdateDoc, safeDeleteDoc, createBackup } from '../services/backupService';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   DndContext, closestCenter, KeyboardSensor, PointerSensor, 
@@ -249,25 +248,24 @@ const Dashboard: React.FC = () => {
   const handleAddLink = async () => {
     if (!user) return;
     try {
-      const linkData = {
+      await addDoc(collection(db, 'links'), {
         userId: user.uid,
         title: 'New Link',
         url: 'https://',
         active: true,
         position: links.length,
         clicks: 0
-      };
-      const docRef = await addDoc(collection(db, 'links'), linkData);
-      await createBackup('links', docRef.id, 'create', linkData);
+      });
       toast.success('Link added');
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'links');
+      console.error('Error adding link:', error);
+      toast.error('Failed to add link');
     }
   };
 
   const handleUpdateLink = async (id: string, data: Partial<Link>) => {
     try {
-      await safeUpdateDoc('links', id, data);
+      await updateDoc(doc(db, 'links', id), data);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `links/${id}`);
     }
@@ -275,7 +273,7 @@ const Dashboard: React.FC = () => {
 
   const handleDeleteLink = async (id: string) => {
     try {
-      await safeDeleteDoc('links', id);
+      await deleteDoc(doc(db, 'links', id));
       toast.success('Link deleted');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `links/${id}`);
@@ -295,11 +293,7 @@ const Dashboard: React.FC = () => {
       newLinks.forEach((link, index) => {
         batch.update(doc(db, 'links', link.id), { position: index });
       });
-      try {
-        await batch.commit();
-      } catch (error) {
-        handleFirestoreError(error, OperationType.WRITE, 'links');
-      }
+      await batch.commit();
     }
   };
 
@@ -336,7 +330,7 @@ const Dashboard: React.FC = () => {
       if (!currentData.theme) updatePayload.theme = 'minimal';
       if (!currentData.buttonStyle) updatePayload.buttonStyle = 'rounded';
 
-      await safeUpdateDoc('users', user.uid, updatePayload);
+      await updateDoc(userRef, updatePayload);
       toast.success('Profile updated');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
@@ -347,14 +341,9 @@ const Dashboard: React.FC = () => {
 
   const [isUploading, setIsUploading] = useState(false);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'cover' | 'background' | 'link-icon', linkId?: string) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'background' | 'link-icon', linkId?: string) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-
-    if (type === 'cover' && !hasAccess('pro')) {
-      checkFeatureAccess('pro', 'Cover Image');
-      return;
-    }
 
     if (type === 'background' && !hasAccess('pro')) {
       checkFeatureAccess('pro', 'Custom Background');
@@ -382,8 +371,6 @@ const Dashboard: React.FC = () => {
       
       if (type === 'profile') {
         await handleUpdateProfile({ photoURL: url });
-      } else if (type === 'cover') {
-        await handleUpdateProfile({ coverImageUrl: url });
       } else if (type === 'background') {
         await handleUpdateProfile({ backgroundImage: url, backgroundType: 'image' });
       } else if (type === 'link-icon' && linkId) {
@@ -555,39 +542,6 @@ const Dashboard: React.FC = () => {
               {/* Profile Section */}
               <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
                 <h2 className="text-xl font-bold dark:text-white">Profile</h2>
-                
-                {/* Cover Image */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-zinc-500">Cover Image</label>
-                    {!hasAccess('pro') && (
-                      <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
-                        <Crown className="w-2.5 h-2.5" /> PRO
-                      </span>
-                    )}
-                  </div>
-                  <div className="relative group h-32 w-full bg-zinc-100 dark:bg-zinc-800 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
-                    {profile.coverImageUrl ? (
-                      <img src={profile.coverImageUrl} alt="Cover" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-zinc-400">
-                        <ImageIcon className="w-8 h-8" />
-                      </div>
-                    )}
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                      {isUploading ? (
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
-                      ) : (
-                        <div className="flex items-center gap-2 font-bold">
-                          <ImageIcon className="w-5 h-5" />
-                          Change Cover
-                        </div>
-                      )}
-                      <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'cover')} accept="image/*" disabled={isUploading} />
-                    </label>
-                  </div>
-                </div>
-
                 <div className="flex items-center gap-8">
                   <div className="relative group">
                     <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 border-zinc-50 dark:border-zinc-950 shadow-xl">
