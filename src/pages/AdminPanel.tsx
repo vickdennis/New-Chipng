@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { db } from '../firebase';
+import { db, safeWrite, rollbackDocument, OperationType, handleFirestoreError } from '../firebase';
 import { 
   collection, query, orderBy, onSnapshot, 
-  doc, updateDoc, deleteDoc, getDocs, getDoc, where, writeBatch 
+  doc, updateDoc, deleteDoc, getDocs, getDoc, where, writeBatch, limit as firestoreLimit,
+  addDoc
 } from 'firebase/firestore';
-import { getVersionHistory, rollbackDocument, BackupDocument } from '../services/backupService';
 import { 
   Users, Shield, Trash2, Ban, CheckCircle, 
   Search, ArrowLeft, BarChart2, TrendingUp,
-  DollarSign, Crown, BadgeCheck, FileText, History, RotateCcw
+  DollarSign, Crown, BadgeCheck, FileText,
+  Bot, History, RotateCcw, Sparkles, Send, Loader2,
+  ChevronRight, Calendar, User as UserIcon, AlertCircle
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -17,20 +19,27 @@ import {
   ResponsiveContainer, BarChart, Bar, Cell
 } from 'recharts';
 import { toast } from 'sonner';
-import { User } from '../types';
-import { Link } from 'react-router-dom';
+import { User, BackupEntry, BlogPost } from '../types';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import BlogGeneratorChatbot from '../components/BlogGeneratorChatbot';
+import { GoogleGenAI } from "@google/genai";
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<'users' | 'revenue' | 'brand' | 'blog' | 'backups'>('users');
-  const [selectedUserForBackup, setSelectedUserForBackup] = useState<string | null>(null);
-  const [backupHistory, setBackupHistory] = useState<(BackupDocument & { id: string })[]>([]);
-  const [isRollingBack, setIsRollingBack] = useState(false);
+  const [activeTab, setActiveTab] = useState<'users' | 'revenue' | 'brand' | 'ai-assistant' | 'backups'>('users');
+  const navigate = useNavigate();
+
+  // AI Assistant State
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiResponse, setAiResponse] = useState<Partial<BlogPost> | null>(null);
+
+  // Backups State
+  const [backups, setBackups] = useState<BackupEntry<any>[]>([]);
+  const [selectedBackupCollection, setSelectedBackupCollection] = useState<'users' | 'links' | 'blogs'>('users');
 
   const LogoBox = ({ title, children, dark = false }: { title: string, children: React.ReactNode, dark?: boolean }) => (
     <div className={`flex flex-col items-center justify-center p-8 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 transition-colors duration-300 ${dark ? 'bg-zinc-950 text-white' : 'bg-white text-zinc-950'}`}>
@@ -68,10 +77,21 @@ const AdminPanel: React.FC = () => {
     return () => unsubscribe();
   }, [user]);
 
+  useEffect(() => {
+    if (activeTab === 'backups') {
+      const backupCollection = `${selectedBackupCollection}_backup`;
+      const q = query(collection(db, backupCollection), orderBy('timestamp', 'desc'), firestoreLimit(50));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        setBackups(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BackupEntry<any>)));
+      });
+      return () => unsubscribe();
+    }
+  }, [activeTab, selectedBackupCollection]);
+
   const handleToggleStatus = async (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
     try {
-      await updateDoc(doc(db, 'users', userId), { status: newStatus });
+      await safeWrite('users', userId, { status: newStatus }, 'update');
       toast.success(`User ${newStatus === 'active' ? 'activated' : 'suspended'}`);
     } catch (error) {
       toast.error('Failed to update status');
@@ -81,11 +101,11 @@ const AdminPanel: React.FC = () => {
   const handleUpdatePlan = async (userId: string, newPlan: string) => {
     try {
       const isPremium = newPlan !== 'basic';
-      await updateDoc(doc(db, 'users', userId), { 
+      await safeWrite('users', userId, { 
         plan: newPlan,
         isPremium: isPremium,
         subscriptionStatus: isPremium ? 'active' : 'inactive'
-      });
+      }, 'update');
       toast.success(`User upgraded to ${newPlan.toUpperCase()}`);
     } catch (error) {
       console.error('Error updating plan:', error);
@@ -102,8 +122,8 @@ const AdminPanel: React.FC = () => {
       linksSnapshot.docs.forEach(doc => batch.delete(doc.ref));
       await batch.commit();
 
-      // 2. Delete user
-      await deleteDoc(doc(db, 'users', userId));
+      // 2. Delete user with backup
+      await safeWrite('users', userId, null, 'delete');
       
       toast.success('User and all associated data deleted');
     } catch (error) {
@@ -114,43 +134,76 @@ const AdminPanel: React.FC = () => {
 
   const handleToggleVerify = async (userId: string, currentStatus: boolean) => {
     try {
-      await updateDoc(doc(db, 'users', userId), { isVerified: !currentStatus });
+      await safeWrite('users', userId, { isVerified: !currentStatus }, 'update');
       toast.success(`User ${!currentStatus ? 'verified' : 'unverified'}`);
     } catch (error) {
       toast.error('Failed to update verification status');
     }
   };
 
-  const handleViewHistory = async (userId: string) => {
-    setSelectedUserForBackup(userId);
-    setActiveTab('backups');
+  const handleRollback = async (collectionName: string, originalId: string) => {
+    if (!window.confirm('Are you sure you want to rollback this document to its previous state?')) return;
     try {
-      const history = await getVersionHistory('users', userId);
-      setBackupHistory(history);
+      await rollbackDocument(collectionName, originalId);
+      toast.success('Rollback successful');
     } catch (error) {
-      toast.error('Failed to load backup history');
+      console.error('Rollback error:', error);
+      toast.error('Rollback failed');
     }
   };
 
-  const handleRollback = async (userId: string) => {
-    if (!window.confirm('Are you sure you want to rollback to this version?')) return;
-    setIsRollingBack(true);
+  const generateBlogPost = async () => {
+    if (!aiPrompt.trim()) return;
+    setIsGenerating(true);
+    setAiResponse(null);
+
     try {
-      await rollbackDocument('users', userId);
-      toast.success('User restored successfully');
-      // Refresh history
-      const history = await getVersionHistory('users', userId);
-      setBackupHistory(history);
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Generate a high-quality SEO blog post about: ${aiPrompt}. 
+        Return the result in JSON format with the following fields:
+        title, content (markdown), excerpt, seoTitle, seoDescription, seoKeywords (array of strings).
+        The tone should be professional and helpful for Nigerian creators and businesses.`,
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+
+      const data = JSON.parse(response.text || '{}');
+      setAiResponse(data);
+      toast.success('Blog post generated!');
     } catch (error) {
-      toast.error('Rollback failed');
+      console.error('AI generation error:', error);
+      toast.error('Failed to generate blog post');
     } finally {
-      setIsRollingBack(false);
+      setIsGenerating(false);
+    }
+  };
+
+  const saveGeneratedBlog = async () => {
+    if (!aiResponse) return;
+    try {
+      const slug = aiResponse.title?.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+      const blogData = {
+        ...aiResponse,
+        slug,
+        author: user?.email || 'Admin',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        published: false
+      };
+      await addDoc(collection(db, 'blogs'), blogData);
+      toast.success('Blog post saved to drafts');
+      navigate('/admin/blog');
+    } catch (error) {
+      console.error('Error saving blog:', error);
+      toast.error('Failed to save blog post');
     }
   };
 
   const filteredUsers = users.filter(u => 
     u.email.toLowerCase().includes(search.toLowerCase()) || 
-    u.username.toLowerCase().includes(search.toLowerCase()) ||
     u.uid.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -192,30 +245,22 @@ const AdminPanel: React.FC = () => {
 
         {/* Tabs */}
         <div className="flex gap-4 mb-12 overflow-x-auto pb-2 no-scrollbar">
-          <button 
-            onClick={() => setActiveTab('users')}
-            className={`px-8 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${activeTab === 'users' ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'}`}
-          >
-            Users
-          </button>
-          <button 
-            onClick={() => setActiveTab('revenue')}
-            className={`px-8 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${activeTab === 'revenue' ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'}`}
-          >
-            Revenue
-          </button>
-          <button 
-            onClick={() => setActiveTab('brand')}
-            className={`px-8 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${activeTab === 'brand' ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'}`}
-          >
-            Brand Assets
-          </button>
-          <button 
-            onClick={() => setActiveTab('backups')}
-            className={`px-8 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${activeTab === 'backups' ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'}`}
-          >
-            Backups
-          </button>
+          {[
+            { id: 'users', label: 'Users', icon: Users },
+            { id: 'revenue', label: 'Revenue', icon: DollarSign },
+            { id: 'brand', label: 'Brand Assets', icon: Shield },
+            { id: 'ai-assistant', label: 'AI Assistant', icon: Bot },
+            { id: 'backups', label: 'Backups', icon: History }
+          ].map((tab) => (
+            <button 
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-8 py-3 rounded-2xl font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === tab.id ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'}`}
+            >
+              <tab.icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          ))}
           <Link 
             to="/admin/blog"
             className="px-8 py-3 rounded-2xl font-bold bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white transition-all flex items-center gap-2 whitespace-nowrap"
@@ -225,7 +270,7 @@ const AdminPanel: React.FC = () => {
           </Link>
         </div>
 
-        {activeTab === 'users' ? (
+        {activeTab === 'users' && (
           <>
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
@@ -269,8 +314,7 @@ const AdminPanel: React.FC = () => {
                             <div className="font-bold text-zinc-950 dark:text-white">{user.email}</div>
                             {user.role === 'admin' && <Shield className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400" />}
                           </div>
-                          <div className="text-xs text-lime-600 dark:text-lime-400 font-bold mt-0.5">@{user.username}</div>
-                          <div className="text-[10px] text-zinc-400 dark:text-zinc-600 font-mono mt-0.5">{user.uid}</div>
+                          <div className="text-xs text-zinc-400 dark:text-zinc-600 font-mono mt-1">{user.uid}</div>
                         </td>
                         <td className="px-8 py-6">
                           <span className={`px-3 py-1 rounded-full text-xs font-bold ${
@@ -290,7 +334,6 @@ const AdminPanel: React.FC = () => {
                           {(() => {
                             const date = user.createdAt;
                             if (!date) return 'N/A';
-                            // Handle Firestore Timestamp or string/number
                             const d = (date as any).toDate ? (date as any).toDate() : new Date(date);
                             return isNaN(d.getTime()) ? 'Invalid Date' : d.toLocaleDateString();
                           })()}
@@ -312,13 +355,6 @@ const AdminPanel: React.FC = () => {
                               title={user.isVerified ? 'Unverify' : 'Verify'}
                             >
                               <BadgeCheck className="w-5 h-5" />
-                            </button>
-                            <button 
-                              onClick={() => handleViewHistory(user.uid)}
-                              className="p-2 text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-                              title="View History"
-                            >
-                              <History className="w-5 h-5" />
                             </button>
                             <button 
                               onClick={() => handleToggleStatus(user.uid, user.status)}
@@ -348,87 +384,9 @@ const AdminPanel: React.FC = () => {
               )}
             </div>
           </>
-        ) : activeTab === 'backups' ? (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-zinc-950 dark:text-white">Backup & Rollback</h2>
-              {selectedUserForBackup && (
-                <button 
-                  onClick={() => setSelectedUserForBackup(null)}
-                  className="text-sm text-zinc-500 hover:text-zinc-950 dark:hover:text-white flex items-center gap-2"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  Clear Selection
-                </button>
-              )}
-            </div>
+        )}
 
-            {selectedUserForBackup ? (
-              <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] overflow-hidden">
-                <div className="p-8 border-b border-zinc-200 dark:border-zinc-800">
-                  <h3 className="font-bold text-zinc-900 dark:text-white">History for User: {selectedUserForBackup}</h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                        <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Timestamp</th>
-                        <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Action</th>
-                        <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Performed By</th>
-                        <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider text-right">Restore</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                      {backupHistory.map((backup) => (
-                        <tr key={backup.id} className="hover:bg-zinc-100 dark:hover:bg-zinc-800/30 transition-colors">
-                          <td className="px-8 py-6 text-zinc-900 dark:text-white">
-                            {backup.timestamp?.toDate ? backup.timestamp.toDate().toLocaleString() : 'N/A'}
-                          </td>
-                          <td className="px-8 py-6">
-                            <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase ${
-                              backup.action === 'create' ? 'bg-blue-100 text-blue-700' :
-                              backup.action === 'update' ? 'bg-amber-100 text-amber-700' :
-                              backup.action === 'delete' ? 'bg-red-100 text-red-700' :
-                              'bg-purple-100 text-purple-700'
-                            }`}>
-                              {backup.action}
-                            </span>
-                          </td>
-                          <td className="px-8 py-6 text-zinc-500 text-sm font-mono">
-                            {backup.performedBy}
-                          </td>
-                          <td className="px-8 py-6 text-right">
-                            <button 
-                              onClick={() => handleRollback(backup.originalId)}
-                              disabled={isRollingBack}
-                              className="p-2 text-lime-600 hover:bg-lime-50 rounded-lg transition-colors disabled:opacity-50"
-                              title="Restore this version"
-                            >
-                              <RotateCcw className="w-5 h-5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {backupHistory.length === 0 && (
-                  <div className="p-20 text-center text-zinc-500">
-                    No backup history found for this user.
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-12 rounded-[2.5rem] text-center">
-                <History className="w-12 h-12 text-zinc-300 dark:text-zinc-700 mx-auto mb-4" />
-                <h3 className="text-xl font-bold mb-2 text-zinc-950 dark:text-white">No User Selected</h3>
-                <p className="text-zinc-500 max-w-md mx-auto">
-                  Select a user from the Users tab and click the history icon to view and restore previous versions of their profile.
-                </p>
-              </div>
-            )}
-          </div>
-        ) : activeTab === 'revenue' ? (
+        {activeTab === 'revenue' && (
           <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-8 rounded-[2.5rem]">
@@ -487,7 +445,9 @@ const AdminPanel: React.FC = () => {
               </div>
             </div>
           </div>
-        ) : (
+        )}
+
+        {activeTab === 'brand' && (
           <div className="space-y-12">
             <div>
               <h2 className="text-2xl font-bold mb-2 text-zinc-950 dark:text-white">Logo Variations</h2>
@@ -553,8 +513,199 @@ const AdminPanel: React.FC = () => {
             </div>
           </div>
         )}
+
+        {activeTab === 'ai-assistant' && (
+          <div className="space-y-8">
+            <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-8 rounded-[2.5rem]">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-lime-400/10 rounded-2xl flex items-center justify-center text-lime-600">
+                  <Bot className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-zinc-950 dark:text-white">AI Content Assistant</h2>
+                  <p className="text-zinc-500 text-sm">Generate high-quality SEO blog posts in seconds</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-sm font-bold text-zinc-500 uppercase tracking-widest">What should the blog post be about?</label>
+                <div className="flex gap-4">
+                  <textarea 
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="e.g. How to grow your Instagram following in Nigeria using Chip NG..."
+                    className="flex-1 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white min-h-[100px] resize-none"
+                  />
+                  <button 
+                    onClick={generateBlogPost}
+                    disabled={isGenerating || !aiPrompt.trim()}
+                    className="bg-lime-400 text-zinc-950 px-8 rounded-2xl font-bold hover:bg-lime-300 transition-all disabled:opacity-50 flex flex-col items-center justify-center gap-2"
+                  >
+                    {isGenerating ? (
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-6 h-6" />
+                    )}
+                    Generate
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {aiResponse && (
+              <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-8 rounded-[2.5rem] space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-zinc-950 dark:text-white">Generated Content</h3>
+                  <button 
+                    onClick={saveGeneratedBlog}
+                    className="flex items-center gap-2 px-6 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl font-bold hover:opacity-90 transition-all"
+                  >
+                    <Send className="w-4 h-4" />
+                    Save to Drafts
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  <div className="lg:col-span-2 space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Title</label>
+                      <h4 className="text-2xl font-bold text-zinc-950 dark:text-white">{aiResponse.title}</h4>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Excerpt</label>
+                      <p className="text-zinc-500 leading-relaxed">{aiResponse.excerpt}</p>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Content Preview</label>
+                      <div className="prose dark:prose-invert max-w-none text-zinc-600 dark:text-zinc-400 line-clamp-6">
+                        {aiResponse.content}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6 bg-zinc-50 dark:bg-zinc-800/50 p-6 rounded-3xl border border-zinc-100 dark:border-zinc-800">
+                    <h5 className="font-bold text-sm uppercase tracking-widest text-zinc-400">SEO Metadata</h5>
+                    <div className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase">SEO Title</label>
+                        <p className="text-sm font-medium text-zinc-900 dark:text-white">{aiResponse.seoTitle}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase">SEO Description</label>
+                        <p className="text-xs text-zinc-500 leading-relaxed">{aiResponse.seoDescription}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase">Keywords</label>
+                        <div className="flex flex-wrap gap-1">
+                          {aiResponse.seoKeywords?.map((kw, i) => (
+                            <span key={i} className="px-2 py-0.5 bg-zinc-200 dark:bg-zinc-700 rounded text-[10px] text-zinc-600 dark:text-zinc-300">
+                              {kw}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'backups' && (
+          <div className="space-y-8">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-500">
+                  <History className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-zinc-950 dark:text-white">Data Backups</h2>
+                  <p className="text-zinc-500 text-sm">Restore previous versions of critical data</p>
+                </div>
+              </div>
+
+              <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                {(['users', 'links', 'blogs'] as const).map((coll) => (
+                  <button
+                    key={coll}
+                    onClick={() => setSelectedBackupCollection(coll)}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all capitalize ${selectedBackupCollection === coll ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white shadow-sm' : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                  >
+                    {coll}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-zinc-200 dark:border-zinc-800">
+                      <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Timestamp</th>
+                      <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Original ID</th>
+                      <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Action</th>
+                      <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider">Performed By</th>
+                      <th className="px-8 py-6 text-sm font-bold text-zinc-500 uppercase tracking-wider text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                    {backups.map((backup) => (
+                      <tr key={backup.id} className="hover:bg-zinc-100 dark:hover:bg-zinc-800/30 transition-colors group">
+                        <td className="px-8 py-6">
+                          <div className="flex items-center gap-3">
+                            <Calendar className="w-4 h-4 text-zinc-400" />
+                            <span className="text-sm text-zinc-900 dark:text-white font-medium">
+                              {new Date(backup.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-8 py-6">
+                          <div className="flex items-center gap-2">
+                            {selectedBackupCollection === 'users' ? <UserIcon className="w-3.5 h-3.5 text-zinc-400" /> : <FileText className="w-3.5 h-3.5 text-zinc-400" />}
+                            <span className="text-xs font-mono text-zinc-500">{backup.originalId}</span>
+                          </div>
+                        </td>
+                        <td className="px-8 py-6">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            backup.action === 'delete' ? 'bg-red-500/10 text-red-600' :
+                            backup.action === 'rollback' ? 'bg-blue-500/10 text-blue-600' :
+                            backup.action === 'create' ? 'bg-lime-500/10 text-lime-600' :
+                            'bg-amber-500/10 text-amber-600'
+                          }`}>
+                            {backup.action}
+                          </span>
+                        </td>
+                        <td className="px-8 py-6">
+                          <span className="text-xs text-zinc-500">{backup.performedBy}</span>
+                        </td>
+                        <td className="px-8 py-6 text-right">
+                          <button 
+                            onClick={() => handleRollback(selectedBackupCollection, backup.originalId)}
+                            className="flex items-center gap-2 ml-auto px-4 py-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-xl text-xs font-bold hover:opacity-90 transition-all"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Restore
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {backups.length === 0 && (
+                <div className="p-20 text-center text-zinc-500">
+                  <div className="flex flex-col items-center gap-4">
+                    <AlertCircle className="w-12 h-12 opacity-20" />
+                    <p>No backups found for this collection.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
-      <BlogGeneratorChatbot />
     </div>
   );
 };

@@ -3,9 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { db, storage, getUserByUsername, handleFirestoreError, OperationType } from '../firebase';
 import { 
   collection, query, where, orderBy, onSnapshot, 
-  addDoc, doc, writeBatch, getDoc
+  addDoc, updateDoc, deleteDoc, doc, writeBatch, getDoc
 } from 'firebase/firestore';
-import { safeUpdateDoc, safeDeleteDoc, createBackup } from '../services/backupService';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   DndContext, closestCenter, KeyboardSensor, PointerSensor, 
@@ -20,7 +19,8 @@ import {
   Layout, Link as LinkIcon, User, Settings, BarChart2, 
   Plus, Trash2, GripVertical, Eye, EyeOff, Image as ImageIcon,
   LogOut, ExternalLink, Copy, Check, Moon, Sun, Palette,
-  Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash
+  Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash,
+  BadgeCheck, ImagePlus, Sparkles
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -28,13 +28,14 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, AreaChart, Area 
 } from 'recharts';
-import { format, isAfter, isBefore, parseISO } from 'date-fns';
+import { format, isAfter, isBefore, parseISO, addMonths } from 'date-fns';
 import { toast } from 'sonner';
 import { Link, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment } from '../types';
-import { auth } from '../firebase';
+import { auth, safeWrite } from '../firebase';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import UpgradeModal from '../components/UpgradeModal';
 import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2 } from 'lucide-react';
+import { PaystackButton } from 'react-paystack';
 
 const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, isUploading }: { 
   link: Link; 
@@ -249,16 +250,14 @@ const Dashboard: React.FC = () => {
   const handleAddLink = async () => {
     if (!user) return;
     try {
-      const linkData = {
+      await addDoc(collection(db, 'links'), {
         userId: user.uid,
         title: 'New Link',
         url: 'https://',
         active: true,
         position: links.length,
         clicks: 0
-      };
-      const docRef = await addDoc(collection(db, 'links'), linkData);
-      await createBackup('links', docRef.id, 'create', linkData);
+      });
       toast.success('Link added');
     } catch (error) {
       console.error('Error adding link:', error);
@@ -268,7 +267,7 @@ const Dashboard: React.FC = () => {
 
   const handleUpdateLink = async (id: string, data: Partial<Link>) => {
     try {
-      await safeUpdateDoc('links', id, data);
+      await updateDoc(doc(db, 'links', id), data);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `links/${id}`);
     }
@@ -276,7 +275,7 @@ const Dashboard: React.FC = () => {
 
   const handleDeleteLink = async (id: string) => {
     try {
-      await safeDeleteDoc('links', id);
+      await deleteDoc(doc(db, 'links', id));
       toast.success('Link deleted');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `links/${id}`);
@@ -321,19 +320,7 @@ const Dashboard: React.FC = () => {
         data.username = cleanUsername;
       }
 
-      // Ensure we don't accidentally remove required fields if they are missing in the local state
-      // but required by security rules. We fetch the current doc to be sure.
-      const userRef = doc(db, 'users', user.uid);
-      const currentDoc = await getDoc(userRef);
-      const currentData = currentDoc.data() as UserType;
-
-      // Merge with default values if missing (for legacy users)
-      const updatePayload: any = { ...data };
-      if (!currentData.backgroundType) updatePayload.backgroundType = 'solid';
-      if (!currentData.theme) updatePayload.theme = 'minimal';
-      if (!currentData.buttonStyle) updatePayload.buttonStyle = 'rounded';
-
-      await safeUpdateDoc('users', user.uid, updatePayload);
+      await safeWrite('users', user.uid, data, 'update');
       toast.success('Profile updated');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
@@ -342,16 +329,27 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleVerificationPayment = async (response: any) => {
+    if (!user || !profile) return;
+    try {
+      const expiryDate = addMonths(new Date(), 1).toISOString();
+      await safeWrite('users', user.uid, {
+        isVerified: true,
+        verificationPaymentStatus: 'paid',
+        verificationExpiry: expiryDate
+      }, 'update');
+      toast.success('Verification badge activated! Valid for 1 month.');
+    } catch (error) {
+      console.error('Error updating verification:', error);
+      toast.error('Failed to activate verification badge');
+    }
+  };
+
   const [isUploading, setIsUploading] = useState(false);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'cover' | 'background' | 'link-icon', linkId?: string) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'background' | 'link-icon' | 'cover', linkId?: string) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-
-    if (type === 'cover' && !hasAccess('pro')) {
-      checkFeatureAccess('pro', 'Cover Image');
-      return;
-    }
 
     if (type === 'background' && !hasAccess('pro')) {
       checkFeatureAccess('pro', 'Custom Background');
@@ -364,32 +362,27 @@ const Dashboard: React.FC = () => {
     }
 
     setIsUploading(true);
-    const folder = type === 'profile' ? 'profiles' : type === 'background' ? 'backgrounds' : 'link-icons';
+    const folder = type === 'profile' ? 'profiles' : type === 'background' ? 'backgrounds' : type === 'cover' ? 'covers' : 'link-icons';
     const timestamp = Date.now();
     const storageRef = ref(storage, `${folder}/${user.uid}/${timestamp}_${file.name}`);
     
-    console.log(`Starting upload to: ${folder}/${user.uid}/${timestamp}_${file.name}`);
-    console.log('File info:', { name: file.name, size: file.size, type: file.type });
-
     try {
       const snapshot = await uploadBytes(storageRef, file);
-      console.log('Upload successful, getting download URL...');
       const url = await getDownloadURL(snapshot.ref);
-      console.log('Download URL obtained:', url);
       
       if (type === 'profile') {
         await handleUpdateProfile({ photoURL: url });
-      } else if (type === 'cover') {
-        await handleUpdateProfile({ coverImageUrl: url });
       } else if (type === 'background') {
         await handleUpdateProfile({ backgroundImage: url, backgroundType: 'image' });
+      } else if (type === 'cover') {
+        await handleUpdateProfile({ coverImage: url });
       } else if (type === 'link-icon' && linkId) {
         await handleUpdateLink(linkId, { icon: url });
       }
       toast.success(`${type.replace('-', ' ')} updated`);
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error(`Failed to upload ${type.replace('-', ' ')} image. Please check your connection.`);
+      toast.error(`Failed to upload ${type.replace('-', ' ')} image.`);
     } finally {
       setIsUploading(false);
       e.target.value = '';
@@ -554,45 +547,32 @@ const Dashboard: React.FC = () => {
                 <h2 className="text-xl font-bold dark:text-white">Profile</h2>
                 
                 {/* Cover Image */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-zinc-500">Cover Image</label>
-                    {!hasAccess('pro') && (
-                      <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
-                        <Crown className="w-2.5 h-2.5" /> PRO
-                      </span>
-                    )}
-                  </div>
-                  <div className="relative group h-32 w-full bg-zinc-100 dark:bg-zinc-800 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
-                    {profile.coverImageUrl ? (
-                      <img src={profile.coverImageUrl} alt="Cover" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-zinc-400">
-                        <ImageIcon className="w-8 h-8" />
-                      </div>
-                    )}
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                      {isUploading ? (
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
-                      ) : (
-                        <div className="flex items-center gap-2 font-bold">
-                          <ImageIcon className="w-5 h-5" />
-                          Change Cover
-                        </div>
-                      )}
-                      <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'cover')} accept="image/*" disabled={isUploading} />
-                    </label>
-                  </div>
+                <div className="relative w-full h-48 bg-zinc-100 dark:bg-zinc-800 rounded-3xl overflow-hidden group/cover border border-zinc-200 dark:border-zinc-700">
+                  {profile.coverImage ? (
+                    <img src={profile.coverImage} alt="Cover" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 gap-2">
+                      <ImagePlus className="w-8 h-8" />
+                      <span className="text-xs font-bold uppercase tracking-widest">Add Cover Image</span>
+                    </div>
+                  )}
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover/cover:opacity-100 cursor-pointer transition-opacity">
+                    <div className="flex flex-col items-center gap-2">
+                      <ImageIcon className="w-8 h-8" />
+                      <span className="text-sm font-bold">Change Cover</span>
+                    </div>
+                    <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'cover')} accept="image/*" disabled={isUploading} />
+                  </label>
                 </div>
 
-                <div className="flex items-center gap-8">
-                  <div className="relative group">
-                    <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 border-zinc-50 dark:border-zinc-950 shadow-xl">
+                <div className="flex flex-col md:flex-row items-start gap-8">
+                  <div className="relative group shrink-0 -mt-20 md:-mt-24 ml-8">
+                    <div className="w-32 h-32 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 border-white dark:border-zinc-900 shadow-2xl">
                       {profile.photoURL ? (
                         <img src={profile.photoURL} alt="Profile" className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-zinc-400">
-                          <User className="w-10 h-10" />
+                          <User className="w-12 h-12" />
                         </div>
                       )}
                     </div>
@@ -1059,6 +1039,60 @@ const Dashboard: React.FC = () => {
 
           {activeTab === 'settings' && (
             <div className="space-y-8">
+              {/* Verification Badge Section */}
+              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[#0095f6]/10 rounded-xl flex items-center justify-center text-[#0095f6]">
+                      <BadgeCheck className="w-6 h-6" />
+                    </div>
+                    <h2 className="text-xl font-bold dark:text-white">Verification Badge</h2>
+                  </div>
+                  {profile.isVerified && (
+                    <span className="px-3 py-1 bg-[#0095f6]/10 text-[#0095f6] rounded-full text-xs font-bold flex items-center gap-1">
+                      <BadgeCheck className="w-3 h-3" /> VERIFIED
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-6 bg-zinc-50 dark:bg-zinc-800 rounded-3xl border border-zinc-100 dark:border-zinc-700">
+                  <div className="flex items-start gap-4 mb-6">
+                    <div className="w-12 h-12 bg-[#0095f6] rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-[#0095f6]/20">
+                      <BadgeCheck className="text-white w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold dark:text-white">Get Verified</h3>
+                      <p className="text-sm text-zinc-500">Show your audience you are authentic with the blue verification badge. Only ₦1,000/month.</p>
+                    </div>
+                  </div>
+                  
+                  {profile.isVerified ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                        <span className="text-sm text-zinc-500">Status</span>
+                        <span className="text-sm font-bold text-[#0095f6]">Active</span>
+                      </div>
+                      <div className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                        <span className="text-sm text-zinc-500">Expires</span>
+                        <span className="text-sm font-bold dark:text-white">
+                          {profile.verificationExpiry ? format(new Date(profile.verificationExpiry), 'PPP') : 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <PaystackButton
+                      className="w-full py-4 bg-[#0095f6] text-white rounded-2xl font-bold hover:opacity-90 transition-all shadow-lg shadow-[#0095f6]/20"
+                      email={user?.email || ''}
+                      amount={1000 * 100} // Amount in kobo
+                      publicKey={import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''}
+                      text="Activate Verification Badge (₦1,000/mo)"
+                      onSuccess={handleVerificationPayment}
+                      onClose={() => toast.error('Payment cancelled')}
+                    />
+                  )}
+                </div>
+              </section>
+
               <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold dark:text-white">Premium Subscription</h2>

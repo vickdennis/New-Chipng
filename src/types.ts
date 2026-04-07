@@ -1,8 +1,17 @@
 export type UserRole = 'user' | 'admin';
-export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'coffee' | 'lavender' | 'midnight' | 'retro';
+export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'candy' | 'monochrome';
 export type ButtonStyle = 'rounded' | 'pill' | 'square';
 export type BackgroundType = 'solid' | 'gradient' | 'image';
 export type PlanType = 'basic' | 'pro' | 'business';
+
+export interface BackupEntry<T> {
+  id: string;
+  originalId: string;
+  data: T;
+  action: 'create' | 'update' | 'delete' | 'rollback';
+  timestamp: string;
+  performedBy: string;
+}
 
 export interface Appointment {
   id: string;
@@ -18,7 +27,7 @@ export interface User {
   displayName?: string;
   bio?: string;
   photoURL?: string;
-  coverImageUrl?: string;
+  coverImage?: string;
   role: UserRole;
   createdAt: string;
   status: 'active' | 'suspended';
@@ -31,6 +40,8 @@ export interface User {
   backgroundImage?: string;
   totalClicks?: number;
   isVerified?: boolean;
+  verificationPaymentStatus?: 'pending' | 'paid' | 'expired';
+  verificationExpiry?: string;
   plan: PlanType;
   subscriptionStatus: 'active' | 'inactive';
   location?: {
@@ -148,58 +159,42 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
   },
   ocean: {
     name: 'ocean',
-    background: 'bg-gradient-to-br from-blue-600 to-cyan-500',
+    background: 'bg-gradient-to-b from-cyan-500 to-blue-600',
     text: 'text-white',
-    button: 'bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/40',
+    button: 'bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30',
     buttonText: 'text-white',
-    accent: 'bg-cyan-300',
+    accent: 'bg-cyan-200',
   },
   forest: {
     name: 'forest',
-    background: 'bg-gradient-to-br from-emerald-600 to-teal-700',
-    text: 'text-white',
-    button: 'bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20',
-    buttonText: 'text-white',
+    background: 'bg-gradient-to-b from-emerald-600 to-teal-800',
+    text: 'text-emerald-50',
+    button: 'bg-emerald-900/40 backdrop-blur-sm border border-emerald-500/30 hover:bg-emerald-900/60',
+    buttonText: 'text-emerald-50',
     accent: 'bg-emerald-400',
   },
   royal: {
     name: 'royal',
-    background: 'bg-gradient-to-br from-indigo-900 via-purple-900 to-fuchsia-900',
+    background: 'bg-gradient-to-b from-indigo-900 to-purple-900',
+    text: 'text-amber-100',
+    button: 'bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20',
+    buttonText: 'text-amber-200',
+    accent: 'bg-amber-500',
+  },
+  candy: {
+    name: 'candy',
+    background: 'bg-gradient-to-b from-pink-400 to-rose-400',
     text: 'text-white',
-    button: 'bg-amber-400/10 border border-amber-400/50 hover:bg-amber-400/20',
-    buttonText: 'text-amber-400',
-    accent: 'bg-amber-400',
-  },
-  coffee: {
-    name: 'coffee',
-    background: 'bg-gradient-to-br from-stone-800 to-stone-900',
-    text: 'text-stone-100',
-    button: 'bg-stone-700 hover:bg-stone-600 border border-stone-600',
-    buttonText: 'text-stone-100',
-    accent: 'bg-orange-200',
-  },
-  lavender: {
-    name: 'lavender',
-    background: 'bg-gradient-to-br from-violet-200 to-pink-200',
-    text: 'text-violet-900',
-    button: 'bg-white/50 backdrop-blur-md border border-violet-300 hover:bg-white/70',
-    buttonText: 'text-violet-900',
-    accent: 'bg-violet-400',
-  },
-  midnight: {
-    name: 'midnight',
-    background: 'bg-zinc-950',
-    text: 'text-zinc-100',
-    button: 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700',
-    buttonText: 'text-zinc-100',
-    accent: 'bg-indigo-500',
-  },
-  retro: {
-    name: 'retro',
-    background: 'bg-gradient-to-br from-yellow-400 via-orange-500 to-red-600',
-    text: 'text-white',
-    button: 'bg-black/20 backdrop-blur-md border border-black/30 hover:bg-black/40',
+    button: 'bg-white/30 border border-white/40 hover:bg-white/40',
     buttonText: 'text-white',
-    accent: 'bg-yellow-200',
+    accent: 'bg-rose-200',
+  },
+  monochrome: {
+    name: 'monochrome',
+    background: 'bg-zinc-100',
+    text: 'text-zinc-900',
+    button: 'bg-white border-2 border-zinc-900 hover:bg-zinc-900 hover:text-white transition-all',
+    buttonText: 'text-zinc-900',
+    accent: 'bg-zinc-900',
   },
 };

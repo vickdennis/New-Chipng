@@ -109,11 +109,9 @@ service cloud.firestore {
              (!('role' in data) || data.role in ['user', 'admin']) &&
              (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
              (!('username' in data) || (data.username is string && data.username.size() >= 3 && data.username.size() <= 30)) &&
-             (!('theme' in data) || data.theme in ['minimal', 'neon', 'glassmorphism', 'dark', 'sunset']) &&
+             (!('theme' in data) || data.theme in ['minimal', 'neon', 'glassmorphism', 'dark', 'sunset', 'ocean', 'forest', 'royal', 'candy', 'monochrome']) &&
              (!('buttonStyle' in data) || data.buttonStyle in ['rounded', 'pill', 'square']) &&
-             (!('backgroundType' in data) || data.backgroundType in ['solid', 'gradient', 'image']) &&
-             (!('coverImageUrl' in data) || isValidUrl(data.coverImageUrl)) &&
-             (!('isDeleted' in data) || data.isDeleted is bool);
+             (!('backgroundType' in data) || data.backgroundType in ['solid', 'gradient', 'image']);
     }
 
     function isValidLink(data) {
@@ -122,8 +120,7 @@ service cloud.firestore {
              data.title is string && data.title.size() > 0 && data.title.size() <= 100 &&
              isValidUrl(data.url) &&
              data.active is bool &&
-             data.position is number &&
-             (!('isDeleted' in data) || data.isDeleted is bool);
+             data.position is number;
     }
 
     // ===============================================================
@@ -167,10 +164,10 @@ service cloud.firestore {
     match /users_backup/{backupId} {
       allow read, write: if isAdmin();
     }
-    match /blogs_backup/{backupId} {
+    match /links_backup/{backupId} {
       allow read, write: if isAdmin();
     }
-    match /links_backup/{backupId} {
+    match /blogs_backup/{backupId} {
       allow read, write: if isAdmin();
     }
   }

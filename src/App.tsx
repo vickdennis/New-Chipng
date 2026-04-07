@@ -16,7 +16,7 @@ import AdminBlogEditor from './pages/AdminBlogEditor';
 import { Toaster } from 'sonner';
 
 import ErrorBoundary from './components/ErrorBoundary';
-import ChatBot from './components/ChatBot';
+import ChatBot from './components/BlogGeneratorChatbot';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean }> = ({ children, adminOnly }) => {
   const { user, loading } = useAuth();
