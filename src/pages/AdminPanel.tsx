@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { User } from '../types';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import BlogGeneratorChatbot from '../components/BlogGeneratorChatbot';
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -553,6 +554,7 @@ const AdminPanel: React.FC = () => {
           </div>
         )}
       </div>
+      <BlogGeneratorChatbot />
     </div>
   );
 };

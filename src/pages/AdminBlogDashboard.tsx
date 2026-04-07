@@ -17,6 +17,8 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
+import BlogGeneratorChatbot, { BlogGeneratorChatbotRef } from '../components/BlogGeneratorChatbot';
+import { Sparkles as SparklesIcon } from 'lucide-react';
 
 const AdminBlogDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -24,6 +26,7 @@ const AdminBlogDashboard: React.FC = () => {
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const chatbotRef = React.useRef<BlogGeneratorChatbotRef>(null);
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -123,6 +126,13 @@ const AdminBlogDashboard: React.FC = () => {
                 className="w-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-lime-500 dark:focus:ring-lime-400 outline-none transition-all text-zinc-950 dark:text-white"
               />
             </div>
+            <button 
+              onClick={() => chatbotRef.current?.open()}
+              className="flex items-center gap-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 px-6 py-3 rounded-2xl font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all whitespace-nowrap"
+            >
+              <SparklesIcon className="w-5 h-5 text-lime-400" />
+              Generate with AI
+            </button>
             <Link 
               to="/admin/blog/new"
               className="flex items-center gap-2 bg-lime-400 text-zinc-950 px-6 py-3 rounded-2xl font-bold hover:bg-lime-300 transition-all whitespace-nowrap"
@@ -298,25 +308,25 @@ const AdminBlogDashboard: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-8 py-6 text-right">
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-end gap-2 transition-opacity">
                             <Link 
                               to={`/blog/${post.slug}`}
                               target="_blank"
-                              className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-blue-500/10 dark:hover:bg-blue-500/20 rounded-xl transition-all text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 border border-zinc-200 dark:border-zinc-700"
+                              className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-blue-500 dark:hover:text-blue-400"
                               title="Preview"
                             >
                               <Eye className="w-5 h-5" />
                             </Link>
                             <Link 
                               to={`/admin/blog/edit/${post.id}`}
-                              className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-xl transition-all text-zinc-500 hover:text-zinc-950 dark:hover:text-white border border-zinc-200 dark:border-zinc-700"
+                              className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
                               title="Edit"
                             >
                               <Edit className="w-5 h-5" />
                             </Link>
                             <button 
                               onClick={() => handleDelete(post.id)}
-                              className="p-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-red-500/10 dark:hover:bg-red-500/20 rounded-xl transition-all text-zinc-500 hover:text-red-600 border border-zinc-200 dark:border-zinc-700"
+                              className="p-2 hover:bg-red-500/10 dark:hover:bg-red-900/20 rounded-lg transition-colors text-zinc-400 hover:text-red-500"
                               title="Delete"
                             >
                               <Trash2 className="w-5 h-5" />
@@ -347,6 +357,7 @@ const AdminBlogDashboard: React.FC = () => {
           )}
         </div>
       </div>
+      <BlogGeneratorChatbot ref={chatbotRef} />
     </div>
   );
 };
