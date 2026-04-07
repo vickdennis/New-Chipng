@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore, collection, query, where, getDocs, limit, Firestore } from 'firebase/firestore';
+import { getFirestore, collection, query, where, getDocs, limit, Firestore, getDocFromServer, doc } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -9,6 +9,18 @@ export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const storage = getStorage(app, `gs://${firebaseConfig.storageBucket}`);
 export const googleProvider = new GoogleAuthProvider();
+
+// Connection test as per instructions
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+  } catch (error) {
+    if(error instanceof Error && error.message.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration. The client is offline.");
+    }
+  }
+}
+testConnection();
 
 export enum OperationType {
   CREATE = 'create',
@@ -89,7 +101,7 @@ export const getUserByUsername = async (username: string) => {
     console.log('User found:', data);
     return data;
   } catch (error) {
-    console.error('Error in getUserByUsername:', error);
+    handleFirestoreError(error, OperationType.LIST, 'users');
     return null;
   }
 };

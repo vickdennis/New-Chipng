@@ -1,4 +1,4 @@
-import { db, auth } from '../firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { 
   collection, doc, getDoc, setDoc, addDoc, 
   serverTimestamp, query, where, orderBy, getDocs,
@@ -39,9 +39,7 @@ export const createBackup = async (collectionName: string, documentId: string, a
 
     await addDoc(collection(db, backupCollection), backupData);
   } catch (error) {
-    console.error(`Backup failed for ${collectionName}/${documentId}:`, error);
-    // We don't throw here to avoid blocking the main operation if backup fails
-    // but in a strict system you might want to.
+    handleFirestoreError(error, OperationType.CREATE, `${collectionName}_backup`);
   }
 };
 
@@ -110,8 +108,8 @@ export const rollbackDocument = async (collectionName: string, documentId: strin
     
     return true;
   } catch (error) {
-    console.error(`Rollback failed for ${collectionName}/${documentId}:`, error);
-    throw error;
+    handleFirestoreError(error, OperationType.WRITE, collectionName);
+    return false;
   }
 };
 

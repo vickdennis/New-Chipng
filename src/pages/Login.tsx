@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp, query, collection, where, getDocs, writeBatch } from 'firebase/firestore';
-import { auth, db, getUserByUsername } from '../firebase';
+import { auth, db, getUserByUsername, handleFirestoreError, OperationType } from '../firebase';
 import { toast } from 'sonner';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 import Logo from '../components/Logo';
@@ -36,22 +36,31 @@ const Login: React.FC = () => {
       const user = result.user;
 
       // Check if user doc exists
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      let userDoc;
+      try {
+        userDoc = await getDoc(doc(db, 'users', user.uid));
+      } catch (error) {
+        handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+      }
       
       // Also check if a pre-created doc exists for this email
       let existingDocId = user.uid;
       let existingData = null;
 
-      if (!userDoc.exists()) {
-        const q = query(collection(db, 'users'), where('email', '==', user.email));
-        const preCreatedSnapshot = await getDocs(q);
-        if (!preCreatedSnapshot.empty) {
-          existingDocId = preCreatedSnapshot.docs[0].id;
-          existingData = preCreatedSnapshot.docs[0].data();
+      if (userDoc && !userDoc.exists()) {
+        try {
+          const q = query(collection(db, 'users'), where('email', '==', user.email));
+          const preCreatedSnapshot = await getDocs(q);
+          if (!preCreatedSnapshot.empty) {
+            existingDocId = preCreatedSnapshot.docs[0].id;
+            existingData = preCreatedSnapshot.docs[0].data();
+          }
+        } catch (error) {
+          handleFirestoreError(error, OperationType.LIST, 'users');
         }
       }
 
-      if (!userDoc.exists() && !existingData) {
+      if (userDoc && !userDoc.exists() && !existingData) {
         // New user from Google
         // Generate a unique username
         let baseUsername = user.email?.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user';
@@ -66,23 +75,29 @@ const Login: React.FC = () => {
 
         // Create user doc
         const isMainAdmin = user.email === 'vickthorden@gmail.com';
-        await setDoc(doc(db, 'users', user.uid), {
-          uid: user.uid,
-          email: user.email,
-          username: finalUsername,
-          displayName: user.displayName || finalUsername,
-          photoURL: user.photoURL || null,
-          bio: 'Welcome to my Chip NG profile!',
-          role: isMainAdmin ? 'admin' : 'user',
-          createdAt: serverTimestamp(),
-          status: 'active',
-          theme: 'minimal',
-          buttonStyle: 'rounded',
-          backgroundType: 'solid',
-          backgroundColor: '#ffffff',
-          totalClicks: 0,
-          isVerified: isMainAdmin // Give main admin a verification badge by default
-        });
+        try {
+          await setDoc(doc(db, 'users', user.uid), {
+            uid: user.uid,
+            email: user.email,
+            username: finalUsername,
+            displayName: user.displayName || finalUsername,
+            photoURL: user.photoURL || null,
+            bio: 'Welcome to my Chip NG profile!',
+            role: isMainAdmin ? 'admin' : 'user',
+            createdAt: serverTimestamp(),
+            status: 'active',
+            theme: 'minimal',
+            buttonStyle: 'rounded',
+            backgroundType: 'solid',
+            backgroundColor: '#ffffff',
+            totalClicks: 0,
+            isVerified: isMainAdmin, // Give main admin a verification badge by default
+            plan: 'basic',
+            subscriptionStatus: 'active'
+          });
+        } catch (error) {
+          handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}`);
+        }
       } else if (existingData && existingDocId !== user.uid) {
         // Link pre-created doc to the new UID
         const batch = writeBatch(db);
@@ -96,7 +111,11 @@ const Login: React.FC = () => {
           displayName: user.displayName || existingData.displayName || existingData.username
         });
         batch.delete(oldDocRef);
-        await batch.commit();
+        try {
+          await batch.commit();
+        } catch (error) {
+          handleFirestoreError(error, OperationType.WRITE, 'users');
+        }
       }
 
       toast.success('Welcome back!');

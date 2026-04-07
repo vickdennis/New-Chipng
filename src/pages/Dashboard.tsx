@@ -261,8 +261,7 @@ const Dashboard: React.FC = () => {
       await createBackup('links', docRef.id, 'create', linkData);
       toast.success('Link added');
     } catch (error) {
-      console.error('Error adding link:', error);
-      toast.error('Failed to add link');
+      handleFirestoreError(error, OperationType.CREATE, 'links');
     }
   };
 
@@ -296,7 +295,11 @@ const Dashboard: React.FC = () => {
       newLinks.forEach((link, index) => {
         batch.update(doc(db, 'links', link.id), { position: index });
       });
-      await batch.commit();
+      try {
+        await batch.commit();
+      } catch (error) {
+        handleFirestoreError(error, OperationType.WRITE, 'links');
+      }
     }
   };
 
