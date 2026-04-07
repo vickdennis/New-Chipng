@@ -138,6 +138,36 @@ const LandingPage: React.FC = () => {
       {/* Blog Section */}
       <BlogSection />
 
+      {/* Contact Section */}
+      <section id="contact" className="py-32 bg-zinc-50 dark:bg-zinc-900/30">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <h2 className="text-4xl md:text-6xl font-bold tracking-tighter mb-8">Get in Touch</h2>
+          <p className="text-xl text-zinc-600 dark:text-zinc-400 mb-16 max-w-2xl mx-auto">
+            Have questions or need support? Reach out to us on any of our platforms.
+          </p>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {[
+              { name: 'WhatsApp', value: '+2348100764154', path: 'https://wa.me/2348100764154', color: 'hover:text-green-500' },
+              { name: 'TikTok', value: '@chipng_app', path: 'https://tiktok.com/@chipng_app', color: 'hover:text-pink-500' },
+              { name: 'Instagram', value: '@Chipng_app', path: 'https://instagram.com/Chipng_app', color: 'hover:text-purple-500' },
+              { name: 'X (Twitter)', value: '@chipng_app', path: 'https://x.com/chipng_app', color: 'hover:text-blue-500' }
+            ].map((contact) => (
+              <a 
+                key={contact.name}
+                href={contact.path}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex flex-col items-center gap-4 p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl transition-all hover:scale-105 ${contact.color}`}
+              >
+                <span className="font-bold text-lg">{contact.name}</span>
+                <span className="text-zinc-500 dark:text-zinc-400 text-sm">{contact.value}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-32 bg-white dark:bg-zinc-950">
         <div className="max-w-7xl mx-auto px-6">
