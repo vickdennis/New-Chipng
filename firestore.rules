@@ -125,7 +125,7 @@ service cloud.firestore {
              (!('theme' in data) || data.theme in ['minimal', 'neon', 'glassmorphism', 'dark', 'sunset', 'ocean', 'forest', 'royal', 'candy', 'monochrome']) &&
              (!('buttonStyle' in data) || data.buttonStyle in ['rounded', 'pill', 'square']) &&
              (!('backgroundType' in data) || data.backgroundType in ['solid', 'gradient', 'image']) &&
-             (!('coverImage' in data) || (data.coverImage is string && data.coverImage.size() <= 2048)) &&
+             (!('coverImage' in data) || data.coverImage is string) &&
              (!('isVerified' in data) || data.isVerified is bool) &&
              (!('verificationPaymentStatus' in data) || data.verificationPaymentStatus in ['pending', 'paid', 'expired']) &&
              (!('verificationExpiry' in data) || data.verificationExpiry is timestamp || data.verificationExpiry is string) &&
