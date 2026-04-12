@@ -362,7 +362,7 @@ const Dashboard: React.FC = () => {
     }
 
     setIsUploading(true);
-    const folder = type === 'profile' ? 'profiles' : type === 'background' ? 'backgrounds' : type === 'cover' ? 'profiles' : 'link-icons';
+    const folder = type === 'profile' ? 'profiles' : type === 'background' ? 'backgrounds' : type === 'cover' ? 'covers' : 'link-icons';
     const timestamp = Date.now();
     const storageRef = ref(storage, `${folder}/${user.uid}/${timestamp}_${file.name}`);
     

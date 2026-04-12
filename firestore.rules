@@ -10,19 +10,6 @@
 //   - status: string (optional, 'active' or 'suspended')
 //   - isPremium: boolean (optional)
 //   - premiumUntil: timestamp (optional)
-//   - username: string (required)
-//   - displayName: string (optional)
-//   - bio: string (optional)
-//   - photoURL: string (optional)
-//   - coverImage: string (optional)
-//   - theme: string (required)
-//   - buttonStyle: string (required)
-//   - backgroundType: string (required)
-//   - isVerified: boolean (optional)
-//   - verificationPaymentStatus: string (optional)
-//   - verificationExpiry: timestamp (optional)
-//   - plan: string (required)
-//   - subscriptionStatus: string (required)
 //
 // Collection: /profiles/{userId}
 // Fields:
@@ -124,13 +111,7 @@ service cloud.firestore {
              (!('username' in data) || (data.username is string && data.username.size() >= 3 && data.username.size() <= 30)) &&
              (!('theme' in data) || data.theme in ['minimal', 'neon', 'glassmorphism', 'dark', 'sunset', 'ocean', 'forest', 'royal', 'candy', 'monochrome']) &&
              (!('buttonStyle' in data) || data.buttonStyle in ['rounded', 'pill', 'square']) &&
-             (!('backgroundType' in data) || data.backgroundType in ['solid', 'gradient', 'image']) &&
-             (!('coverImage' in data) || data.coverImage is string) &&
-             (!('isVerified' in data) || data.isVerified is bool) &&
-             (!('verificationPaymentStatus' in data) || data.verificationPaymentStatus in ['pending', 'paid', 'expired']) &&
-             (!('verificationExpiry' in data) || data.verificationExpiry is timestamp || data.verificationExpiry is string) &&
-             (!('plan' in data) || data.plan in ['basic', 'pro', 'business']) &&
-             (!('subscriptionStatus' in data) || data.subscriptionStatus in ['active', 'inactive']);
+             (!('backgroundType' in data) || data.backgroundType in ['solid', 'gradient', 'image']);
     }
 
     function isValidLink(data) {
