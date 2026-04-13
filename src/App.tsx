@@ -13,10 +13,10 @@ import BlogList from './pages/BlogList';
 import BlogPost from './pages/BlogPost';
 import AdminBlogDashboard from './pages/AdminBlogDashboard';
 import AdminBlogEditor from './pages/AdminBlogEditor';
+import Shop from './pages/Shop';
 import { Toaster } from 'sonner';
 
 import ErrorBoundary from './components/ErrorBoundary';
-import ChatBot from './components/BlogGeneratorChatbot';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean }> = ({ children, adminOnly }) => {
   const { user, loading } = useAuth();
@@ -46,9 +46,9 @@ const App: React.FC = () => {
               <Route path="/admin/blog" element={<ProtectedRoute adminOnly><AdminBlogDashboard /></ProtectedRoute>} />
               <Route path="/admin/blog/new" element={<ProtectedRoute adminOnly><AdminBlogEditor /></ProtectedRoute>} />
               <Route path="/admin/blog/edit/:id" element={<ProtectedRoute adminOnly><AdminBlogEditor /></ProtectedRoute>} />
+              <Route path="/shop" element={<Shop />} />
               <Route path="/:username" element={<PublicProfile />} />
             </Routes>
-            <ChatBot />
           </Router>
           <Toaster position="top-center" richColors />
         </AuthProvider>

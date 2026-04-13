@@ -11,21 +11,18 @@
         "displayName": { "type": "string" },
         "bio": { "type": "string" },
         "photoURL": { "type": "string" },
-        "coverImage": { "type": "string" },
         "role": { "type": "string", "enum": ["user", "admin"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "status": { "type": "string", "enum": ["active", "suspended"] },
         "isPremium": { "type": "boolean" },
         "premiumUntil": { "type": "string", "format": "date-time" },
-        "theme": { "type": "string", "enum": ["minimal", "neon", "glassmorphism", "dark", "sunset", "ocean", "forest", "royal", "candy", "monochrome"] },
+        "theme": { "type": "string", "enum": ["minimal", "neon", "glassmorphism", "dark", "sunset"] },
         "buttonStyle": { "type": "string", "enum": ["rounded", "pill", "square"] },
         "backgroundType": { "type": "string", "enum": ["solid", "gradient", "image"] },
         "backgroundColor": { "type": "string" },
         "backgroundImage": { "type": "string" },
         "totalClicks": { "type": "number" },
         "isVerified": { "type": "boolean" },
-        "verificationPaymentStatus": { "type": "string", "enum": ["pending", "paid", "expired"] },
-        "verificationExpiry": { "type": "string", "format": "date-time" },
         "plan": { "type": "string", "enum": ["basic", "pro", "business"] },
         "subscriptionStatus": { "type": "string", "enum": ["active", "inactive"] },
         "location": {
@@ -116,18 +113,35 @@
       },
       "required": ["title", "slug", "content", "excerpt", "author", "createdAt", "updatedAt", "published"]
     },
-    "BackupEntry": {
-      "title": "BackupEntry",
-      "description": "A backup snapshot of a document.",
+    "Product": {
+      "title": "Product",
+      "description": "A product available in the shop.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "image": { "type": "string", "format": "uri" },
+        "category": { "type": "string" },
+        "stock": { "type": "number" },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "description", "price", "image", "category", "stock", "active"]
+    },
+    "Backup": {
+      "title": "Backup",
+      "description": "A snapshot of a document for recovery purposes.",
       "type": "object",
       "properties": {
         "originalId": { "type": "string" },
+        "collectionName": { "type": "string" },
         "data": { "type": "object" },
         "action": { "type": "string", "enum": ["create", "update", "delete", "rollback"] },
         "timestamp": { "type": "string", "format": "date-time" },
         "performedBy": { "type": "string" }
       },
-      "required": ["originalId", "data", "action", "timestamp", "performedBy"]
+      "required": ["originalId", "collectionName", "data", "action", "timestamp", "performedBy"]
     }
   },
   "firestore": {
@@ -135,17 +149,9 @@
       "schema": "User",
       "description": "User and profile data."
     },
-    "/users_backup/{backupId}": {
-      "schema": "BackupEntry",
-      "description": "Backups of user data."
-    },
     "/links/{linkId}": {
       "schema": "Link",
       "description": "User links."
-    },
-    "/links_backup/{backupId}": {
-      "schema": "BackupEntry",
-      "description": "Backups of link data."
     },
     "/analytics/{analyticsId}": {
       "schema": "Analytics",
@@ -155,9 +161,21 @@
       "schema": "Blog",
       "description": "Blog posts."
     },
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Shop products."
+    },
+    "/users_backup/{backupId}": {
+      "schema": "Backup",
+      "description": "Backups for users collection."
+    },
     "/blogs_backup/{backupId}": {
-      "schema": "BackupEntry",
-      "description": "Backups of blog data."
+      "schema": "Backup",
+      "description": "Backups for blogs collection."
+    },
+    "/links_backup/{backupId}": {
+      "schema": "Backup",
+      "description": "Backups for links collection."
     }
   }
 }

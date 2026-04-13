@@ -1,9 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { 
-  getFirestore, collection, query, where, getDocs, limit, Firestore,
-  getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, orderBy, limit as firestoreLimit
-} from 'firebase/firestore';
+import { getFirestore, collection, query, where, getDocs, limit, Firestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../firebase-applet-config.json';
 
@@ -78,75 +75,3 @@ export const getUserByUsername = async (username: string) => {
   const doc = querySnapshot.docs[0];
   return { uid: doc.id, ...doc.data() };
 };
-
-export async function createBackup(collectionName: string, documentId: string, action: 'create' | 'update' | 'delete' | 'rollback') {
-  try {
-    const docRef = doc(db, collectionName, documentId);
-    const docSnap = await getDoc(docRef);
-    
-    const backupCollection = `${collectionName}_backup`;
-    await addDoc(collection(db, backupCollection), {
-      originalId: documentId,
-      data: docSnap.exists() ? docSnap.data() : null,
-      action,
-      timestamp: new Date().toISOString(),
-      performedBy: auth.currentUser?.uid || 'system'
-    });
-  } catch (error) {
-    console.error('Backup failed:', error);
-  }
-}
-
-export async function safeWrite(collectionName: string, documentId: string, data: any, action: 'create' | 'update' | 'delete') {
-  await createBackup(collectionName, documentId, action);
-  const docRef = doc(db, collectionName, documentId);
-  
-  try {
-    if (action === 'create') {
-      await setDoc(docRef, data);
-    } else if (action === 'update') {
-      await updateDoc(docRef, data);
-    } else if (action === 'delete') {
-      await deleteDoc(docRef);
-    }
-  } catch (error) {
-    handleFirestoreError(error, action === 'delete' ? OperationType.DELETE : OperationType.WRITE, `${collectionName}/${documentId}`);
-  }
-}
-
-export async function rollbackDocument(collectionName: string, documentId: string) {
-  const backupCollection = `${collectionName}_backup`;
-  const q = query(
-    collection(db, backupCollection),
-    where('originalId', '==', documentId),
-    orderBy('timestamp', 'desc'),
-    firestoreLimit(1)
-  );
-  
-  try {
-    const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) {
-      throw new Error('No backup found for this document');
-    }
-    
-    const backupDoc = querySnapshot.docs[0].data();
-    const docRef = doc(db, collectionName, documentId);
-    
-    if (backupDoc.data) {
-      await setDoc(docRef, backupDoc.data);
-    } else {
-      await deleteDoc(docRef);
-    }
-    
-    // Log the rollback
-    await addDoc(collection(db, backupCollection), {
-      originalId: documentId,
-      data: backupDoc.data,
-      action: 'rollback',
-      timestamp: new Date().toISOString(),
-      performedBy: auth.currentUser?.uid || 'system'
-    });
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, `${collectionName}/${documentId}`);
-  }
-}

@@ -25,10 +25,9 @@ const Footer: React.FC = () => {
     {
       title: 'Social',
       links: [
-        { name: 'X (Twitter)', path: 'https://x.com/chipng_app' },
-        { name: 'Instagram', path: 'https://instagram.com/Chipng_app' },
-        { name: 'TikTok', path: 'https://tiktok.com/@chipng_app' },
-        { name: 'WhatsApp', path: 'https://wa.me/2348100764154' },
+        { name: 'Twitter', path: 'https://twitter.com/chipng' },
+        { name: 'Instagram', path: 'https://instagram.com/chipng' },
+        { name: 'LinkedIn', path: 'https://linkedin.com/company/chipng' },
       ],
     },
   ];
@@ -39,15 +38,10 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-20">
           <div className="lg:col-span-1">
             <Logo size="sm" className="!flex-row !gap-3 mb-6" />
-            <p className="text-zinc-500 text-sm leading-relaxed max-w-xs mb-6">
+            <p className="text-zinc-500 text-sm leading-relaxed max-w-xs">
               Chip NG is the powerful link-in-bio tool for creators, entrepreneurs, and businesses. 
               Build your professional page in seconds.
             </p>
-            <div className="space-y-2">
-              <h4 className="text-zinc-950 dark:text-white font-bold text-xs uppercase tracking-widest">Get in Touch</h4>
-              <p className="text-zinc-500 text-sm">WhatsApp: +234 810 076 4154</p>
-              <p className="text-zinc-500 text-sm">Email: hello@chipng.com</p>
-            </div>
           </div>
 
           {footerLinks.map((section) => (

@@ -1,16 +1,19 @@
 export type UserRole = 'user' | 'admin';
-export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'candy' | 'monochrome';
+export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'coffee';
 export type ButtonStyle = 'rounded' | 'pill' | 'square';
 export type BackgroundType = 'solid' | 'gradient' | 'image';
 export type PlanType = 'basic' | 'pro' | 'business';
 
-export interface BackupEntry<T> {
+export interface Product {
   id: string;
-  originalId: string;
-  data: T;
-  action: 'create' | 'update' | 'delete' | 'rollback';
-  timestamp: string;
-  performedBy: string;
+  name: string;
+  description: string;
+  price: number;
+  image: string;
+  category: string;
+  stock: number;
+  active: boolean;
+  createdAt: string;
 }
 
 export interface Appointment {
@@ -40,8 +43,6 @@ export interface User {
   backgroundImage?: string;
   totalClicks?: number;
   isVerified?: boolean;
-  verificationPaymentStatus?: 'pending' | 'paid' | 'expired';
-  verificationExpiry?: string;
   plan: PlanType;
   subscriptionStatus: 'active' | 'inactive';
   location?: {
@@ -159,7 +160,7 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
   },
   ocean: {
     name: 'ocean',
-    background: 'bg-gradient-to-b from-cyan-500 to-blue-600',
+    background: 'bg-gradient-to-br from-cyan-500 to-blue-600',
     text: 'text-white',
     button: 'bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30',
     buttonText: 'text-white',
@@ -167,34 +168,26 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
   },
   forest: {
     name: 'forest',
-    background: 'bg-gradient-to-b from-emerald-600 to-teal-800',
-    text: 'text-emerald-50',
-    button: 'bg-emerald-900/40 backdrop-blur-sm border border-emerald-500/30 hover:bg-emerald-900/60',
-    buttonText: 'text-emerald-50',
-    accent: 'bg-emerald-400',
+    background: 'bg-gradient-to-br from-emerald-600 to-teal-800',
+    text: 'text-white',
+    button: 'bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20',
+    buttonText: 'text-white',
+    accent: 'bg-emerald-200',
   },
   royal: {
     name: 'royal',
-    background: 'bg-gradient-to-b from-indigo-900 to-purple-900',
-    text: 'text-amber-100',
-    button: 'bg-amber-500/10 border border-amber-500/30 hover:bg-amber-500/20',
-    buttonText: 'text-amber-200',
-    accent: 'bg-amber-500',
-  },
-  candy: {
-    name: 'candy',
-    background: 'bg-gradient-to-b from-pink-400 to-rose-400',
-    text: 'text-white',
-    button: 'bg-white/30 border border-white/40 hover:bg-white/40',
-    buttonText: 'text-white',
-    accent: 'bg-rose-200',
-  },
-  monochrome: {
-    name: 'monochrome',
-    background: 'bg-zinc-100',
+    background: 'bg-gradient-to-br from-amber-400 to-amber-600',
     text: 'text-zinc-900',
-    button: 'bg-white border-2 border-zinc-900 hover:bg-zinc-900 hover:text-white transition-all',
+    button: 'bg-zinc-900/10 backdrop-blur-md border border-zinc-900/20 hover:bg-zinc-900/20',
     buttonText: 'text-zinc-900',
-    accent: 'bg-zinc-900',
+    accent: 'bg-amber-900',
+  },
+  coffee: {
+    name: 'coffee',
+    background: 'bg-gradient-to-br from-stone-700 to-stone-900',
+    text: 'text-stone-100',
+    button: 'bg-stone-800 border border-stone-600 hover:bg-stone-700',
+    buttonText: 'text-stone-100',
+    accent: 'bg-orange-200',
   },
 };

@@ -5,15 +5,74 @@ import { auth } from '../firebase';
 import { toast } from 'sonner';
 import { PlanType } from '../types';
 import { usePaystackPayment } from 'react-paystack';
-import { PLANS, getAmount } from '../constants';
 
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+
+const PLANS = [
+  {
+    id: 'basic' as PlanType,
+    name: 'Basic',
+    price: '5,000',
+    description: 'Perfect for getting started with your personal brand.',
+    icon: Zap,
+    features: [
+      'Add unlimited links',
+      'Basic profile customization',
+      'Default themes',
+      'Standard support',
+    ],
+    buttonText: 'Get Started',
+    popular: false,
+  },
+  {
+    id: 'pro' as PlanType,
+    name: 'Pro',
+    price: '10,000',
+    description: 'Advanced features for creators and growing brands.',
+    icon: Star,
+    features: [
+      'Everything in Basic',
+      'Custom background image',
+      'Add social icons',
+      'Basic analytics (click count)',
+      'Priority support',
+    ],
+    buttonText: 'Upgrade to Pro',
+    popular: true,
+  },
+  {
+    id: 'business' as PlanType,
+    name: 'Business',
+    price: '15,000',
+    description: 'The ultimate toolkit for businesses and professionals.',
+    icon: ShieldCheck,
+    features: [
+      'Everything in Pro',
+      'Appointment booking section',
+      'Google Maps location',
+      'Priority profile loading',
+      'Advanced customization (fonts, colors)',
+      'Dedicated account manager',
+    ],
+    buttonText: 'Upgrade to Business',
+    popular: false,
+  },
+];
 
 const Pricing: React.FC = () => {
   const [loading, setLoading] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<PlanType | null>(null);
   const navigate = useNavigate();
+
+  const getAmount = (plan: PlanType) => {
+    switch (plan) {
+      case 'business': return 15000 * 100;
+      case 'pro': return 10000 * 100;
+      case 'basic': return 5000 * 100;
+      default: return 0;
+    }
+  };
 
   const config: any = {
     reference: (new Date()).getTime().toString(),

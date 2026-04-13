@@ -1,129 +1,161 @@
-import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import { 
-  collection, doc, getDoc, setDoc, addDoc, 
-  serverTimestamp, query, where, orderBy, getDocs,
-  limit, updateDoc, deleteDoc
+  collection, 
+  doc, 
+  getDoc, 
+  setDoc, 
+  addDoc, 
+  updateDoc, 
+  query, 
+  where, 
+  orderBy, 
+  limit, 
+  getDocs,
+  Timestamp,
+  Firestore
 } from 'firebase/firestore';
+import { db } from '../firebase';
+import { toast } from 'sonner';
 
 export type BackupAction = 'create' | 'update' | 'delete' | 'rollback';
 
 export interface BackupDocument {
+  id?: string;
   originalId: string;
+  collectionName: string;
   data: any;
   action: BackupAction;
-  timestamp: any;
+  timestamp: string;
   performedBy: string;
 }
 
 /**
- * Creates a backup of a document before a write operation.
+ * Creates a backup of a document before any modification
  */
-export const createBackup = async (collectionName: string, documentId: string, action: BackupAction, data?: any) => {
+export const createBackup = async (
+  collectionName: string, 
+  documentId: string, 
+  action: BackupAction,
+  userId: string = 'system'
+) => {
   try {
     const docRef = doc(db, collectionName, documentId);
     const docSnap = await getDoc(docRef);
     
-    if (!docSnap.exists() && action !== 'create') {
-      console.warn(`Attempted to backup non-existent document: ${collectionName}/${documentId}`);
-      return;
+    if (docSnap.exists()) {
+      const backupData: BackupDocument = {
+        originalId: documentId,
+        collectionName,
+        data: docSnap.data(),
+        action,
+        timestamp: new Date().toISOString(),
+        performedBy: userId
+      };
+      
+      await addDoc(collection(db, `${collectionName}_backup`), backupData);
+      return true;
     }
-
-    const backupCollection = `${collectionName}_backup`;
-    const backupData: BackupDocument = {
-      originalId: documentId,
-      data: action === 'create' ? data : (docSnap.exists() ? docSnap.data() : null),
-      action,
-      timestamp: serverTimestamp(),
-      performedBy: auth.currentUser?.uid || 'system'
-    };
-
-    await addDoc(collection(db, backupCollection), backupData);
+    return false;
   } catch (error) {
-    handleFirestoreError(error, OperationType.CREATE, `${collectionName}_backup`);
-  }
-};
-
-/**
- * Safe write wrapper that performs a backup before updating.
- */
-export const safeUpdateDoc = async (collectionName: string, documentId: string, data: any) => {
-  await createBackup(collectionName, documentId, 'update');
-  const docRef = doc(db, collectionName, documentId);
-  return await updateDoc(docRef, data);
-};
-
-/**
- * Safe set wrapper that performs a backup before setting.
- */
-export const safeSetDoc = async (collectionName: string, documentId: string, data: any, options?: { merge?: boolean }) => {
-  await createBackup(collectionName, documentId, 'update');
-  const docRef = doc(db, collectionName, documentId);
-  return await setDoc(docRef, data, options || {});
-};
-
-/**
- * Safe delete wrapper that performs a backup before deleting.
- */
-export const safeDeleteDoc = async (collectionName: string, documentId: string) => {
-  await createBackup(collectionName, documentId, 'delete');
-  const docRef = doc(db, collectionName, documentId);
-  // Soft delete implementation
-  return await updateDoc(docRef, { isDeleted: true, updatedAt: serverTimestamp() });
-};
-
-/**
- * Rollback a document to its latest backup state.
- */
-export const rollbackDocument = async (collectionName: string, documentId: string) => {
-  try {
-    const backupCollection = `${collectionName}_backup`;
-    const q = query(
-      collection(db, backupCollection),
-      where('originalId', '==', documentId),
-      orderBy('timestamp', 'desc'),
-      limit(1)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) {
-      throw new Error('No backup found for this document');
-    }
-
-    const latestBackup = querySnapshot.docs[0].data() as BackupDocument;
-    
-    if (!latestBackup.data) {
-      throw new Error('Latest backup contains no data (it might be a creation backup)');
-    }
-
-    // Perform the rollback
-    const docRef = doc(db, collectionName, documentId);
-    await setDoc(docRef, {
-      ...latestBackup.data,
-      updatedAt: serverTimestamp(),
-      isDeleted: false // Ensure it's restored if it was soft-deleted
-    });
-
-    // Log the rollback itself
-    await createBackup(collectionName, documentId, 'rollback');
-    
-    return true;
-  } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, collectionName);
+    console.error(`Backup failed for ${collectionName}/${documentId}:`, error);
     return false;
   }
 };
 
 /**
- * Get version history for a document.
+ * Restores a document to its previous state from the latest backup
  */
-export const getVersionHistory = async (collectionName: string, documentId: string) => {
-  const backupCollection = `${collectionName}_backup`;
-  const q = query(
-    collection(db, backupCollection),
-    where('originalId', '==', documentId),
-    orderBy('timestamp', 'desc')
-  );
-  
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BackupDocument & { id: string }));
+export const rollbackDocument = async (
+  collectionName: string, 
+  documentId: string,
+  userId: string = 'admin'
+) => {
+  try {
+    const backupRef = collection(db, `${collectionName}_backup`);
+    const q = query(
+      backupRef, 
+      where('originalId', '==', documentId), 
+      orderBy('timestamp', 'desc'), 
+      limit(1)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      toast.error('No backup found for this document');
+      return false;
+    }
+    
+    const latestBackup = querySnapshot.docs[0].data() as BackupDocument;
+    
+    // Restore the data
+    await setDoc(doc(db, collectionName, documentId), latestBackup.data);
+    
+    // Log the rollback action
+    await addDoc(collection(db, `${collectionName}_backup`), {
+      originalId: documentId,
+      collectionName,
+      data: latestBackup.data,
+      action: 'rollback',
+      timestamp: new Date().toISOString(),
+      performedBy: userId
+    });
+    
+    toast.success('Document rolled back successfully');
+    return true;
+  } catch (error) {
+    console.error(`Rollback failed for ${collectionName}/${documentId}:`, error);
+    toast.error('Rollback failed');
+    return false;
+  }
+};
+
+/**
+ * A safe wrapper for write operations that automatically creates backups
+ */
+export const safeWrite = async (
+  collectionName: string,
+  documentId: string | null,
+  data: any,
+  action: 'create' | 'update' | 'delete',
+  userId: string = 'system'
+) => {
+  try {
+    if (action === 'update' || action === 'delete') {
+      if (!documentId) throw new Error('Document ID required for update/delete');
+      await createBackup(collectionName, documentId, action, userId);
+    }
+
+    if (action === 'delete') {
+      if (!documentId) throw new Error('Document ID required for delete');
+      // Soft delete
+      await updateDoc(doc(db, collectionName, documentId), { 
+        isDeleted: true,
+        deletedAt: new Date().toISOString(),
+        deletedBy: userId
+      });
+    } else if (action === 'update') {
+      if (!documentId) throw new Error('Document ID required for update');
+      await updateDoc(doc(db, collectionName, documentId), data);
+    } else if (action === 'create') {
+      if (documentId) {
+        await setDoc(doc(db, collectionName, documentId), {
+          ...data,
+          createdAt: new Date().toISOString(),
+          createdBy: userId
+        });
+      } else {
+        await addDoc(collection(db, collectionName), {
+          ...data,
+          createdAt: new Date().toISOString(),
+          createdBy: userId
+        });
+      }
+    }
+    
+    return true;
+  } catch (error) {
+    console.error(`Safe write failed for ${collectionName}:`, error);
+    toast.error(`Operation failed: ${action}`);
+    return false;
+  }
 };

@@ -1,12 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Star, Zap, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
+import { X, Star, Zap, ShieldCheck, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { PlanType } from '../types';
-import { usePaystackPayment } from 'react-paystack';
-import { auth } from '../firebase';
-import { getAmount } from '../constants';
-import { toast } from 'sonner';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -17,53 +13,6 @@ interface UpgradeModalProps {
 
 const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, requiredPlan, featureName }) => {
   const navigate = useNavigate();
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const config: any = {
-    reference: (new Date()).getTime().toString(),
-    email: auth.currentUser?.email || '',
-    amount: getAmount(requiredPlan),
-    publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
-    metadata: {
-      userId: auth.currentUser?.uid,
-      plan: requiredPlan,
-    }
-  };
-
-  const initializePayment = usePaystackPayment(config);
-
-  const onSuccess = async (reference: any) => {
-    setIsProcessing(true);
-    try {
-      const response = await fetch('/api/verify-paystack', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          reference: reference.reference, 
-          userId: auth.currentUser?.uid,
-          plan: requiredPlan
-        }),
-      });
-      const data = await response.json();
-      if (data.status === 'success') {
-        toast.success(`Successfully upgraded to ${requiredPlan.toUpperCase()}!`);
-        onClose();
-        // Force a refresh or update context if needed, but the snapshot listener in Dashboard should handle it
-      } else {
-        toast.error('Payment verification failed. Please contact support.');
-      }
-    } catch (error) {
-      console.error('Error verifying payment:', error);
-      toast.error('Error verifying payment');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const onPaystackClose = () => {
-    toast.info('Payment cancelled');
-    setIsProcessing(false);
-  };
 
   if (!isOpen) return null;
 
@@ -120,42 +69,22 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, requiredPl
             </div>
           </div>
 
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => {
-                if (!auth.currentUser) {
-                  toast.error('Please log in to upgrade');
-                  navigate('/login');
-                  return;
-                }
-                setIsProcessing(true);
-                initializePayment({ onSuccess, onClose: onPaystackClose });
-              }}
-              disabled={isProcessing}
-              className="w-full bg-lime-400 text-zinc-950 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-lime-300 transition-all disabled:opacity-50"
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  Upgrade Now <ArrowRight className="w-5 h-5" />
-                </>
-              )}
-            </button>
+          <button
+            onClick={() => {
+              onClose();
+              navigate('/pricing');
+            }}
+            className="w-full bg-lime-400 text-zinc-950 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-lime-300 transition-all"
+          >
+            See Pricing <ArrowRight className="w-5 h-5" />
+          </button>
 
-            <button
-              onClick={() => {
-                onClose();
-                navigate('/pricing');
-              }}
-              className="w-full py-2 text-zinc-500 hover:text-zinc-950 dark:hover:text-white transition-colors text-sm font-medium"
-            >
-              Compare all plans
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="w-full mt-4 py-2 text-zinc-500 hover:text-zinc-950 dark:hover:text-white transition-colors text-sm font-medium"
+          >
+            Maybe later
+          </button>
         </motion.div>
       </div>
     </AnimatePresence>
