@@ -1,5 +1,5 @@
 export type UserRole = 'user' | 'admin';
-export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'coffee' | 'midnight' | 'lavender' | 'emerald' | 'cyberpunk' | 'retro' | 'nordic' | 'sakura' | 'gold' | 'brutalist' | 'clay' | 'matrix' | 'vibrant' | 'pastel' | 'monochrome' | 'deepsea';
+export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'coffee' | 'midnight' | 'lavender' | 'emerald' | 'cyberpunk' | 'retro' | 'nordic' | 'sakura' | 'gold' | 'brutalist' | 'clay' | 'matrix' | 'vibrant' | 'pastel' | 'monochrome' | 'deepsea' | 'minimalist-dark' | 'desert';
 export type ButtonStyle = 'rounded' | 'pill' | 'square';
 export type BackgroundType = 'solid' | 'gradient' | 'image';
 export type PlanType = 'basic' | 'pro' | 'business';
@@ -131,11 +131,11 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
   },
   neon: {
     name: 'neon',
-    background: 'bg-zinc-950',
-    text: 'text-white',
-    button: 'bg-zinc-900 border border-lime-400 hover:bg-lime-400/10',
-    buttonText: 'text-lime-400',
-    accent: 'bg-lime-400',
+    background: 'bg-black',
+    text: 'text-[#39FF14]',
+    button: 'bg-black border-2 border-[#39FF14] hover:bg-[#39FF14] hover:text-black shadow-[0_0_15px_#39FF14]',
+    buttonText: 'text-[#39FF14] font-bold',
+    accent: 'bg-[#39FF14]',
   },
   glassmorphism: {
     name: 'glassmorphism',
@@ -312,5 +312,21 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#005f73] hover:bg-[#0a9396] border border-[#94d2bd]/30',
     buttonText: 'text-[#e9d8a6]',
     accent: 'bg-[#ee9b00]',
+  },
+  'minimalist-dark': {
+    name: 'minimalist-dark',
+    background: 'bg-[#121212]',
+    text: 'text-zinc-400',
+    button: 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors',
+    buttonText: 'text-zinc-100',
+    accent: 'bg-white',
+  },
+  desert: {
+    name: 'desert',
+    background: 'bg-[#f3e5ab]',
+    text: 'text-[#8b4513]',
+    button: 'bg-[#d2b48c] hover:bg-[#c19a6b] rounded-full shadow-md',
+    buttonText: 'text-[#5d2e0a] font-bold',
+    accent: 'bg-[#cd853f]',
   },
 };

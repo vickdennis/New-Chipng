@@ -37,6 +37,7 @@ const AdminPanel: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingUserLinks, setEditingUserLinks] = useState<LinkType[]>([]);
+  const [deletedLinkIds, setDeletedLinkIds] = useState<string[]>([]);
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [userForm, setUserForm] = useState<Partial<User>>({
     email: '',
@@ -232,26 +233,63 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleAddLinkToUser = () => {
+    if (!editingUser) return;
+    const newLink: LinkType = {
+      id: `new-${Date.now()}`,
+      userId: editingUser.uid,
+      title: 'New Link',
+      url: 'https://',
+      active: true,
+      position: editingUserLinks.length,
+      clicks: 0
+    };
+    setEditingUserLinks([...editingUserLinks, newLink]);
+  };
+
+  const handleDeleteLinkFromUser = (linkId: string) => {
+    if (!linkId.startsWith('new-')) {
+      setDeletedLinkIds([...deletedLinkIds, linkId]);
+    }
+    setEditingUserLinks(editingUserLinks.filter(l => l.id !== linkId));
+  };
+
   const handleSaveUser = async (userId: string, data: Partial<User>) => {
     try {
       await updateDoc(doc(db, 'users', userId), data);
       
       // Save links if any were modified
       const batch = writeBatch(db);
+
+      // Delete links that were removed
+      deletedLinkIds.forEach(linkId => {
+        batch.delete(doc(db, 'links', linkId));
+      });
+
       editingUserLinks.forEach(link => {
-        const linkRef = doc(db, 'links', link.id);
-        batch.update(linkRef, {
-          title: link.title,
-          url: link.url,
-          active: link.active,
-          position: link.position
-        });
+        if (link.id.startsWith('new-')) {
+          const newLinkRef = doc(collection(db, 'links'));
+          const { id, ...linkData } = link;
+          batch.set(newLinkRef, {
+            ...linkData,
+            userId: userId
+          });
+        } else {
+          const linkRef = doc(db, 'links', link.id);
+          batch.update(linkRef, {
+            title: link.title,
+            url: link.url,
+            active: link.active,
+            position: link.position
+          });
+        }
       });
       await batch.commit();
 
       toast.success('User and links updated successfully');
       setEditingUser(null);
       setEditingUserLinks([]);
+      setDeletedLinkIds([]);
     } catch (error) {
       console.error('Error updating user:', error);
       toast.error('Failed to update user');
@@ -1147,10 +1185,19 @@ const AdminPanel: React.FC = () => {
 
             {/* User Links Section */}
             <div className="space-y-4">
-              <h4 className="text-lg font-bold dark:text-white flex items-center gap-2">
-                <LinkIcon className="w-5 h-5 text-lime-400" />
-                User Links
-              </h4>
+              <div className="flex items-center justify-between">
+                <h4 className="text-lg font-bold dark:text-white flex items-center gap-2">
+                  <LinkIcon className="w-5 h-5 text-lime-400" />
+                  User Links
+                </h4>
+                <button 
+                  onClick={handleAddLinkToUser}
+                  className="flex items-center gap-2 px-4 py-2 bg-lime-400/10 text-lime-600 rounded-xl text-sm font-bold hover:bg-lime-400/20 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Link
+                </button>
+              </div>
               <div className="space-y-4">
                 {editingUserLinks.map((link, idx) => (
                   <div key={link.id} className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 space-y-4">
@@ -1183,18 +1230,27 @@ const AdminPanel: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <input 
-                          type="checkbox" 
-                          checked={link.active}
-                          onChange={(e) => {
-                            const newLinks = [...editingUserLinks];
-                            newLinks[idx].active = e.target.checked;
-                            setEditingUserLinks(newLinks);
-                          }}
-                          className="w-4 h-4 rounded border-zinc-300 text-lime-500 focus:ring-lime-500"
-                        />
-                        <span className="text-xs text-zinc-500">Active</span>
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="checkbox" 
+                            checked={link.active}
+                            onChange={(e) => {
+                              const newLinks = [...editingUserLinks];
+                              newLinks[idx].active = e.target.checked;
+                              setEditingUserLinks(newLinks);
+                            }}
+                            className="w-4 h-4 rounded border-zinc-300 text-lime-500 focus:ring-lime-500"
+                          />
+                          <span className="text-xs text-zinc-500">Active</span>
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteLinkFromUser(link.id)}
+                          className="p-1.5 text-zinc-400 hover:text-red-500 transition-colors"
+                          title="Delete Link"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                       <div className="flex items-center gap-2">
                         <label className="text-[10px] font-bold text-zinc-500 uppercase">Position</label>
