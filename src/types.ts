@@ -1,5 +1,5 @@
 export type UserRole = 'user' | 'admin';
-export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'coffee';
+export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'coffee' | 'midnight' | 'lavender' | 'emerald' | 'cyberpunk';
 export type ButtonStyle = 'rounded' | 'pill' | 'square';
 export type BackgroundType = 'solid' | 'gradient' | 'image';
 export type PlanType = 'basic' | 'pro' | 'business';
@@ -47,6 +47,7 @@ export interface User {
   subscriptionStatus: 'active' | 'inactive';
   phone?: string;
   address?: string;
+  contactEmail?: string;
   location?: {
     lat: number;
     lng: number;
@@ -191,5 +192,37 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-stone-800 border border-stone-600 hover:bg-stone-700',
     buttonText: 'text-stone-100',
     accent: 'bg-orange-200',
+  },
+  midnight: {
+    name: 'midnight',
+    background: 'bg-zinc-950',
+    text: 'text-zinc-100',
+    button: 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700',
+    buttonText: 'text-zinc-100',
+    accent: 'bg-blue-500',
+  },
+  lavender: {
+    name: 'lavender',
+    background: 'bg-gradient-to-br from-purple-100 to-indigo-200',
+    text: 'text-indigo-900',
+    button: 'bg-white/50 backdrop-blur-sm border border-indigo-300 hover:bg-white/80',
+    buttonText: 'text-indigo-900',
+    accent: 'bg-indigo-500',
+  },
+  emerald: {
+    name: 'emerald',
+    background: 'bg-emerald-900',
+    text: 'text-emerald-50',
+    button: 'bg-emerald-800 border border-emerald-700 hover:bg-emerald-700',
+    buttonText: 'text-emerald-50',
+    accent: 'bg-lime-400',
+  },
+  cyberpunk: {
+    name: 'cyberpunk',
+    background: 'bg-black',
+    text: 'text-yellow-400',
+    button: 'bg-black border-2 border-yellow-400 hover:bg-yellow-400 hover:text-black',
+    buttonText: 'text-yellow-400',
+    accent: 'bg-fuchsia-500',
   },
 };

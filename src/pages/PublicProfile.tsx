@@ -287,10 +287,10 @@ const PublicProfile: React.FC = () => {
                 <span>{profile.phone}</span>
               </div>
             )}
-            {profile.email && (
+            {(profile.contactEmail || profile.email) && (
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4" />
-                <span>{profile.email}</span>
+                <span>{profile.contactEmail || profile.email}</span>
               </div>
             )}
             {profile.address && (

@@ -7,7 +7,8 @@ import {
 import { 
   Users, Shield, Trash2, Ban, CheckCircle, 
   Search, ArrowLeft, BarChart2, TrendingUp,
-  DollarSign, Crown, BadgeCheck, FileText, ShoppingBag, Plus, Edit, Package, History, RotateCcw
+  DollarSign, Crown, BadgeCheck, FileText, ShoppingBag, Plus, Edit, Package, History, RotateCcw,
+  Link as LinkIcon
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -16,7 +17,7 @@ import {
   ResponsiveContainer, BarChart, Bar, Cell
 } from 'recharts';
 import { toast } from 'sonner';
-import { User, Product } from '../types';
+import { User, Product, Link as LinkType } from '../types';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 import { Link } from 'react-router-dom';
@@ -35,6 +36,7 @@ const AdminPanel: React.FC = () => {
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUserLinks, setEditingUserLinks] = useState<LinkType[]>([]);
   const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
   const [productForm, setProductForm] = useState<Partial<Product>>({
     name: '',
@@ -178,11 +180,38 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleEditUser = async (user: User) => {
+    setEditingUser(user);
+    try {
+      const q = query(collection(db, 'links'), where('userId', '==', user.uid), orderBy('position', 'asc'));
+      const snapshot = await getDocs(q);
+      setEditingUserLinks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LinkType)));
+    } catch (error) {
+      console.error('Error fetching user links:', error);
+      toast.error('Failed to load user links');
+    }
+  };
+
   const handleSaveUser = async (userId: string, data: Partial<User>) => {
     try {
       await updateDoc(doc(db, 'users', userId), data);
-      toast.success('User updated successfully');
+      
+      // Save links if any were modified
+      const batch = writeBatch(db);
+      editingUserLinks.forEach(link => {
+        const linkRef = doc(db, 'links', link.id);
+        batch.update(linkRef, {
+          title: link.title,
+          url: link.url,
+          active: link.active,
+          position: link.position
+        });
+      });
+      await batch.commit();
+
+      toast.success('User and links updated successfully');
       setEditingUser(null);
+      setEditingUserLinks([]);
     } catch (error) {
       console.error('Error updating user:', error);
       toast.error('Failed to update user');
@@ -387,7 +416,7 @@ const AdminPanel: React.FC = () => {
                               <option value="business">Business</option>
                             </select>
                             <button 
-                              onClick={() => setEditingUser(user)} 
+                              onClick={() => handleEditUser(user)} 
                               className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
                               title="Edit User"
                             >
@@ -857,6 +886,15 @@ const AdminPanel: React.FC = () => {
                   className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
                 />
               </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Contact Email</label>
+                <input 
+                  type="email" 
+                  defaultValue={editingUser.contactEmail}
+                  onChange={(e) => setEditingUser({ ...editingUser, contactEmail: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                />
+              </div>
               <div className="md:col-span-2 space-y-2">
                 <label className="text-sm font-medium text-zinc-500">Bio</label>
                 <textarea 
@@ -864,6 +902,79 @@ const AdminPanel: React.FC = () => {
                   onChange={(e) => setEditingUser({ ...editingUser, bio: e.target.value })}
                   className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white h-24 resize-none"
                 />
+              </div>
+            </div>
+
+            {/* User Links Section */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-bold dark:text-white flex items-center gap-2">
+                <LinkIcon className="w-5 h-5 text-lime-400" />
+                User Links
+              </h4>
+              <div className="space-y-4">
+                {editingUserLinks.map((link, idx) => (
+                  <div key={link.id} className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase">Title</label>
+                        <input 
+                          type="text" 
+                          value={link.title}
+                          onChange={(e) => {
+                            const newLinks = [...editingUserLinks];
+                            newLinks[idx].title = e.target.value;
+                            setEditingUserLinks(newLinks);
+                          }}
+                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase">URL</label>
+                        <input 
+                          type="text" 
+                          value={link.url}
+                          onChange={(e) => {
+                            const newLinks = [...editingUserLinks];
+                            newLinks[idx].url = e.target.value;
+                            setEditingUserLinks(newLinks);
+                          }}
+                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="checkbox" 
+                          checked={link.active}
+                          onChange={(e) => {
+                            const newLinks = [...editingUserLinks];
+                            newLinks[idx].active = e.target.checked;
+                            setEditingUserLinks(newLinks);
+                          }}
+                          className="w-4 h-4 rounded border-zinc-300 text-lime-500 focus:ring-lime-500"
+                        />
+                        <span className="text-xs text-zinc-500">Active</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase">Position</label>
+                        <input 
+                          type="number" 
+                          value={link.position}
+                          onChange={(e) => {
+                            const newLinks = [...editingUserLinks];
+                            newLinks[idx].position = parseInt(e.target.value) || 0;
+                            setEditingUserLinks(newLinks);
+                          }}
+                          className="w-16 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {editingUserLinks.length === 0 && (
+                  <p className="text-center text-zinc-500 py-4 italic">No links found for this user.</p>
+                )}
               </div>
             </div>
 

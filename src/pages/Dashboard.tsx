@@ -198,6 +198,7 @@ const Dashboard: React.FC = () => {
     username: '',
     displayName: '',
     bio: '',
+    contactEmail: '',
     phone: '',
     address: ''
   });
@@ -230,7 +231,8 @@ const Dashboard: React.FC = () => {
           displayName: data.displayName || '',
           bio: data.bio || '',
           phone: data.phone || '',
-          address: data.address || ''
+          address: data.address || '',
+          contactEmail: data.contactEmail || ''
         });
       }
     }, (error) => {
@@ -440,6 +442,7 @@ const Dashboard: React.FC = () => {
       profile.coverImage,
       profile.phone,
       profile.address,
+      profile.contactEmail,
       profile.socialLinks && Object.values(profile.socialLinks).some(v => v),
       links.length > 0
     ];
@@ -534,24 +537,33 @@ const Dashboard: React.FC = () => {
           </header>
 
           {/* Progress Bar */}
-          <div className="mb-12 bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-lime-500" />
-                <span className="font-bold dark:text-white">Profile Completion</span>
+          <div className="mb-12 bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border-2 border-lime-400/20 shadow-xl shadow-lime-400/5">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-lime-400/10 rounded-xl">
+                  <TrendingUp className="w-6 h-6 text-lime-500" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg dark:text-white">Profile Completion</h3>
+                  <p className="text-xs text-zinc-500">Boost your profile visibility</p>
+                </div>
               </div>
-              <span className="text-sm font-bold text-lime-500">{calculateCompletion()}%</span>
+              <div className="text-right">
+                <span className="text-2xl font-black text-lime-500">{calculateCompletion()}%</span>
+              </div>
             </div>
-            <div className="w-full h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+            <div className="w-full h-4 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-lime-400 transition-all duration-1000 ease-out"
+                className="h-full bg-gradient-to-r from-lime-400 to-lime-500 transition-all duration-1000 ease-out relative"
                 style={{ width: `${calculateCompletion()}%` }}
-              />
+              >
+                <div className="absolute inset-0 bg-white/20 animate-pulse" />
+              </div>
             </div>
-            <p className="mt-4 text-xs text-zinc-500">
+            <p className="mt-6 text-sm font-medium text-zinc-600 dark:text-zinc-400">
               {calculateCompletion() < 100 
-                ? "Complete your profile to build more trust with your audience!" 
-                : "Your profile is fully optimized! Great job."}
+                ? "Complete your profile to build more trust with your audience! Add social links, a bio, and a profile photo." 
+                : "Your profile is fully optimized! You're ready to share it with the world."}
             </p>
           </div>
 
@@ -685,6 +697,16 @@ const Dashboard: React.FC = () => {
                         />
                       </div>
                       <div className="space-y-2">
+                        <label className="text-sm font-medium text-zinc-500">Contact Email</label>
+                        <input 
+                          type="email" 
+                          value={profileForm.contactEmail}
+                          onChange={(e) => setProfileForm({ ...profileForm, contactEmail: e.target.value })}
+                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                          placeholder="contact@example.com"
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-2">
                         <label className="text-sm font-medium text-zinc-500">Address</label>
                         <input 
                           type="text" 
@@ -1032,11 +1054,11 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="p-8 bg-zinc-50 dark:bg-zinc-800 rounded-[2rem] border border-zinc-100 dark:border-zinc-700 text-center space-y-6">
-                  <div className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center mx-auto shadow-xl shadow-blue-500/20">
+                  <div className="w-20 h-20 bg-[#1D9BF0] rounded-full flex items-center justify-center mx-auto shadow-xl shadow-blue-500/20">
                     <VerificationBadge size={40} />
                   </div>
                   <div className="max-w-md mx-auto space-y-2">
-                    <h3 className="text-2xl font-bold dark:text-white">Instagram-style Verification</h3>
+                    <h3 className="text-2xl font-bold dark:text-white">Twitter-style Verification</h3>
                     <p className="text-zinc-500">Stand out from the crowd with a blue verification badge on your profile. Build trust and credibility with your audience.</p>
                   </div>
                   
@@ -1046,7 +1068,7 @@ const Dashboard: React.FC = () => {
 
                   {!profile.isVerified ? (
                     <PaystackButton
-                      className="w-full py-4 bg-[#0095F6] text-white rounded-2xl font-bold hover:bg-[#1877F2] transition-all shadow-lg shadow-blue-500/20"
+                      className="w-full py-4 bg-[#1D9BF0] text-white rounded-2xl font-bold hover:bg-[#1A8CD8] transition-all shadow-lg shadow-blue-500/20"
                       email={user?.email || ''}
                       amount={1000 * 100} // Amount in kobo
                       publicKey={import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder'}
