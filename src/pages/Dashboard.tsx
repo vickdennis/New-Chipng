@@ -1054,11 +1054,11 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="p-8 bg-zinc-50 dark:bg-zinc-800 rounded-[2rem] border border-zinc-100 dark:border-zinc-700 text-center space-y-6">
-                  <div className="w-20 h-20 bg-[#1D9BF0] rounded-full flex items-center justify-center mx-auto shadow-xl shadow-blue-500/20">
+                  <div className="w-20 h-20 bg-[#0095F6] rounded-full flex items-center justify-center mx-auto shadow-xl shadow-blue-500/20">
                     <VerificationBadge size={40} />
                   </div>
                   <div className="max-w-md mx-auto space-y-2">
-                    <h3 className="text-2xl font-bold dark:text-white">Twitter-style Verification</h3>
+                    <h3 className="text-2xl font-bold dark:text-white">Instagram-style Verification</h3>
                     <p className="text-zinc-500">Stand out from the crowd with a blue verification badge on your profile. Build trust and credibility with your audience.</p>
                   </div>
                   
@@ -1068,7 +1068,7 @@ const Dashboard: React.FC = () => {
 
                   {!profile.isVerified ? (
                     <PaystackButton
-                      className="w-full py-4 bg-[#1D9BF0] text-white rounded-2xl font-bold hover:bg-[#1A8CD8] transition-all shadow-lg shadow-blue-500/20"
+                      className="w-full py-4 bg-[#0095F6] text-white rounded-2xl font-bold hover:bg-[#1877F2] transition-all shadow-lg shadow-blue-500/20"
                       email={user?.email || ''}
                       amount={1000 * 100} // Amount in kobo
                       publicKey={import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder'}

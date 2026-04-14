@@ -1,5 +1,5 @@
 export type UserRole = 'user' | 'admin';
-export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'coffee' | 'midnight' | 'lavender' | 'emerald' | 'cyberpunk';
+export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'coffee' | 'midnight' | 'lavender' | 'emerald' | 'cyberpunk' | 'retro' | 'nordic' | 'sakura' | 'gold' | 'brutalist' | 'clay' | 'matrix';
 export type ButtonStyle = 'rounded' | 'pill' | 'square';
 export type BackgroundType = 'solid' | 'gradient' | 'image';
 export type PlanType = 'basic' | 'pro' | 'business';
@@ -224,5 +224,61 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-black border-2 border-yellow-400 hover:bg-yellow-400 hover:text-black',
     buttonText: 'text-yellow-400',
     accent: 'bg-fuchsia-500',
+  },
+  retro: {
+    name: 'retro',
+    background: 'bg-[#f4ebd0]',
+    text: 'text-[#b68d40]',
+    button: 'bg-[#d6ad60] border-2 border-[#b68d40] hover:bg-[#b68d40] hover:text-[#f4ebd0]',
+    buttonText: 'text-[#f4ebd0]',
+    accent: 'bg-[#122620]',
+  },
+  nordic: {
+    name: 'nordic',
+    background: 'bg-[#2e3440]',
+    text: 'text-[#eceff4]',
+    button: 'bg-[#4c566a] hover:bg-[#5e81ac]',
+    buttonText: 'text-[#eceff4]',
+    accent: 'bg-[#88c0d0]',
+  },
+  sakura: {
+    name: 'sakura',
+    background: 'bg-gradient-to-br from-pink-100 to-rose-200',
+    text: 'text-rose-900',
+    button: 'bg-white/60 backdrop-blur-sm border border-rose-300 hover:bg-rose-100',
+    buttonText: 'text-rose-900',
+    accent: 'bg-rose-400',
+  },
+  gold: {
+    name: 'gold',
+    background: 'bg-zinc-950',
+    text: 'text-amber-200',
+    button: 'bg-zinc-900 border border-amber-500/50 hover:border-amber-500 hover:bg-amber-500/10',
+    buttonText: 'text-amber-500',
+    accent: 'bg-amber-500',
+  },
+  brutalist: {
+    name: 'brutalist',
+    background: 'bg-[#ffde03]',
+    text: 'text-black',
+    button: 'bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all',
+    buttonText: 'text-black font-black italic',
+    accent: 'bg-[#0336ff]',
+  },
+  clay: {
+    name: 'clay',
+    background: 'bg-[#e0e5ec]',
+    text: 'text-zinc-600',
+    button: 'bg-[#e0e5ec] shadow-[9px_9px_16px_rgb(163,177,198,0.6),-9px_-9px_16px_rgba(255,255,255,0.5)] rounded-2xl hover:shadow-[inset_9px_9px_16px_rgb(163,177,198,0.6),inset_-9px_-9px_16px_rgba(255,255,255,0.5)]',
+    buttonText: 'text-zinc-600',
+    accent: 'bg-blue-400',
+  },
+  matrix: {
+    name: 'matrix',
+    background: 'bg-black',
+    text: 'text-[#00FF41]',
+    button: 'bg-black border border-[#00FF41] hover:bg-[#00FF41]/10 shadow-[0_0_10px_#00FF41]',
+    buttonText: 'text-[#00FF41] font-mono',
+    accent: 'bg-[#003B00]',
   },
 };

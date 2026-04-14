@@ -7,8 +7,8 @@ import {
 import { 
   Users, Shield, Trash2, Ban, CheckCircle, 
   Search, ArrowLeft, BarChart2, TrendingUp,
-  DollarSign, Crown, BadgeCheck, FileText, ShoppingBag, Plus, Edit, Package, History, RotateCcw,
-  Link as LinkIcon
+  DollarSign, Crown, BadgeCheck, FileText, ShoppingBag, Plus, Edit, Package, History, RotateCcw, Share2,
+  Link as LinkIcon, Instagram, Twitter, Linkedin, Youtube, Facebook, MessageCircle, Music2, MessageSquare, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash, Github, Twitch, Ghost, Mail
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -37,6 +37,22 @@ const AdminPanel: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editingUserLinks, setEditingUserLinks] = useState<LinkType[]>([]);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [userForm, setUserForm] = useState<Partial<User>>({
+    email: '',
+    username: '',
+    displayName: '',
+    role: 'user',
+    status: 'active',
+    plan: 'basic',
+    subscriptionStatus: 'inactive',
+    isPremium: false,
+    isVerified: false,
+    theme: 'minimal',
+    buttonStyle: 'rounded',
+    backgroundType: 'solid',
+    socialLinks: {}
+  });
   const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
   const [productForm, setProductForm] = useState<Partial<Product>>({
     name: '',
@@ -180,6 +196,27 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  const socialIconsList = [
+    { id: 'instagram', icon: Instagram, label: 'Instagram' },
+    { id: 'twitter', icon: Twitter, label: 'Twitter' },
+    { id: 'linkedin', icon: Linkedin, label: 'LinkedIn' },
+    { id: 'youtube', icon: Youtube, label: 'YouTube' },
+    { id: 'facebook', icon: Facebook, label: 'Facebook' },
+    { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp' },
+    { id: 'tiktok', icon: Music2, label: 'TikTok' },
+    { id: 'threads', icon: MessageSquare, label: 'Threads' },
+    { id: 'discord', icon: Disc, label: 'Discord' },
+    { id: 'telegram', icon: Send, label: 'Telegram' },
+    { id: 'snapchat', icon: Ghost, label: 'Snapchat' },
+    { id: 'pinterest', icon: Pin, label: 'Pinterest' },
+    { id: 'spotify', icon: Music, label: 'Spotify' },
+    { id: 'appleMusic', icon: Apple, label: 'Apple Music' },
+    { id: 'soundcloud', icon: Cloud, label: 'SoundCloud' },
+    { id: 'twitch', icon: Twitch, label: 'Twitch' },
+    { id: 'github', icon: Github, label: 'GitHub' },
+    { id: 'email', icon: Mail, label: 'Email' },
+  ];
+
   const handleEditUser = async (user: User) => {
     setEditingUser(user);
     try {
@@ -215,6 +252,52 @@ const AdminPanel: React.FC = () => {
     } catch (error) {
       console.error('Error updating user:', error);
       toast.error('Failed to update user');
+    }
+  };
+
+  const handleAddUser = async () => {
+    if (!userForm.email || !userForm.username) {
+      toast.error('Email and Username are required');
+      return;
+    }
+
+    try {
+      // Check if username exists
+      const q = query(collection(db, 'users'), where('username', '==', userForm.username));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        toast.error('Username already taken');
+        return;
+      }
+
+      const newUser = {
+        ...userForm,
+        createdAt: new Date().toISOString(),
+        totalClicks: 0,
+        socialLinks: userForm.socialLinks || {}
+      };
+
+      await addDoc(collection(db, 'users'), newUser);
+      toast.success('User added successfully');
+      setIsAddingUser(false);
+      setUserForm({
+        email: '',
+        username: '',
+        displayName: '',
+        role: 'user',
+        status: 'active',
+        plan: 'basic',
+        subscriptionStatus: 'inactive',
+        isPremium: false,
+        isVerified: false,
+        theme: 'minimal',
+        buttonStyle: 'rounded',
+        backgroundType: 'solid',
+        socialLinks: {}
+      });
+    } catch (error) {
+      console.error('Error adding user:', error);
+      toast.error('Failed to add user');
     }
   };
 
@@ -352,6 +435,18 @@ const AdminPanel: React.FC = () => {
                   <div className="text-zinc-500 text-sm font-medium">{stat.label}</div>
                 </div>
               ))}
+            </div>
+
+            {/* Users Table Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold dark:text-white">User Management</h3>
+              <button 
+                onClick={() => setIsAddingUser(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all"
+              >
+                <Plus className="w-5 h-5" />
+                Add User
+              </button>
             </div>
 
             {/* Users Table */}
@@ -833,6 +928,115 @@ const AdminPanel: React.FC = () => {
         )}
       </div>
 
+      {/* Add User Modal */}
+      {isAddingUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] max-w-2xl w-full max-h-[90vh] overflow-y-auto space-y-8 relative">
+            <button 
+              onClick={() => setIsAddingUser(false)}
+              className="absolute top-6 right-6 p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full text-zinc-500 transition-colors"
+            >
+              <Trash2 className="w-6 h-6 rotate-45" />
+            </button>
+
+            <div>
+              <h3 className="text-2xl font-bold dark:text-white">Add New User</h3>
+              <p className="text-zinc-500">Create a new user account manually</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Email Address</label>
+                <input 
+                  type="email" 
+                  value={userForm.email}
+                  onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                  placeholder="user@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Username</label>
+                <input 
+                  type="text" 
+                  value={userForm.username}
+                  onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                  placeholder="username"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Display Name</label>
+                <input 
+                  type="text" 
+                  value={userForm.displayName}
+                  onChange={(e) => setUserForm({ ...userForm, displayName: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                  placeholder="Full Name"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Role</label>
+                <select 
+                  value={userForm.role}
+                  onChange={(e) => setUserForm({ ...userForm, role: e.target.value as any })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Social Media Links Section for Add User */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-bold dark:text-white flex items-center gap-2">
+                <Share2 className="w-5 h-5 text-lime-400" />
+                Social Media Links
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {socialIconsList.map((social) => (
+                  <div key={social.id} className="space-y-1">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
+                      <social.icon className="w-3 h-3" />
+                      {social.label}
+                    </label>
+                    <input 
+                      type="text" 
+                      value={userForm.socialLinks?.[social.id as keyof typeof userForm.socialLinks] || ''}
+                      onChange={(e) => setUserForm({ 
+                        ...userForm, 
+                        socialLinks: { 
+                          ...userForm.socialLinks, 
+                          [social.id]: e.target.value 
+                        } 
+                      })}
+                      placeholder={`Enter ${social.label} username/ID`}
+                      className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button 
+                onClick={handleAddUser}
+                className="flex-1 py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all"
+              >
+                Create User
+              </button>
+              <button 
+                onClick={() => setIsAddingUser(false)}
+                className="px-8 py-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-2xl font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit User Modal */}
       {editingUser && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
@@ -975,6 +1179,37 @@ const AdminPanel: React.FC = () => {
                 {editingUserLinks.length === 0 && (
                   <p className="text-center text-zinc-500 py-4 italic">No links found for this user.</p>
                 )}
+              </div>
+            </div>
+
+            {/* Social Media Links Section */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-bold dark:text-white flex items-center gap-2">
+                <Share2 className="w-5 h-5 text-lime-400" />
+                Social Media Links
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {socialIconsList.map((social) => (
+                  <div key={social.id} className="space-y-1">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
+                      <social.icon className="w-3 h-3" />
+                      {social.label}
+                    </label>
+                    <input 
+                      type="text" 
+                      value={editingUser.socialLinks?.[social.id as keyof typeof editingUser.socialLinks] || ''}
+                      onChange={(e) => setEditingUser({ 
+                        ...editingUser, 
+                        socialLinks: { 
+                          ...editingUser.socialLinks, 
+                          [social.id]: e.target.value 
+                        } 
+                      })}
+                      placeholder={`Enter ${social.label} username/ID`}
+                      className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
 
