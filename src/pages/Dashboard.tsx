@@ -197,7 +197,9 @@ const Dashboard: React.FC = () => {
   const [profileForm, setProfileForm] = useState({
     username: '',
     displayName: '',
-    bio: ''
+    bio: '',
+    phone: '',
+    address: ''
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [links, setLinks] = useState<Link[]>([]);
@@ -226,7 +228,9 @@ const Dashboard: React.FC = () => {
         setProfileForm({
           username: data.username || '',
           displayName: data.displayName || '',
-          bio: data.bio || ''
+          bio: data.bio || '',
+          phone: data.phone || '',
+          address: data.address || ''
         });
       }
     }, (error) => {
@@ -426,6 +430,23 @@ const Dashboard: React.FC = () => {
     return false;
   };
 
+  const calculateCompletion = () => {
+    if (!profile) return 0;
+    const fields = [
+      profile.username,
+      profile.displayName,
+      profile.bio,
+      profile.photoURL,
+      profile.coverImage,
+      profile.phone,
+      profile.address,
+      profile.socialLinks && Object.values(profile.socialLinks).some(v => v),
+      links.length > 0
+    ];
+    const filledFields = fields.filter(f => !!f).length;
+    return Math.round((filledFields / fields.length) * 100);
+  };
+
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">Loading...</div>;
 
   const mockAnalyticsData = [
@@ -488,7 +509,7 @@ const Dashboard: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 p-6 md:p-12 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
-          <header className="flex items-center justify-between mb-12">
+          <header className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-zinc-900 dark:text-white capitalize">{activeTab}</h1>
               <p className="text-zinc-500">Manage your profile and links</p>
@@ -511,6 +532,28 @@ const Dashboard: React.FC = () => {
               </a>
             </div>
           </header>
+
+          {/* Progress Bar */}
+          <div className="mb-12 bg-white dark:bg-zinc-900 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-lime-500" />
+                <span className="font-bold dark:text-white">Profile Completion</span>
+              </div>
+              <span className="text-sm font-bold text-lime-500">{calculateCompletion()}%</span>
+            </div>
+            <div className="w-full h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-lime-400 transition-all duration-1000 ease-out"
+                style={{ width: `${calculateCompletion()}%` }}
+              />
+            </div>
+            <p className="mt-4 text-xs text-zinc-500">
+              {calculateCompletion() < 100 
+                ? "Complete your profile to build more trust with your audience!" 
+                : "Your profile is fully optimized! Great job."}
+            </p>
+          </div>
 
           {activeTab === 'links' && (
             <div className="space-y-6">
@@ -629,6 +672,28 @@ const Dashboard: React.FC = () => {
                         className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white h-24 resize-none"
                         placeholder="Tell your story..."
                       />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-zinc-500">Phone Number</label>
+                        <input 
+                          type="tel" 
+                          value={profileForm.phone}
+                          onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                          placeholder="+234..."
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-zinc-500">Address</label>
+                        <input 
+                          type="text" 
+                          value={profileForm.address}
+                          onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                          placeholder="Your location"
+                        />
+                      </div>
                     </div>
                     <button 
                       onClick={() => handleUpdateProfile(profileForm)}

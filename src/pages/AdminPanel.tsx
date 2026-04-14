@@ -17,6 +17,8 @@ import {
 } from 'recharts';
 import { toast } from 'sonner';
 import { User, Product } from '../types';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { rollbackDocument, BackupDocument } from '../services/backupService';
@@ -32,6 +34,8 @@ const AdminPanel: React.FC = () => {
   const [backupCollection, setBackupCollection] = useState<'users' | 'blogs' | 'links'>('users');
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
   const [productForm, setProductForm] = useState<Partial<Product>>({
     name: '',
     description: '',
@@ -150,6 +154,38 @@ const AdminPanel: React.FC = () => {
     const success = await rollbackDocument(collectionName, originalId, user?.uid);
     if (success) {
       toast.success('Rollback successful');
+    }
+  };
+
+  const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingProductImage(true);
+    const timestamp = Date.now();
+    const storageRef = ref(storage, `products/${timestamp}_${file.name}`);
+
+    try {
+      const snapshot = await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(snapshot.ref);
+      setProductForm(prev => ({ ...prev, image: url }));
+      toast.success('Product image uploaded');
+    } catch (error) {
+      console.error('Product image upload error:', error);
+      toast.error('Failed to upload product image');
+    } finally {
+      setIsUploadingProductImage(false);
+    }
+  };
+
+  const handleSaveUser = async (userId: string, data: Partial<User>) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), data);
+      toast.success('User updated successfully');
+      setEditingUser(null);
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error('Failed to update user');
     }
   };
 
@@ -351,6 +387,13 @@ const AdminPanel: React.FC = () => {
                               <option value="business">Business</option>
                             </select>
                             <button 
+                              onClick={() => setEditingUser(user)} 
+                              className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                              title="Edit User"
+                            >
+                              <Edit className="w-5 h-5" />
+                            </button>
+                            <button 
                               onClick={() => handleToggleVerify(user.uid, user.isVerified || false)} 
                               className={`p-2 rounded-lg transition-colors ${user.isVerified ? 'text-[#0095f6] bg-[#0095f6]/10' : 'text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
                               title={user.isVerified ? 'Unverify' : 'Verify'}
@@ -506,13 +549,38 @@ const AdminPanel: React.FC = () => {
                     />
                   </div>
                   <div className="md:col-span-2 space-y-2">
-                    <label className="text-sm font-medium text-zinc-500">Image URL</label>
+                    <label className="text-sm font-medium text-zinc-500">Product Image</label>
+                    <div className="flex items-center gap-4">
+                      <div className="w-20 h-20 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+                        {productForm.image ? (
+                          <img src={productForm.image} alt="Preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-zinc-400">
+                            <Package className="w-8 h-8" />
+                          </div>
+                        )}
+                      </div>
+                      <label className="flex-1 py-3 px-4 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-xl text-center font-bold cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all flex items-center justify-center gap-2">
+                        {isUploadingProductImage ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-4 h-4" />
+                            Upload Product Image
+                          </>
+                        )}
+                        <input type="file" className="hidden" onChange={handleProductImageUpload} accept="image/*" disabled={isUploadingProductImage} />
+                      </label>
+                    </div>
                     <input 
                       type="text" 
                       value={productForm.image}
                       onChange={(e) => setProductForm({ ...productForm, image: e.target.value })}
-                      className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                      placeholder="https://images.unsplash.com/..."
+                      className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white mt-2"
+                      placeholder="Or paste image URL..."
                     />
                   </div>
                   <div className="md:col-span-2 space-y-2">
@@ -735,6 +803,87 @@ const AdminPanel: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] max-w-2xl w-full max-h-[90vh] overflow-y-auto space-y-8 relative">
+            <button 
+              onClick={() => setEditingUser(null)}
+              className="absolute top-6 right-6 p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full text-zinc-500 transition-colors"
+            >
+              <Trash2 className="w-6 h-6 rotate-45" />
+            </button>
+
+            <div>
+              <h3 className="text-2xl font-bold dark:text-white">Edit User Account</h3>
+              <p className="text-zinc-500">Modify user details and settings</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Username</label>
+                <input 
+                  type="text" 
+                  defaultValue={editingUser.username}
+                  onChange={(e) => setEditingUser({ ...editingUser, username: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Display Name</label>
+                <input 
+                  type="text" 
+                  defaultValue={editingUser.displayName}
+                  onChange={(e) => setEditingUser({ ...editingUser, displayName: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Phone</label>
+                <input 
+                  type="text" 
+                  defaultValue={editingUser.phone}
+                  onChange={(e) => setEditingUser({ ...editingUser, phone: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Address</label>
+                <input 
+                  type="text" 
+                  defaultValue={editingUser.address}
+                  onChange={(e) => setEditingUser({ ...editingUser, address: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                />
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Bio</label>
+                <textarea 
+                  defaultValue={editingUser.bio}
+                  onChange={(e) => setEditingUser({ ...editingUser, bio: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white h-24 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button 
+                onClick={() => handleSaveUser(editingUser.uid, editingUser)}
+                className="flex-1 py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all"
+              >
+                Save Changes
+              </button>
+              <button 
+                onClick={() => setEditingUser(null)}
+                className="px-8 py-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-2xl font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -45,6 +45,8 @@ export interface User {
   isVerified?: boolean;
   plan: PlanType;
   subscriptionStatus: 'active' | 'inactive';
+  phone?: string;
+  address?: string;
   location?: {
     lat: number;
     lng: number;

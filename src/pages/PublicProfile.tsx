@@ -277,7 +277,29 @@ const PublicProfile: React.FC = () => {
             )}
           </div>
           {profile.displayName && <h2 className="text-lg opacity-80 mb-4">{profile.displayName}</h2>}
-          {profile.bio && <p className="text-base opacity-70 max-w-sm leading-relaxed mb-8">{profile.bio}</p>}
+          {profile.bio && <p className="text-base opacity-70 max-w-sm leading-relaxed mb-6">{profile.bio}</p>}
+
+          {/* Contact Info */}
+          <div className="flex flex-wrap justify-center gap-6 mb-8 text-sm opacity-60">
+            {profile.phone && (
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-4 h-4" />
+                <span>{profile.phone}</span>
+              </div>
+            )}
+            {profile.email && (
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                <span>{profile.email}</span>
+              </div>
+            )}
+            {profile.address && (
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                <span>{profile.address}</span>
+              </div>
+            )}
+          </div>
 
           {/* Social Icons */}
           {profile.socialLinks && Object.values(profile.socialLinks).some(v => v) && (
