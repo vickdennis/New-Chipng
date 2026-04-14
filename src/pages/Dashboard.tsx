@@ -802,30 +802,30 @@ const Dashboard: React.FC = () => {
                 </div>
                 <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${!hasAccess('pro') ? 'opacity-50 pointer-events-none' : ''}`}>
                   {[
-                    { id: 'instagram', icon: Instagram, label: 'Instagram' },
-                    { id: 'twitter', icon: Twitter, label: 'Twitter' },
-                    { id: 'linkedin', icon: Linkedin, label: 'LinkedIn' },
-                    { id: 'youtube', icon: Youtube, label: 'YouTube' },
-                    { id: 'facebook', icon: Facebook, label: 'Facebook' },
-                    { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp' },
-                    { id: 'tiktok', icon: Music2, label: 'TikTok' },
-                    { id: 'reddit', icon: MessageSquare, label: 'Reddit' },
-                    { id: 'discord', icon: Disc, label: 'Discord' },
-                    { id: 'telegram', icon: Send, label: 'Telegram' },
-                    { id: 'pinterest', icon: Pin, label: 'Pinterest' },
-                    { id: 'spotify', icon: Music, label: 'Spotify' },
-                    { id: 'applemusic', icon: Apple, label: 'Apple Music' },
-                    { id: 'soundcloud', icon: Cloud, label: 'SoundCloud' },
-                    { id: 'threads', icon: AtSign, label: 'Threads' },
-                    { id: 'mastodon', icon: Hash, label: 'Mastodon' },
-                    { id: 'github', icon: Github, label: 'GitHub' },
-                    { id: 'twitch', icon: Twitch, label: 'Twitch' },
-                    { id: 'snapchat', icon: Ghost, label: 'Snapchat' },
-                    { id: 'mail', icon: Mail, label: 'Email' }
+                    { id: 'instagram', icon: Instagram, label: 'Instagram', color: '#E4405F' },
+                    { id: 'twitter', icon: Twitter, label: 'Twitter', color: '#1DA1F2' },
+                    { id: 'linkedin', icon: Linkedin, label: 'LinkedIn', color: '#0077B5' },
+                    { id: 'youtube', icon: Youtube, label: 'YouTube', color: '#FF0000' },
+                    { id: 'facebook', icon: Facebook, label: 'Facebook', color: '#1877F2' },
+                    { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp', color: '#25D366' },
+                    { id: 'tiktok', icon: Music2, label: 'TikTok', color: '#000000' },
+                    { id: 'reddit', icon: MessageSquare, label: 'Reddit', color: '#FF4500' },
+                    { id: 'discord', icon: Disc, label: 'Discord', color: '#5865F2' },
+                    { id: 'telegram', icon: Send, label: 'Telegram', color: '#26A5E4' },
+                    { id: 'pinterest', icon: Pin, label: 'Pinterest', color: '#BD081C' },
+                    { id: 'spotify', icon: Music, label: 'Spotify', color: '#1DB954' },
+                    { id: 'applemusic', icon: Apple, label: 'Apple Music', color: '#FA243C' },
+                    { id: 'soundcloud', icon: Cloud, label: 'SoundCloud', color: '#FF3300' },
+                    { id: 'threads', icon: AtSign, label: 'Threads', color: '#000000' },
+                    { id: 'mastodon', icon: Hash, label: 'Mastodon', color: '#6364FF' },
+                    { id: 'github', icon: Github, label: 'GitHub', color: '#181717' },
+                    { id: 'twitch', icon: Twitch, label: 'Twitch', color: '#9146FF' },
+                    { id: 'snapchat', icon: Ghost, label: 'Snapchat', color: '#FFFC00' },
+                    { id: 'mail', icon: Mail, label: 'Email', color: '#D44638' }
                   ].map((social) => (
                     <div key={social.id} className="space-y-2">
                       <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                        <social.icon className="w-3 h-3" /> {social.label}
+                        <social.icon className="w-3 h-3" style={{ color: social.color }} /> {social.label}
                       </label>
                       <input 
                         type="text" 
@@ -1054,11 +1054,11 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="p-8 bg-zinc-50 dark:bg-zinc-800 rounded-[2rem] border border-zinc-100 dark:border-zinc-700 text-center space-y-6">
-                  <div className="w-20 h-20 bg-[#0095F6] rounded-full flex items-center justify-center mx-auto shadow-xl shadow-blue-500/20">
+                  <div className="w-20 h-20 bg-[#1D9BF0] rounded-full flex items-center justify-center mx-auto shadow-xl shadow-blue-500/20">
                     <VerificationBadge size={40} />
                   </div>
                   <div className="max-w-md mx-auto space-y-2">
-                    <h3 className="text-2xl font-bold dark:text-white">Instagram-style Verification</h3>
+                    <h3 className="text-2xl font-bold dark:text-white">Twitter-style Verification</h3>
                     <p className="text-zinc-500">Stand out from the crowd with a blue verification badge on your profile. Build trust and credibility with your audience.</p>
                   </div>
                   
@@ -1068,7 +1068,7 @@ const Dashboard: React.FC = () => {
 
                   {!profile.isVerified ? (
                     <PaystackButton
-                      className="w-full py-4 bg-[#0095F6] text-white rounded-2xl font-bold hover:bg-[#1877F2] transition-all shadow-lg shadow-blue-500/20"
+                      className="w-full py-4 bg-[#1D9BF0] text-white rounded-2xl font-bold hover:bg-[#1A8CD8] transition-all shadow-lg shadow-blue-500/20"
                       email={user?.email || ''}
                       amount={1000 * 100} // Amount in kobo
                       publicKey={import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder'}

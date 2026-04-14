@@ -1,5 +1,5 @@
 export type UserRole = 'user' | 'admin';
-export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'coffee' | 'midnight' | 'lavender' | 'emerald' | 'cyberpunk' | 'retro' | 'nordic' | 'sakura' | 'gold' | 'brutalist' | 'clay' | 'matrix';
+export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'coffee' | 'midnight' | 'lavender' | 'emerald' | 'cyberpunk' | 'retro' | 'nordic' | 'sakura' | 'gold' | 'brutalist' | 'clay' | 'matrix' | 'vibrant' | 'pastel' | 'monochrome' | 'deepsea';
 export type ButtonStyle = 'rounded' | 'pill' | 'square';
 export type BackgroundType = 'solid' | 'gradient' | 'image';
 export type PlanType = 'basic' | 'pro' | 'business';
@@ -280,5 +280,37 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-black border border-[#00FF41] hover:bg-[#00FF41]/10 shadow-[0_0_10px_#00FF41]',
     buttonText: 'text-[#00FF41] font-mono',
     accent: 'bg-[#003B00]',
+  },
+  vibrant: {
+    name: 'vibrant',
+    background: 'bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500',
+    text: 'text-white',
+    button: 'bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 transition-all',
+    buttonText: 'text-white font-bold',
+    accent: 'bg-yellow-400',
+  },
+  pastel: {
+    name: 'pastel',
+    background: 'bg-[#fdfcf0]',
+    text: 'text-zinc-800',
+    button: 'bg-[#ff9aa2] hover:bg-[#ffb7b2] rounded-2xl shadow-lg shadow-rose-200/50',
+    buttonText: 'text-white font-medium',
+    accent: 'bg-[#b2e2f2]',
+  },
+  monochrome: {
+    name: 'monochrome',
+    background: 'bg-zinc-100',
+    text: 'text-zinc-900',
+    button: 'bg-zinc-900 hover:bg-zinc-800 rounded-none border-b-4 border-zinc-500 active:border-b-0 active:translate-y-1 transition-all',
+    buttonText: 'text-white uppercase tracking-widest font-black',
+    accent: 'bg-zinc-400',
+  },
+  deepsea: {
+    name: 'deepsea',
+    background: 'bg-[#001219]',
+    text: 'text-[#94d2bd]',
+    button: 'bg-[#005f73] hover:bg-[#0a9396] border border-[#94d2bd]/30',
+    buttonText: 'text-[#e9d8a6]',
+    accent: 'bg-[#ee9b00]',
   },
 };

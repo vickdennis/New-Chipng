@@ -51,7 +51,10 @@ const AdminPanel: React.FC = () => {
     theme: 'minimal',
     buttonStyle: 'rounded',
     backgroundType: 'solid',
-    socialLinks: {}
+    socialLinks: {},
+    phone: '',
+    address: '',
+    contactEmail: ''
   });
   const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
   const [productForm, setProductForm] = useState<Partial<Product>>({
@@ -293,7 +296,10 @@ const AdminPanel: React.FC = () => {
         theme: 'minimal',
         buttonStyle: 'rounded',
         backgroundType: 'solid',
-        socialLinks: {}
+        socialLinks: {},
+        phone: '',
+        address: '',
+        contactEmail: ''
       });
     } catch (error) {
       console.error('Error adding user:', error);
@@ -973,6 +979,36 @@ const AdminPanel: React.FC = () => {
                   onChange={(e) => setUserForm({ ...userForm, displayName: e.target.value })}
                   className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
                   placeholder="Full Name"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Phone</label>
+                <input 
+                  type="text" 
+                  value={userForm.phone}
+                  onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                  placeholder="+234..."
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Address</label>
+                <input 
+                  type="text" 
+                  value={userForm.address}
+                  onChange={(e) => setUserForm({ ...userForm, address: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                  placeholder="Lagos, Nigeria"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Contact Email</label>
+                <input 
+                  type="email" 
+                  value={userForm.contactEmail}
+                  onChange={(e) => setUserForm({ ...userForm, contactEmail: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                  placeholder="contact@example.com"
                 />
               </div>
               <div className="space-y-2">
