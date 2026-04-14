@@ -185,16 +185,19 @@ const AdminPanel: React.FC = () => {
 
     setIsUploadingProductImage(true);
     const timestamp = Date.now();
-    const storageRef = ref(storage, `products/${timestamp}_${file.name}`);
+    // Include user UID in path for better security rule compatibility
+    const storageRef = ref(storage, `products/${user?.uid || 'admin'}/${timestamp}_${file.name}`);
 
     try {
+      console.log('Uploading product image...', file.name);
       const snapshot = await uploadBytes(storageRef, file);
       const url = await getDownloadURL(snapshot.ref);
+      console.log('Product image uploaded successfully:', url);
       setProductForm(prev => ({ ...prev, image: url }));
       toast.success('Product image uploaded');
     } catch (error) {
       console.error('Product image upload error:', error);
-      toast.error('Failed to upload product image');
+      toast.error('Failed to upload product image. Please check your connection and permissions.');
     } finally {
       setIsUploadingProductImage(false);
     }
@@ -256,7 +259,15 @@ const AdminPanel: React.FC = () => {
 
   const handleSaveUser = async (userId: string, data: Partial<User>) => {
     try {
-      await updateDoc(doc(db, 'users', userId), data);
+      // Sanitize data for updateDoc - remove fields that shouldn't be in the document body
+      const { uid, id, ...updateData } = data as any;
+      
+      // Ensure socialLinks is an object
+      if (updateData.socialLinks && typeof updateData.socialLinks !== 'object') {
+        updateData.socialLinks = {};
+      }
+
+      await updateDoc(doc(db, 'users', userId), updateData);
       
       // Save links if any were modified
       const batch = writeBatch(db);
@@ -269,18 +280,19 @@ const AdminPanel: React.FC = () => {
       editingUserLinks.forEach(link => {
         if (link.id.startsWith('new-')) {
           const newLinkRef = doc(collection(db, 'links'));
-          const { id, ...linkData } = link;
+          const { id: _, ...linkData } = link;
           batch.set(newLinkRef, {
             ...linkData,
             userId: userId
           });
         } else {
           const linkRef = doc(db, 'links', link.id);
+          const { id: _, ...linkData } = link;
           batch.update(linkRef, {
-            title: link.title,
-            url: link.url,
-            active: link.active,
-            position: link.position
+            title: linkData.title,
+            url: linkData.url,
+            active: linkData.active,
+            position: linkData.position
           });
         }
       });
@@ -292,7 +304,7 @@ const AdminPanel: React.FC = () => {
       setDeletedLinkIds([]);
     } catch (error) {
       console.error('Error updating user:', error);
-      toast.error('Failed to update user');
+      toast.error('Failed to update user. Please check permissions.');
     }
   };
 
@@ -348,11 +360,13 @@ const AdminPanel: React.FC = () => {
   const handleSaveProduct = async () => {
     try {
       if (editingProduct) {
-        await updateDoc(doc(db, 'products', editingProduct.id), productForm);
+        const { id, ...updateData } = productForm as any;
+        await updateDoc(doc(db, 'products', editingProduct.id), updateData);
         toast.success('Product updated');
       } else {
+        const { id, ...newData } = productForm as any;
         await addDoc(collection(db, 'products'), {
-          ...productForm,
+          ...newData,
           createdAt: new Date().toISOString()
         });
         toast.success('Product added');
