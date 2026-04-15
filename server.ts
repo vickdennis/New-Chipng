@@ -144,7 +144,7 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
   });
 
   app.post("/api/verify-paystack", async (req, res) => {
-    const { reference, userId, plan } = req.body;
+    const { reference, userId, plan, isVerification, isOrder, amount } = req.body;
     try {
       const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
         headers: {
@@ -153,16 +153,32 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       });
 
       if (response.data.data.status === 'success') {
-        const premiumUntil = new Date();
-        premiumUntil.setDate(premiumUntil.getDate() + 30);
-        
-        await db.collection('users').doc(userId).update({
-          plan: plan || 'pro',
-          isPremium: true,
-          subscriptionStatus: 'active',
-          premiumUntil: premiumUntil.toISOString(),
-          updatedAt: new Date().toISOString()
-        });
+        if (isVerification) {
+          await db.collection('users').doc(userId).update({
+            isVerified: true,
+            updatedAt: new Date().toISOString()
+          });
+        } else if (isOrder) {
+          // Log the order
+          await db.collection('orders').add({
+            userId: userId || 'guest',
+            amount: amount,
+            reference: reference,
+            status: 'paid',
+            createdAt: new Date().toISOString()
+          });
+        } else {
+          const premiumUntil = new Date();
+          premiumUntil.setDate(premiumUntil.getDate() + 30);
+          
+          await db.collection('users').doc(userId).update({
+            plan: plan || 'pro',
+            isPremium: true,
+            subscriptionStatus: 'active',
+            premiumUntil: premiumUntil.toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+        }
         
         return res.json({ status: 'success' });
       }

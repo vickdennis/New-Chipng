@@ -238,12 +238,32 @@ const Shop: React.FC = () => {
                     className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all shadow-xl shadow-lime-400/20"
                     email={user?.email || 'guest@chipng.com'}
                     amount={totalAmount * 100}
-                    publicKey={import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder'}
+                    publicKey={import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''}
                     text="Checkout with Paystack"
-                    onSuccess={() => {
-                      setCart([]);
-                      setShowCart(false);
-                      toast.success('Order placed successfully!');
+                    onSuccess={async (reference: any) => {
+                      try {
+                        const response = await fetch('/api/verify-paystack', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ 
+                            reference: reference.reference, 
+                            userId: user?.uid,
+                            isOrder: true,
+                            amount: totalAmount
+                          }),
+                        });
+                        const data = await response.json();
+                        if (data.status === 'success') {
+                          setCart([]);
+                          setShowCart(false);
+                          toast.success('Order placed successfully!');
+                        } else {
+                          toast.error('Payment verification failed.');
+                        }
+                      } catch (error) {
+                        console.error('Error verifying shop payment:', error);
+                        toast.error('Error verifying payment');
+                      }
                     }}
                     onClose={() => toast.error('Payment cancelled')}
                   />

@@ -1071,11 +1071,30 @@ const Dashboard: React.FC = () => {
                       className="w-full py-4 bg-[#1D9BF0] text-white rounded-2xl font-bold hover:bg-[#1A8CD8] transition-all shadow-lg shadow-blue-500/20"
                       email={user?.email || ''}
                       amount={1000 * 100} // Amount in kobo
-                      publicKey={import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder'}
+                      publicKey={import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''}
                       text="Get Verified Now"
-                      onSuccess={async () => {
-                        await handleUpdateProfile({ isVerified: true });
-                        toast.success('Congratulations! You are now verified.');
+                      onSuccess={async (reference: any) => {
+                        try {
+                          const response = await fetch('/api/verify-paystack', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                              reference: reference.reference, 
+                              userId: user?.uid,
+                              isVerification: true
+                            }),
+                          });
+                          const data = await response.json();
+                          if (data.status === 'success') {
+                            await handleUpdateProfile({ isVerified: true });
+                            toast.success('Congratulations! You are now verified.');
+                          } else {
+                            toast.error('Verification failed. Please contact support.');
+                          }
+                        } catch (error) {
+                          console.error('Error verifying verification payment:', error);
+                          toast.error('Error verifying payment');
+                        }
                       }}
                       onClose={() => toast.error('Payment cancelled')}
                     />
