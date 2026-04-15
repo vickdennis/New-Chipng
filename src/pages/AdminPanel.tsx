@@ -1191,6 +1191,24 @@ const AdminPanel: React.FC = () => {
                 />
               </div>
               <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Profile Image URL</label>
+                <input 
+                  type="text" 
+                  defaultValue={editingUser.photoURL}
+                  onChange={(e) => setEditingUser({ ...editingUser, photoURL: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Cover Image URL</label>
+                <input 
+                  type="text" 
+                  defaultValue={editingUser.coverImage}
+                  onChange={(e) => setEditingUser({ ...editingUser, coverImage: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                />
+              </div>
+              <div className="space-y-2">
                 <label className="text-sm font-medium text-zinc-500">Phone</label>
                 <input 
                   type="text" 
