@@ -6,7 +6,7 @@ import {
 } from 'firebase/firestore';
 import { 
   Users, Shield, Trash2, Ban, CheckCircle, 
-  Search, ArrowLeft, BarChart2, TrendingUp,
+  Search, ArrowLeft, BarChart2, TrendingUp, ExternalLink,
   DollarSign, Crown, BadgeCheck, FileText, ShoppingBag, Plus, Edit, Package, History, RotateCcw, Share2,
   Link as LinkIcon, Instagram, Twitter, Linkedin, Youtube, Facebook, MessageCircle, Music2, MessageSquare, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash, Github, Twitch, Ghost, Mail
 } from 'lucide-react';
@@ -458,18 +458,17 @@ const AdminPanel: React.FC = () => {
             Shop
           </button>
           <button 
+            onClick={() => setActiveTab('blog')}
+            className={`px-8 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${activeTab === 'blog' ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'}`}
+          >
+            Blog
+          </button>
+          <button 
             onClick={() => setActiveTab('backups')}
             className={`px-8 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${activeTab === 'backups' ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'}`}
           >
             Backups
           </button>
-          <Link 
-            to="/admin/blog"
-            className="px-8 py-3 rounded-2xl font-bold bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white transition-all flex items-center gap-2 whitespace-nowrap"
-          >
-            <FileText className="w-4 h-4" />
-            Blog Manager
-          </Link>
         </div>
 
         {activeTab === 'users' ? (
@@ -842,6 +841,37 @@ const AdminPanel: React.FC = () => {
                 ))}
               </div>
             )}
+          </div>
+        ) : activeTab === 'blog' ? (
+          <div className="space-y-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold dark:text-white">Blog Management</h2>
+                <p className="text-zinc-500">Create and manage AI-powered blog posts</p>
+              </div>
+              <Link 
+                to="/admin/blog/new"
+                className="flex items-center gap-2 px-6 py-3 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all"
+              >
+                <Plus className="w-5 h-5" />
+                New Post
+              </Link>
+            </div>
+            
+            <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-12 text-center">
+              <div className="w-20 h-20 bg-lime-400/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <FileText className="w-10 h-10 text-lime-500" />
+              </div>
+              <h3 className="text-xl font-bold dark:text-white mb-2">Manage your content</h3>
+              <p className="text-zinc-500 mb-8 max-w-md mx-auto">Use the dedicated Blog Manager to create SEO-optimized, AI-generated posts for your platform.</p>
+              <Link 
+                to="/admin/blog"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-bold hover:scale-105 transition-all"
+              >
+                Open Blog Manager
+                <ExternalLink className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         ) : activeTab === 'backups' ? (
           <div className="space-y-8">

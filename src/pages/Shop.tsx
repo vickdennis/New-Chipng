@@ -17,7 +17,7 @@ const Shop: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [cart, setCart] = useState<Product[]>([]);
+  const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
   const [showCart, setShowCart] = useState(false);
 
   useEffect(() => {
@@ -42,8 +42,15 @@ const Shop: React.FC = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const addToCart = (product: Product) => {
-    setCart([...cart, product]);
+  const addToCart = (product: Product, quantity: number = 1) => {
+    const existingIndex = cart.findIndex(item => item.product.id === product.id);
+    if (existingIndex > -1) {
+      const newCart = [...cart];
+      newCart[existingIndex].quantity += quantity;
+      setCart(newCart);
+    } else {
+      setCart([...cart, { product, quantity }]);
+    }
     toast.success(`${product.name} added to cart`);
   };
 
@@ -53,7 +60,16 @@ const Shop: React.FC = () => {
     setCart(newCart);
   };
 
-  const totalAmount = cart.reduce((acc, p) => acc + p.price, 0);
+  const updateQuantity = (index: number, delta: number) => {
+    const newCart = [...cart];
+    const newQuantity = newCart[index].quantity + delta;
+    if (newQuantity > 0) {
+      newCart[index].quantity = newQuantity;
+      setCart(newCart);
+    }
+  };
+
+  const totalAmount = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
@@ -90,7 +106,7 @@ const Shop: React.FC = () => {
               <ShoppingCart className="w-6 h-6" />
               {cart.length > 0 && (
                 <span className="absolute -top-2 -right-2 w-6 h-6 bg-lime-400 text-zinc-950 rounded-full flex items-center justify-center text-xs font-bold border-2 border-white dark:border-zinc-950">
-                  {cart.length}
+                  {cart.reduce((acc, item) => acc + item.quantity, 0)}
                 </span>
               )}
             </button>
@@ -143,13 +159,48 @@ const Shop: React.FC = () => {
                   <h3 className="text-xl font-bold dark:text-white line-clamp-1">{product.name}</h3>
                 </div>
                 <p className="text-sm text-zinc-500 line-clamp-2 min-h-[40px]">{product.description}</p>
-                <button 
-                  onClick={() => addToCart(product)}
-                  className="w-full py-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-2xl font-bold hover:bg-lime-400 hover:text-zinc-950 transition-all flex items-center justify-center gap-2 group/btn"
-                >
-                  <Plus className="w-5 h-5 transition-transform group-hover/btn:rotate-90" />
-                  Add to Cart
-                </button>
+                
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center bg-zinc-100 dark:bg-zinc-800 rounded-xl px-2">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const input = e.currentTarget.nextElementSibling as HTMLInputElement;
+                        input.value = Math.max(1, parseInt(input.value) - 1).toString();
+                      }}
+                      className="p-2 text-zinc-500 hover:text-zinc-950 dark:hover:text-white"
+                    >
+                      -
+                    </button>
+                    <input 
+                      type="number" 
+                      defaultValue="1" 
+                      min="1"
+                      className="w-12 bg-transparent text-center font-bold outline-none dark:text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      id={`qty-${product.id}`}
+                    />
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const input = e.currentTarget.previousElementSibling as HTMLInputElement;
+                        input.value = (parseInt(input.value) + 1).toString();
+                      }}
+                      className="p-2 text-zinc-500 hover:text-zinc-950 dark:hover:text-white"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const qty = parseInt((document.getElementById(`qty-${product.id}`) as HTMLInputElement).value);
+                      addToCart(product, qty);
+                    }}
+                    className="flex-1 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-bold hover:bg-lime-400 hover:text-zinc-950 transition-all flex items-center justify-center gap-2 group/btn"
+                  >
+                    <Plus className="w-5 h-5 transition-transform group-hover/btn:rotate-90" />
+                    Add
+                  </button>
+                </div>
               </div>
             </motion.div>
           ))}
@@ -206,21 +257,28 @@ const Shop: React.FC = () => {
                   </div>
                 ) : (
                   cart.map((item, idx) => (
-                    <div key={`${item.id}-${idx}`} className="flex gap-4 group">
+                    <div key={`${item.product.id}-${idx}`} className="flex gap-4 group">
                       <div className="w-20 h-20 bg-zinc-100 dark:bg-zinc-800 rounded-2xl overflow-hidden shrink-0">
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                        <img src={item.product.image} alt={item.product.name} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-bold dark:text-white truncate">{item.name}</h4>
-                        <p className="text-sm text-zinc-500">{item.category}</p>
+                        <h4 className="font-bold dark:text-white truncate">{item.product.name}</h4>
+                        <p className="text-sm text-zinc-500">{item.product.category}</p>
                         <div className="flex items-center justify-between mt-2">
-                          <span className="font-bold text-lime-600">₦{item.price.toLocaleString()}</span>
-                          <button 
-                            onClick={() => removeFromCart(idx)}
-                            className="text-xs text-red-500 font-bold hover:underline"
-                          >
-                            Remove
-                          </button>
+                          <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg px-2 py-1">
+                            <button onClick={() => updateQuantity(idx, -1)} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white">-</button>
+                            <span className="text-sm font-bold dark:text-white min-w-[20px] text-center">{item.quantity}</span>
+                            <button onClick={() => updateQuantity(idx, 1)} className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white">+</button>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-bold text-lime-600">₦{(item.product.price * item.quantity).toLocaleString()}</div>
+                            <button 
+                              onClick={() => removeFromCart(idx)}
+                              className="text-[10px] text-red-500 font-bold hover:underline uppercase tracking-widest"
+                            >
+                              Remove
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
