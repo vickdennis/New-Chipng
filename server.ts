@@ -154,6 +154,7 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
 
       if (response.data.data.status === 'success') {
         if (isVerification) {
+          if (!userId) throw new Error("User ID is required for verification");
           await db.collection('users').doc(userId).update({
             isVerified: true,
             updatedAt: new Date().toISOString()
@@ -168,6 +169,7 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
             createdAt: new Date().toISOString()
           });
         } else {
+          if (!userId) throw new Error("User ID is required for subscription");
           const premiumUntil = new Date();
           premiumUntil.setDate(premiumUntil.getDate() + 30);
           

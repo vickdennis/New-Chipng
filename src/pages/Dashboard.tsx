@@ -1069,10 +1069,10 @@ const Dashboard: React.FC = () => {
                   {!profile.isVerified ? (
                     <PaystackButton
                       className="w-full py-4 bg-[#1D9BF0] text-white rounded-2xl font-bold hover:bg-[#1A8CD8] transition-all shadow-lg shadow-blue-500/20"
-                      email={user?.email || ''}
-                      amount={1000 * 100} // Amount in kobo
+                      email={user?.email || 'customer@chipng.com'}
+                      amount={Math.round(1000 * 100)} // Amount in kobo, ensured integer
                       publicKey={import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''}
-                      reference={`verify_${Date.now()}_${user?.uid}`}
+                      reference={`verify_${Date.now()}_${user?.uid || 'unknown'}`}
                       text="Get Verified Now"
                       onSuccess={async (reference: any) => {
                         try {

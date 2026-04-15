@@ -74,16 +74,23 @@ const Pricing: React.FC = () => {
     }
   };
 
-  const config: any = {
-    reference: (new Date()).getTime().toString(),
-    email: auth.currentUser?.email || '',
-    amount: selectedPlan ? getAmount(selectedPlan) : 0,
+  const config: any = React.useMemo(() => ({
+    reference: `sub_${Date.now()}_${auth.currentUser?.uid || 'guest'}`,
+    email: auth.currentUser?.email || 'customer@chipng.com',
+    amount: selectedPlan ? Math.round(getAmount(selectedPlan)) : 0,
     publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
     metadata: {
       userId: auth.currentUser?.uid,
       plan: selectedPlan,
+      custom_fields: [
+        {
+          display_name: "Plan",
+          variable_name: "plan",
+          value: selectedPlan || ""
+        }
+      ]
     }
-  };
+  }), [selectedPlan, auth.currentUser]);
 
   const initializePayment = usePaystackPayment(config);
 

@@ -294,8 +294,8 @@ const Shop: React.FC = () => {
                   </div>
                   <PaystackButton
                     className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all shadow-xl shadow-lime-400/20"
-                    email={user?.email || 'guest@chipng.com'}
-                    amount={totalAmount * 100}
+                    email={user?.email || 'customer@chipng.com'}
+                    amount={Math.round(totalAmount * 100)}
                     publicKey={import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''}
                     reference={`shop_${Date.now()}_${user?.uid || 'guest'}`}
                     text="Checkout with Paystack"
