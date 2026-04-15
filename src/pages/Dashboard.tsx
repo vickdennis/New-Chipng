@@ -1072,6 +1072,7 @@ const Dashboard: React.FC = () => {
                       email={user?.email || ''}
                       amount={1000 * 100} // Amount in kobo
                       publicKey={import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''}
+                      reference={`verify_${Date.now()}_${user?.uid}`}
                       text="Get Verified Now"
                       onSuccess={async (reference: any) => {
                         try {

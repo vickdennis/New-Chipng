@@ -239,6 +239,7 @@ const Shop: React.FC = () => {
                     email={user?.email || 'guest@chipng.com'}
                     amount={totalAmount * 100}
                     publicKey={import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''}
+                    reference={`shop_${Date.now()}_${user?.uid || 'guest'}`}
                     text="Checkout with Paystack"
                     onSuccess={async (reference: any) => {
                       try {
