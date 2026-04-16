@@ -34,8 +34,9 @@ import { auth } from '../firebase';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import UpgradeModal from '../components/UpgradeModal';
 import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2, BadgeCheck } from 'lucide-react';
-import { PaystackButton } from 'react-paystack';
+import { usePaystackPayment } from 'react-paystack';
 import { VerificationBadge } from '../components/VerificationBadge';
+import { safeWrite } from '../services/backupService';
 
 const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, isUploading }: { 
   link: Link; 
@@ -338,8 +339,10 @@ const Dashboard: React.FC = () => {
       if (!currentData.theme) updatePayload.theme = 'minimal';
       if (!currentData.buttonStyle) updatePayload.buttonStyle = 'rounded';
 
-      await updateDoc(userRef, updatePayload);
-      toast.success('Profile updated');
+      const success = await safeWrite('users', user.uid, updatePayload, 'update', user.uid);
+      if (success) {
+        toast.success('Profile updated');
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
     } finally {
@@ -406,6 +409,43 @@ const Dashboard: React.FC = () => {
 
   const handleUpgrade = () => {
     navigate('/pricing');
+  };
+
+  const verificationConfig = {
+    reference: `verify_${Date.now()}_${user?.uid || 'unknown'}`,
+    email: user?.email || 'customer@chipng.com',
+    amount: Math.round(1000 * 100),
+    publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
+  };
+
+  const initializeVerification = usePaystackPayment(verificationConfig);
+
+  const onVerificationSuccess = async (reference: any) => {
+    try {
+      const response = await fetch('/api/verify-paystack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          reference: reference.reference, 
+          userId: user?.uid,
+          isVerification: true
+        }),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        await handleUpdateProfile({ isVerified: true });
+        toast.success('Congratulations! You are now verified.');
+      } else {
+        toast.error('Verification failed. Please contact support.');
+      }
+    } catch (error) {
+      console.error('Error verifying verification payment:', error);
+      toast.error('Error verifying payment');
+    }
+  };
+
+  const onVerificationClose = () => {
+    toast.error('Payment cancelled');
   };
 
   const hasAccess = (requiredPlan: PlanType) => {
@@ -1067,38 +1107,12 @@ const Dashboard: React.FC = () => {
                   </div>
 
                   {!profile.isVerified ? (
-                    <PaystackButton
+                    <button
+                      onClick={() => initializeVerification({ onSuccess: onVerificationSuccess, onClose: onVerificationClose })}
                       className="w-full py-4 bg-[#1D9BF0] text-white rounded-2xl font-bold hover:bg-[#1A8CD8] transition-all shadow-lg shadow-blue-500/20"
-                      email={user?.email || 'customer@chipng.com'}
-                      amount={Math.round(1000 * 100)} // Amount in kobo, ensured integer
-                      publicKey={import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''}
-                      reference={`verify_${Date.now()}_${user?.uid || 'unknown'}`}
-                      text="Get Verified Now"
-                      onSuccess={async (reference: any) => {
-                        try {
-                          const response = await fetch('/api/verify-paystack', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                              reference: reference.reference, 
-                              userId: user?.uid,
-                              isVerification: true
-                            }),
-                          });
-                          const data = await response.json();
-                          if (data.status === 'success') {
-                            await handleUpdateProfile({ isVerified: true });
-                            toast.success('Congratulations! You are now verified.');
-                          } else {
-                            toast.error('Verification failed. Please contact support.');
-                          }
-                        } catch (error) {
-                          console.error('Error verifying verification payment:', error);
-                          toast.error('Error verifying payment');
-                        }
-                      }}
-                      onClose={() => toast.error('Payment cancelled')}
-                    />
+                    >
+                      Get Verified Now
+                    </button>
                   ) : (
                     <div className="p-4 bg-blue-500/5 rounded-xl border border-blue-500/20 text-blue-500 font-bold">
                       You are already verified!
@@ -1244,7 +1258,7 @@ const Dashboard: React.FC = () => {
                       onClick={handleUpgrade}
                       className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:scale-[1.02] transition-all"
                     >
-                      Upgrade for $9.99/mo
+                      Upgrade for ₦10,000/mo
                     </button>
                   </div>
                 ) : (

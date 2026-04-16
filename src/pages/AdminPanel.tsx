@@ -22,7 +22,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { rollbackDocument, BackupDocument } from '../services/backupService';
+import { rollbackDocument, BackupDocument, safeWrite, createBackup } from '../services/backupService';
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -120,26 +120,22 @@ const AdminPanel: React.FC = () => {
 
   const handleToggleStatus = async (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    try {
-      await updateDoc(doc(db, 'users', userId), { status: newStatus });
+    const success = await safeWrite('users', userId, { status: newStatus }, 'update', user?.uid);
+    if (success) {
       toast.success(`User ${newStatus === 'active' ? 'activated' : 'suspended'}`);
-    } catch (error) {
-      toast.error('Failed to update status');
     }
   };
 
   const handleUpdatePlan = async (userId: string, newPlan: string) => {
-    try {
-      const isPremium = newPlan !== 'basic';
-      await updateDoc(doc(db, 'users', userId), { 
-        plan: newPlan,
-        isPremium: isPremium,
-        subscriptionStatus: isPremium ? 'active' : 'inactive'
-      });
+    const isPremium = newPlan !== 'basic';
+    const success = await safeWrite('users', userId, { 
+      plan: newPlan,
+      isPremium: isPremium,
+      subscriptionStatus: isPremium ? 'active' : 'inactive'
+    }, 'update', user?.uid);
+    
+    if (success) {
       toast.success(`User upgraded to ${newPlan.toUpperCase()}`);
-    } catch (error) {
-      console.error('Error updating plan:', error);
-      toast.error('Failed to update plan');
     }
   };
 
@@ -163,11 +159,9 @@ const AdminPanel: React.FC = () => {
   };
 
   const handleToggleVerify = async (userId: string, currentStatus: boolean) => {
-    try {
-      await updateDoc(doc(db, 'users', userId), { isVerified: !currentStatus });
+    const success = await safeWrite('users', userId, { isVerified: !currentStatus }, 'update', user?.uid);
+    if (success) {
       toast.success(`User ${!currentStatus ? 'verified' : 'unverified'}`);
-    } catch (error) {
-      toast.error('Failed to update verification status');
     }
   };
 
@@ -259,6 +253,9 @@ const AdminPanel: React.FC = () => {
 
   const handleSaveUser = async (userId: string, data: Partial<User>) => {
     try {
+      // Create backup before batch operation
+      await createBackup('users', userId, 'update', user?.uid);
+
       // Sanitize data for updateDoc - remove fields that shouldn't be in the document body
       const { uid, id, ...updateData } = data as any;
       
@@ -361,15 +358,12 @@ const AdminPanel: React.FC = () => {
     try {
       if (editingProduct) {
         const { id, ...updateData } = productForm as any;
-        await updateDoc(doc(db, 'products', editingProduct.id), updateData);
-        toast.success('Product updated');
+        const success = await safeWrite('products', editingProduct.id, updateData, 'update', user?.uid);
+        if (success) toast.success('Product updated');
       } else {
         const { id, ...newData } = productForm as any;
-        await addDoc(collection(db, 'products'), {
-          ...newData,
-          createdAt: new Date().toISOString()
-        });
-        toast.success('Product added');
+        const success = await safeWrite('products', null, newData, 'create', user?.uid);
+        if (success) toast.success('Product added');
       }
       setIsAddingProduct(false);
       setEditingProduct(null);
@@ -381,11 +375,9 @@ const AdminPanel: React.FC = () => {
 
   const handleDeleteProduct = async (id: string) => {
     if (!window.confirm('Delete this product?')) return;
-    try {
-      await deleteDoc(doc(db, 'products', id));
+    const success = await safeWrite('products', id, null, 'delete', user?.uid);
+    if (success) {
       toast.success('Product deleted');
-    } catch (error) {
-      toast.error('Failed to delete product');
     }
   };
 
@@ -619,7 +611,7 @@ const AdminPanel: React.FC = () => {
                   </div>
                   <TrendingUp className="w-5 h-5 text-lime-600 dark:text-lime-500" />
                 </div>
-                <div className="text-3xl font-bold mb-1 text-zinc-950 dark:text-white">$12,450.00</div>
+                <div className="text-3xl font-bold mb-1 text-zinc-950 dark:text-white">₦12,450.00</div>
                 <div className="text-zinc-500 text-sm font-medium">Monthly Recurring Revenue</div>
               </div>
               <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-8 rounded-[2.5rem]">
@@ -657,7 +649,7 @@ const AdminPanel: React.FC = () => {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-zinc-800" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} unit="$" />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} unit="₦" />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '12px', color: '#fff' }}
                       itemStyle={{ color: '#a3e635' }}

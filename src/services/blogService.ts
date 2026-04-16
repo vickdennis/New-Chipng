@@ -21,6 +21,7 @@ import {
 } from 'firebase/storage';
 import { db, storage, handleFirestoreError, OperationType } from '../firebase';
 import { BlogPost } from '../types';
+import { safeWrite } from './backupService';
 
 const BLOGS_COLLECTION = 'blogs';
 
@@ -115,13 +116,17 @@ export const blogService = {
   async createBlogPost(post: Omit<BlogPost, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
       const now = new Date().toISOString();
-      const docRef = await addDoc(collection(db, BLOGS_COLLECTION), {
+      const data = {
         ...post,
         createdAt: now,
         updatedAt: now,
         views: 0,
-      });
-      return docRef.id;
+      };
+      
+      const result = await safeWrite(BLOGS_COLLECTION, null, data, 'create');
+      if (!result || typeof result !== 'string') throw new Error('Failed to create blog post with backup');
+      
+      return result;
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, BLOGS_COLLECTION);
       throw error;
@@ -141,11 +146,11 @@ export const blogService = {
 
   async updateBlogPost(id: string, post: Partial<BlogPost>): Promise<void> {
     try {
-      const docRef = doc(db, BLOGS_COLLECTION, id);
-      await updateDoc(docRef, {
+      const success = await safeWrite(BLOGS_COLLECTION, id, {
         ...post,
         updatedAt: new Date().toISOString(),
-      });
+      }, 'update');
+      if (!success) throw new Error('Failed to update blog post with backup');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `${BLOGS_COLLECTION}/${id}`);
       throw error;
@@ -154,8 +159,8 @@ export const blogService = {
 
   async deleteBlogPost(id: string): Promise<void> {
     try {
-      const docRef = doc(db, BLOGS_COLLECTION, id);
-      await deleteDoc(docRef);
+      const success = await safeWrite(BLOGS_COLLECTION, id, null, 'delete');
+      if (!success) throw new Error('Failed to delete blog post with backup');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `${BLOGS_COLLECTION}/${id}`);
       throw error;

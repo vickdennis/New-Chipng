@@ -4,7 +4,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { ShoppingBag, Search, Filter, ArrowLeft, ShoppingCart, X, Check, Plus } from 'lucide-react';
 import { Product } from '../types';
 import { Link } from 'react-router-dom';
-import { PaystackButton } from 'react-paystack';
+import { usePaystackPayment } from 'react-paystack';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
@@ -70,6 +70,45 @@ const Shop: React.FC = () => {
   };
 
   const totalAmount = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+
+  const shopConfig = {
+    reference: `shop_${Date.now()}_${user?.uid || 'guest'}`,
+    email: user?.email || 'customer@chipng.com',
+    amount: Math.round(totalAmount * 100),
+    publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
+  };
+
+  const initializeShopPayment = usePaystackPayment(shopConfig);
+
+  const onShopSuccess = async (reference: any) => {
+    try {
+      const response = await fetch('/api/verify-paystack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          reference: reference.reference, 
+          userId: user?.uid,
+          isOrder: true,
+          amount: totalAmount
+        }),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        setCart([]);
+        setShowCart(false);
+        toast.success('Order placed successfully!');
+      } else {
+        toast.error('Payment verification failed.');
+      }
+    } catch (error) {
+      console.error('Error verifying shop payment:', error);
+      toast.error('Error verifying payment');
+    }
+  };
+
+  const onShopClose = () => {
+    toast.error('Payment cancelled');
+  };
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
@@ -292,40 +331,12 @@ const Shop: React.FC = () => {
                     <span className="text-zinc-500 font-bold">Total</span>
                     <span className="text-3xl font-black dark:text-white">₦{totalAmount.toLocaleString()}</span>
                   </div>
-                  <PaystackButton
+                  <button
+                    onClick={() => initializeShopPayment({ onSuccess: onShopSuccess, onClose: onShopClose })}
                     className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all shadow-xl shadow-lime-400/20"
-                    email={user?.email || 'customer@chipng.com'}
-                    amount={Math.round(totalAmount * 100)}
-                    publicKey={import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || ''}
-                    reference={`shop_${Date.now()}_${user?.uid || 'guest'}`}
-                    text="Checkout with Paystack"
-                    onSuccess={async (reference: any) => {
-                      try {
-                        const response = await fetch('/api/verify-paystack', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ 
-                            reference: reference.reference, 
-                            userId: user?.uid,
-                            isOrder: true,
-                            amount: totalAmount
-                          }),
-                        });
-                        const data = await response.json();
-                        if (data.status === 'success') {
-                          setCart([]);
-                          setShowCart(false);
-                          toast.success('Order placed successfully!');
-                        } else {
-                          toast.error('Payment verification failed.');
-                        }
-                      } catch (error) {
-                        console.error('Error verifying shop payment:', error);
-                        toast.error('Error verifying payment');
-                      }
-                    }}
-                    onClose={() => toast.error('Payment cancelled')}
-                  />
+                  >
+                    Checkout with Paystack
+                  </button>
                 </div>
               )}
             </motion.div>

@@ -118,7 +118,7 @@ export const safeWrite = async (
   data: any,
   action: 'create' | 'update' | 'delete',
   userId: string = 'system'
-) => {
+): Promise<string | boolean> => {
   try {
     if (action === 'update' || action === 'delete') {
       if (!documentId) throw new Error('Document ID required for update/delete');
@@ -133,9 +133,11 @@ export const safeWrite = async (
         deletedAt: new Date().toISOString(),
         deletedBy: userId
       });
+      return true;
     } else if (action === 'update') {
       if (!documentId) throw new Error('Document ID required for update');
       await updateDoc(doc(db, collectionName, documentId), data);
+      return true;
     } else if (action === 'create') {
       if (documentId) {
         await setDoc(doc(db, collectionName, documentId), {
@@ -143,16 +145,18 @@ export const safeWrite = async (
           createdAt: new Date().toISOString(),
           createdBy: userId
         });
+        return documentId;
       } else {
-        await addDoc(collection(db, collectionName), {
+        const docRef = await addDoc(collection(db, collectionName), {
           ...data,
           createdAt: new Date().toISOString(),
           createdBy: userId
         });
+        return docRef.id;
       }
     }
     
-    return true;
+    return false;
   } catch (error) {
     console.error(`Safe write failed for ${collectionName}:`, error);
     toast.error(`Operation failed: ${action}`);
