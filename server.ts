@@ -29,6 +29,46 @@ if (PAYSTACK_SECRET_KEY === "sk_test_mock") {
   console.warn("⚠️ PAYSTACK_SECRET_KEY is not set. Using mock key.");
 }
 
+// Helper for backend safe write with backups
+async function backendSafeWrite(collectionName: string, documentId: string, data: any, action: 'update' | 'create', performedBy: string = 'system') {
+  try {
+    const docRef = db.collection(collectionName).doc(documentId);
+    const now = new Date().toISOString();
+    
+    // Backup before modification
+    if (action === 'update') {
+      const docSnap = await docRef.get();
+      if (docSnap.exists) {
+        await db.collection(`${collectionName}_backup`).add({
+          originalId: documentId,
+          collectionName,
+          data: docSnap.data(),
+          action: 'update',
+          timestamp: now,
+          performedBy
+        });
+      }
+    }
+
+    if (action === 'update') {
+      await docRef.update({
+        ...data,
+        updatedAt: now
+      });
+    } else {
+      await docRef.set({
+        ...data,
+        createdAt: now,
+        updatedAt: now
+      });
+    }
+    return true;
+  } catch (error) {
+    console.error(`Backend safeWrite failed for ${collectionName}/${documentId}:`, error);
+    return false;
+  }
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -50,26 +90,22 @@ async function startServer() {
     const event = req.body;
 
     if (event.event === "charge.success") {
-      const { metadata } = event.data;
+      const { metadata, reference, amount } = event.data;
       const userId = metadata?.userId;
       const plan = metadata?.plan;
       
-      if (userId) {
-        try {
-          const premiumUntil = new Date();
-          premiumUntil.setDate(premiumUntil.getDate() + 30);
-          
-          await db.collection('users').doc(userId).update({
-            plan: plan || 'pro',
-            isPremium: true,
-            subscriptionStatus: 'active',
-            premiumUntil: premiumUntil.toISOString(),
-            updatedAt: new Date().toISOString()
-          });
-          console.log(`User ${userId} upgraded to ${plan} via Paystack webhook`);
-        } catch (error) {
-          console.error('Failed to update user premium status in Paystack webhook:', error);
-        }
+      console.log(`Webhook: Successful charge for ${userId}, Plan: ${plan}`);
+      
+      if (userId && plan) {
+        const premiumUntil = new Date();
+        premiumUntil.setDate(premiumUntil.getDate() + 30);
+        
+        await backendSafeWrite('users', userId, {
+          plan,
+          isPremium: true,
+          subscriptionStatus: 'active',
+          premiumUntil: premiumUntil.toISOString()
+        }, 'update', 'paystack-webhook');
       }
     }
 
@@ -162,10 +198,7 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       if (response.data.data.status === 'success') {
         if (isVerification) {
           if (!userId) throw new Error("User ID is required for verification");
-          await db.collection('users').doc(userId).update({
-            isVerified: true,
-            updatedAt: new Date().toISOString()
-          });
+          await backendSafeWrite('users', userId, { isVerified: true }, 'update', 'paystack-verify');
         } else if (isOrder) {
           // Log the order
           await db.collection('orders').add({
@@ -180,13 +213,12 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
           const premiumUntil = new Date();
           premiumUntil.setDate(premiumUntil.getDate() + 30);
           
-          await db.collection('users').doc(userId).update({
+          await backendSafeWrite('users', userId, {
             plan: plan || 'pro',
             isPremium: true,
             subscriptionStatus: 'active',
-            premiumUntil: premiumUntil.toISOString(),
-            updatedAt: new Date().toISOString()
-          });
+            premiumUntil: premiumUntil.toISOString()
+          }, 'update', 'paystack-verify');
         }
         
         return res.json({ status: 'success' });
