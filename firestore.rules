@@ -211,6 +211,11 @@ service cloud.firestore {
       allow read, write: if isAdmin() && isValidBackup(request.resource.data);
     }
 
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+      allow create, update, delete: if false; // Only via backend
+    }
+
     match /blogs_backup/{backupId} {
       allow read, write: if isAdmin() && isValidBackup(request.resource.data);
     }

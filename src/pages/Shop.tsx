@@ -3,7 +3,7 @@ import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { ShoppingBag, Search, Filter, ArrowLeft, ShoppingCart, X, Check, Plus } from 'lucide-react';
 import { Product } from '../types';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { usePaystackPayment } from 'react-paystack';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 const Shop: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -103,6 +104,7 @@ const Shop: React.FC = () => {
         setCart([]);
         setShowCart(false);
         toast.success('Order placed successfully!');
+        navigate(`/payment-success?reference=${reference.reference}&plan=Order`);
       } else {
         toast.error('Payment verification failed.');
       }

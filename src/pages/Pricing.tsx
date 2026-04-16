@@ -115,7 +115,7 @@ const Pricing: React.FC = () => {
       const data = await response.json();
       if (data.status === 'success') {
         toast.success(`Successfully upgraded to ${selectedPlan?.toUpperCase()}!`);
-        navigate('/dashboard');
+        navigate(`/payment-success?reference=${reference.reference}&plan=${selectedPlan}`);
       } else {
         toast.error('Payment verification failed. Please contact support.');
       }

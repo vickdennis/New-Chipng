@@ -19,7 +19,8 @@ import {
   Layout, Link as LinkIcon, User, Settings, BarChart2, 
   Plus, Trash2, GripVertical, Eye, EyeOff, Image as ImageIcon,
   LogOut, ExternalLink, Copy, Check, Moon, Sun, Palette,
-  Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash
+  Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash,
+  CreditCard, Calendar
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -29,7 +30,7 @@ import {
 } from 'recharts';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { toast } from 'sonner';
-import { Link, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment } from '../types';
+import { Link, Transaction, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment } from '../types';
 import { auth } from '../firebase';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import UpgradeModal from '../components/UpgradeModal';
@@ -205,7 +206,8 @@ const Dashboard: React.FC = () => {
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [links, setLinks] = useState<Link[]>([]);
-  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'settings'>('links');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings'>('links');
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [upgradeModal, setUpgradeModal] = useState<{ isOpen: boolean; requiredPlan: PlanType; featureName: string }>({
@@ -248,9 +250,21 @@ const Dashboard: React.FC = () => {
       handleFirestoreError(error, OperationType.LIST, 'links');
     });
 
+    const qTx = query(collection(db, 'transactions'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const unsubTx = onSnapshot(qTx, (snapshot) => {
+      setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'transactions');
+    });
+
+    // Trigger subscription expiry check on load
+    fetch('/api/cron/check-subscriptions', { method: 'POST' })
+      .catch(err => console.error('Expiry check failed:', err));
+
     return () => {
       unsubProfile();
       unsubLinks();
+      unsubTx();
     };
   }, [user]);
 
@@ -441,6 +455,7 @@ const Dashboard: React.FC = () => {
       if (data.status === 'success') {
         await handleUpdateProfile({ isVerified: true });
         toast.success('Congratulations! You are now verified.');
+        navigate(`/payment-success?reference=${reference.reference}&plan=Verification`);
       } else {
         toast.error('Verification failed. Please contact support.');
       }
@@ -522,6 +537,7 @@ const Dashboard: React.FC = () => {
             { id: 'appearance', icon: Palette, label: 'Appearance' },
             { id: 'business', icon: Crown, label: 'Business' },
             { id: 'verification', icon: BadgeCheck, label: 'Verification' },
+            { id: 'billing', icon: CreditCard, label: 'Billing' },
             { id: 'analytics', icon: BarChart2, label: 'Analytics' },
             { id: 'settings', icon: Settings, label: 'Settings' }
           ].map((item) => (
@@ -1137,6 +1153,79 @@ const Dashboard: React.FC = () => {
                       <p className="text-xs text-zinc-500">{benefit.desc}</p>
                     </div>
                   ))}
+                </div>
+              </section>
+            </div>
+          )}
+
+          {activeTab === 'billing' && (
+            <div className="space-y-8">
+              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-none">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-lime-400/10 rounded-xl text-lime-500">
+                      <CreditCard className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold dark:text-white">Current Plan</h2>
+                      <p className="text-sm text-zinc-500">Manage your subscription and billing history</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="text-sm font-bold uppercase tracking-wider text-zinc-400">{profile?.plan}</div>
+                      <div className={`text-xs font-bold ${profile?.subscriptionStatus === 'active' ? 'text-lime-500' : 'text-zinc-500'}`}>
+                        {profile?.subscriptionStatus === 'active' ? 'Active' : 'Inactive'}
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => navigate('/pricing')}
+                      className="px-6 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 rounded-xl text-sm font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all"
+                    >
+                      {profile?.plan === 'business' ? 'Manage' : 'Upgrade'}
+                    </button>
+                  </div>
+                </div>
+
+                {profile?.isPremium && profile.premiumUntil && (
+                  <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-4 h-4 text-zinc-400" />
+                      <span className="text-sm text-zinc-500 italic">Expires on</span>
+                    </div>
+                    <div className="font-bold text-zinc-900 dark:text-white">
+                      {format(new Date(profile.premiumUntil), 'MMMM dd, yyyy')}
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-none">
+                <h3 className="text-lg font-bold dark:text-white mb-6">Transaction History</h3>
+                <div className="space-y-4">
+                  {transactions.length > 0 ? (
+                    transactions.map((tx) => (
+                      <div key={tx.id} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl group border border-zinc-100 dark:border-zinc-800">
+                        <div className="flex items-center gap-4">
+                          <div className={`p-2 rounded-xl ${tx.status === 'success' ? 'bg-lime-400/10 text-lime-500' : 'bg-red-400/10 text-red-500'}`}>
+                            <CreditCard className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="font-bold text-zinc-900 dark:text-white capitalize">{tx.plan} Plan</div>
+                            <div className="text-xs text-zinc-500">{format(new Date(tx.createdAt), 'MMM dd, yyyy • HH:mm')}</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-zinc-900 dark:text-white">₦{tx.amount?.toLocaleString()}</div>
+                          <div className="text-[10px] font-mono text-zinc-400 leading-none">{tx.reference}</div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-12 text-zinc-400 bg-zinc-50 dark:bg-zinc-800/30 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800">
+                      No transactions found
+                    </div>
+                  )}
                 </div>
               </section>
             </div>

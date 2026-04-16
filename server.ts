@@ -186,7 +186,14 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     const { reference, userId, plan, isVerification, isOrder, amount } = req.body;
     console.log(`Verifying Paystack transaction: ${reference} for user: ${userId}`);
     
+    // 1. Double-check for duplicate transaction references
     try {
+      const existingTx = await db.collection('transactions').where('reference', '==', reference).get();
+      if (!existingTx.empty) {
+        console.warn(`Attempted duplicate processing for reference: ${reference}`);
+        return res.status(400).json({ status: 'failed', error: 'Transaction already processed' });
+      }
+
       const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
         headers: {
           Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
@@ -196,6 +203,24 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       console.log(`Paystack verification response for ${reference}:`, response.data.data.status);
 
       if (response.data.data.status === 'success') {
+        // 2. Save transaction history BEFORE upgrading to ensure we have a record
+        await db.collection('transactions').add({
+          userId: userId || 'guest',
+          reference,
+          amount: amount || response.data.data.amount / 100, // Paystack returns in kobo
+          plan: isVerification ? 'verification' : (isOrder ? 'order' : (plan || 'pro')),
+          status: 'success',
+          createdAt: new Date().toISOString(),
+          metadata: {
+            auth_code: response.data.data.authorization?.authorization_code,
+            last4: response.data.data.authorization?.last4,
+            exp_month: response.data.data.authorization?.exp_month,
+            exp_year: response.data.data.authorization?.exp_year,
+            card_type: response.data.data.authorization?.card_type,
+            bank: response.data.data.authorization?.bank
+          }
+        });
+
         if (isVerification) {
           if (!userId) throw new Error("User ID is required for verification");
           await backendSafeWrite('users', userId, { isVerified: true }, 'update', 'paystack-verify');
@@ -226,6 +251,39 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       
       res.status(400).json({ status: 'failed' });
     } catch (error: any) {
+      console.error('Paystack verification error:', error.message);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 3. Subscription Expiry Logic
+  app.post("/api/cron/check-subscriptions", async (req, res) => {
+    // This could be called by a scheduled task
+    const now = new Date().toISOString();
+    try {
+      const expiredSnapshot = await db.collection('users')
+        .where('isPremium', '==', true)
+        .where('premiumUntil', '<', now)
+        .get();
+
+      if (expiredSnapshot.empty) {
+        return res.json({ status: 'success', count: 0 });
+      }
+
+      const batch = db.batch();
+      expiredSnapshot.forEach(doc => {
+        batch.update(doc.ref, {
+          isPremium: false,
+          subscriptionStatus: 'inactive',
+          updatedAt: now
+        });
+      });
+      
+      await batch.commit();
+      console.log(`Processed ${expiredSnapshot.size} expired subscriptions`);
+      res.json({ status: 'success', count: expiredSnapshot.size });
+    } catch (error: any) {
+      console.error('Subscription expiry check failed:', error);
       res.status(500).json({ error: error.message });
     }
   });

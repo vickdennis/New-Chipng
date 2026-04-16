@@ -79,6 +79,17 @@ export interface User {
   };
 }
 
+export interface Transaction {
+  id: string;
+  userId: string;
+  reference: string;
+  amount: number;
+  plan: string;
+  status: 'success' | 'failed' | 'pending';
+  createdAt: string;
+  metadata?: any;
+}
+
 export interface Link {
   id: string;
   userId: string;
