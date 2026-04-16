@@ -94,6 +94,12 @@ const Pricing: React.FC = () => {
 
   const initializePayment = usePaystackPayment(config);
 
+  React.useEffect(() => {
+    if (!import.meta.env.VITE_PAYSTACK_PUBLIC_KEY) {
+      console.error("❌ VITE_PAYSTACK_PUBLIC_KEY is missing in environment variables.");
+    }
+  }, []);
+
   const onSuccess = async (reference: any) => {
     setLoading(selectedPlan);
     try {

@@ -25,6 +25,9 @@ if (fs.existsSync(configPath)) {
 const db = admin.firestore();
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || "sk_test_mock";
+if (PAYSTACK_SECRET_KEY === "sk_test_mock") {
+  console.warn("⚠️ PAYSTACK_SECRET_KEY is not set. Using mock key.");
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -145,12 +148,16 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
 
   app.post("/api/verify-paystack", async (req, res) => {
     const { reference, userId, plan, isVerification, isOrder, amount } = req.body;
+    console.log(`Verifying Paystack transaction: ${reference} for user: ${userId}`);
+    
     try {
       const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
         headers: {
           Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
         }
       });
+
+      console.log(`Paystack verification response for ${reference}:`, response.data.data.status);
 
       if (response.data.data.status === 'success') {
         if (isVerification) {

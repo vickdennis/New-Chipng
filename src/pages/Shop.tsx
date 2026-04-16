@@ -71,14 +71,20 @@ const Shop: React.FC = () => {
 
   const totalAmount = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
 
-  const shopConfig = {
+  const shopConfig = React.useMemo(() => ({
     reference: `shop_${Date.now()}_${user?.uid || 'guest'}`,
     email: user?.email || 'customer@chipng.com',
     amount: Math.round(totalAmount * 100),
     publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
-  };
+  }), [user, totalAmount]);
 
   const initializeShopPayment = usePaystackPayment(shopConfig);
+
+  React.useEffect(() => {
+    if (!import.meta.env.VITE_PAYSTACK_PUBLIC_KEY) {
+      console.error("❌ VITE_PAYSTACK_PUBLIC_KEY is missing in environment variables.");
+    }
+  }, []);
 
   const onShopSuccess = async (reference: any) => {
     try {

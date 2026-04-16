@@ -410,15 +410,21 @@ const Dashboard: React.FC = () => {
   const handleUpgrade = () => {
     navigate('/pricing');
   };
-
-  const verificationConfig = {
+  
+  const verificationConfig = React.useMemo(() => ({
     reference: `verify_${Date.now()}_${user?.uid || 'unknown'}`,
     email: user?.email || 'customer@chipng.com',
     amount: Math.round(1000 * 100),
     publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
-  };
+  }), [user]);
 
   const initializeVerification = usePaystackPayment(verificationConfig);
+
+  React.useEffect(() => {
+    if (!import.meta.env.VITE_PAYSTACK_PUBLIC_KEY) {
+      console.error("❌ VITE_PAYSTACK_PUBLIC_KEY is missing in environment variables.");
+    }
+  }, []);
 
   const onVerificationSuccess = async (reference: any) => {
     try {
