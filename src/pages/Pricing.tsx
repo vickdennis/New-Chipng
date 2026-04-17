@@ -138,10 +138,17 @@ const Pricing: React.FC = () => {
   };
 
   React.useEffect(() => {
-    if (selectedPlan) {
-      initializePayment({ onSuccess, onClose });
+    if (selectedPlan && config.publicKey) {
+      if (config.isMock) {
+        toast.info("🛠️ Simulating payment in Mock Mode...");
+        setTimeout(() => {
+          onSuccess({ reference: config.reference });
+        }, 1500);
+      } else {
+        initializePayment({ onSuccess, onClose });
+      }
     }
-  }, [selectedPlan]);
+  }, [selectedPlan, config]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-white transition-colors duration-300">

@@ -474,6 +474,18 @@ const Dashboard: React.FC = () => {
     toast.error('Payment cancelled');
   };
 
+  const triggerVerification = () => {
+    const config = verificationConfig as any;
+    if (config.isMock) {
+      toast.info("🛠️ Simulating verification payment in Mock Mode...");
+      setTimeout(() => {
+        onVerificationSuccess({ reference: config.reference });
+      }, 1500);
+    } else {
+      initializeVerification({ onSuccess: onVerificationSuccess, onClose: onVerificationClose });
+    }
+  };
+
   const hasAccess = (requiredPlan: PlanType) => {
     if (!profile) return false;
     
@@ -1135,7 +1147,7 @@ const Dashboard: React.FC = () => {
 
                   {!profile.isVerified ? (
                     <button
-                      onClick={() => initializeVerification({ onSuccess: onVerificationSuccess, onClose: onVerificationClose })}
+                      onClick={triggerVerification}
                       className="w-full py-4 bg-[#1D9BF0] text-white rounded-2xl font-bold hover:bg-[#1A8CD8] transition-all shadow-lg shadow-blue-500/20"
                     >
                       Get Verified Now

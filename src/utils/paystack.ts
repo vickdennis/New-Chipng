@@ -73,6 +73,7 @@ export const preparePaystackConfig = (params: {
     email,
     amount,
     publicKey,
-    metadata: metadata || {}
+    metadata: metadata || {},
+    isMock: isMockMode
   };
 };

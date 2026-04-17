@@ -123,6 +123,18 @@ const Shop: React.FC = () => {
     toast.error('Payment cancelled');
   };
 
+  const triggerShopPayment = () => {
+    const config = shopConfig as any;
+    if (config.isMock) {
+      toast.info("🛠️ Simulating shop payment in Mock Mode...");
+      setTimeout(() => {
+        onShopSuccess({ reference: config.reference });
+      }, 1500);
+    } else {
+      initializeShopPayment({ onSuccess: onShopSuccess, onClose: onShopClose });
+    }
+  };
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-lime-500"></div>
@@ -345,7 +357,7 @@ const Shop: React.FC = () => {
                     <span className="text-3xl font-black dark:text-white">₦{totalAmount.toLocaleString()}</span>
                   </div>
                   <button
-                    onClick={() => initializeShopPayment({ onSuccess: onShopSuccess, onClose: onShopClose })}
+                    onClick={triggerShopPayment}
                     className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all shadow-xl shadow-lime-400/20"
                   >
                     Checkout with Paystack
