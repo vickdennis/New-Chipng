@@ -1,5 +1,5 @@
 export type UserRole = 'user' | 'admin';
-export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'coffee' | 'midnight' | 'lavender' | 'emerald' | 'cyberpunk' | 'retro' | 'nordic' | 'sakura' | 'gold' | 'brutalist' | 'clay' | 'matrix' | 'vibrant' | 'pastel' | 'monochrome' | 'deepsea' | 'minimalist-dark' | 'desert';
+export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'coffee';
 export type ButtonStyle = 'rounded' | 'pill' | 'square';
 export type BackgroundType = 'solid' | 'gradient' | 'image';
 export type PlanType = 'basic' | 'pro' | 'business';
@@ -45,9 +45,6 @@ export interface User {
   isVerified?: boolean;
   plan: PlanType;
   subscriptionStatus: 'active' | 'inactive';
-  phone?: string;
-  address?: string;
-  contactEmail?: string;
   location?: {
     lat: number;
     lng: number;
@@ -131,11 +128,11 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
   },
   neon: {
     name: 'neon',
-    background: 'bg-black',
-    text: 'text-[#39FF14]',
-    button: 'bg-black border-2 border-[#39FF14] hover:bg-[#39FF14] hover:text-black shadow-[0_0_15px_#39FF14]',
-    buttonText: 'text-[#39FF14] font-bold',
-    accent: 'bg-[#39FF14]',
+    background: 'bg-zinc-950',
+    text: 'text-white',
+    button: 'bg-zinc-900 border border-lime-400 hover:bg-lime-400/10',
+    buttonText: 'text-lime-400',
+    accent: 'bg-lime-400',
   },
   glassmorphism: {
     name: 'glassmorphism',
@@ -192,141 +189,5 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-stone-800 border border-stone-600 hover:bg-stone-700',
     buttonText: 'text-stone-100',
     accent: 'bg-orange-200',
-  },
-  midnight: {
-    name: 'midnight',
-    background: 'bg-zinc-950',
-    text: 'text-zinc-100',
-    button: 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700',
-    buttonText: 'text-zinc-100',
-    accent: 'bg-blue-500',
-  },
-  lavender: {
-    name: 'lavender',
-    background: 'bg-gradient-to-br from-purple-100 to-indigo-200',
-    text: 'text-indigo-900',
-    button: 'bg-white/50 backdrop-blur-sm border border-indigo-300 hover:bg-white/80',
-    buttonText: 'text-indigo-900',
-    accent: 'bg-indigo-500',
-  },
-  emerald: {
-    name: 'emerald',
-    background: 'bg-emerald-900',
-    text: 'text-emerald-50',
-    button: 'bg-emerald-800 border border-emerald-700 hover:bg-emerald-700',
-    buttonText: 'text-emerald-50',
-    accent: 'bg-lime-400',
-  },
-  cyberpunk: {
-    name: 'cyberpunk',
-    background: 'bg-black',
-    text: 'text-yellow-400',
-    button: 'bg-black border-2 border-yellow-400 hover:bg-yellow-400 hover:text-black',
-    buttonText: 'text-yellow-400',
-    accent: 'bg-fuchsia-500',
-  },
-  retro: {
-    name: 'retro',
-    background: 'bg-[#f4ebd0]',
-    text: 'text-[#b68d40]',
-    button: 'bg-[#d6ad60] border-2 border-[#b68d40] hover:bg-[#b68d40] hover:text-[#f4ebd0]',
-    buttonText: 'text-[#f4ebd0]',
-    accent: 'bg-[#122620]',
-  },
-  nordic: {
-    name: 'nordic',
-    background: 'bg-[#2e3440]',
-    text: 'text-[#eceff4]',
-    button: 'bg-[#4c566a] hover:bg-[#5e81ac]',
-    buttonText: 'text-[#eceff4]',
-    accent: 'bg-[#88c0d0]',
-  },
-  sakura: {
-    name: 'sakura',
-    background: 'bg-gradient-to-br from-pink-100 to-rose-200',
-    text: 'text-rose-900',
-    button: 'bg-white/60 backdrop-blur-sm border border-rose-300 hover:bg-rose-100',
-    buttonText: 'text-rose-900',
-    accent: 'bg-rose-400',
-  },
-  gold: {
-    name: 'gold',
-    background: 'bg-zinc-950',
-    text: 'text-amber-200',
-    button: 'bg-zinc-900 border border-amber-500/50 hover:border-amber-500 hover:bg-amber-500/10',
-    buttonText: 'text-amber-500',
-    accent: 'bg-amber-500',
-  },
-  brutalist: {
-    name: 'brutalist',
-    background: 'bg-[#ffde03]',
-    text: 'text-black',
-    button: 'bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all',
-    buttonText: 'text-black font-black italic',
-    accent: 'bg-[#0336ff]',
-  },
-  clay: {
-    name: 'clay',
-    background: 'bg-[#e0e5ec]',
-    text: 'text-zinc-600',
-    button: 'bg-[#e0e5ec] shadow-[9px_9px_16px_rgb(163,177,198,0.6),-9px_-9px_16px_rgba(255,255,255,0.5)] rounded-2xl hover:shadow-[inset_9px_9px_16px_rgb(163,177,198,0.6),inset_-9px_-9px_16px_rgba(255,255,255,0.5)]',
-    buttonText: 'text-zinc-600',
-    accent: 'bg-blue-400',
-  },
-  matrix: {
-    name: 'matrix',
-    background: 'bg-black',
-    text: 'text-[#00FF41]',
-    button: 'bg-black border border-[#00FF41] hover:bg-[#00FF41]/10 shadow-[0_0_10px_#00FF41]',
-    buttonText: 'text-[#00FF41] font-mono',
-    accent: 'bg-[#003B00]',
-  },
-  vibrant: {
-    name: 'vibrant',
-    background: 'bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500',
-    text: 'text-white',
-    button: 'bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 transition-all',
-    buttonText: 'text-white font-bold',
-    accent: 'bg-yellow-400',
-  },
-  pastel: {
-    name: 'pastel',
-    background: 'bg-[#fdfcf0]',
-    text: 'text-zinc-800',
-    button: 'bg-[#ff9aa2] hover:bg-[#ffb7b2] rounded-2xl shadow-lg shadow-rose-200/50',
-    buttonText: 'text-white font-medium',
-    accent: 'bg-[#b2e2f2]',
-  },
-  monochrome: {
-    name: 'monochrome',
-    background: 'bg-zinc-100',
-    text: 'text-zinc-900',
-    button: 'bg-zinc-900 hover:bg-zinc-800 rounded-none border-b-4 border-zinc-500 active:border-b-0 active:translate-y-1 transition-all',
-    buttonText: 'text-white uppercase tracking-widest font-black',
-    accent: 'bg-zinc-400',
-  },
-  deepsea: {
-    name: 'deepsea',
-    background: 'bg-[#001219]',
-    text: 'text-[#94d2bd]',
-    button: 'bg-[#005f73] hover:bg-[#0a9396] border border-[#94d2bd]/30',
-    buttonText: 'text-[#e9d8a6]',
-    accent: 'bg-[#ee9b00]',
-  },
-  'minimalist-dark': {
-    name: 'minimalist-dark',
-    background: 'bg-[#121212]',
-    text: 'text-zinc-400',
-    button: 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors',
-    buttonText: 'text-zinc-100',
-    accent: 'bg-white',
-  },
-  desert: {
-    name: 'desert',
-    background: 'bg-[#f3e5ab]',
-    text: 'text-[#8b4513]',
-    button: 'bg-[#d2b48c] hover:bg-[#c19a6b] rounded-full shadow-md',
-    buttonText: 'text-[#5d2e0a] font-bold',
-    accent: 'bg-[#cd853f]',
   },
 };
