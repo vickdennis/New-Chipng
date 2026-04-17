@@ -35,8 +35,8 @@ import { auth } from '../firebase';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import UpgradeModal from '../components/UpgradeModal';
 import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2, BadgeCheck } from 'lucide-react';
-import { usePaystackPayment } from 'react-paystack';
-import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
+import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
+import { prepareFlutterwaveConfig, getFlutterwavePublicKey } from '../utils/flutterwave';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { safeWrite } from '../services/backupService';
 
@@ -427,40 +427,43 @@ const Dashboard: React.FC = () => {
   };
   
   const verificationConfig = React.useMemo(() => {
-    if (!user) return { publicKey: getPaystackPublicKey() };
+    if (!user) return { public_key: getFlutterwavePublicKey() };
 
     try {
-      return preparePaystackConfig({
+      return prepareFlutterwaveConfig({
         email: user.email,
         amountNaira: 1000,
+        title: 'Chip NG - Profile Verification',
+        description: 'Get verified badge on your profile',
         metadata: {
           userId: user.uid,
           isVerification: true
         }
       });
     } catch (e) {
-      return { publicKey: getPaystackPublicKey() };
+      return { public_key: getFlutterwavePublicKey() } as any;
     }
   }, [user]);
 
-  const initializeVerification = usePaystackPayment(verificationConfig);
+  const handleFlutterVerification = useFlutterwave(verificationConfig);
 
-  const onVerificationSuccess = async (reference: any) => {
+  const onVerificationSuccess = async (response: any) => {
     try {
-      const response = await fetch('/api/verify-paystack', {
+      const verifyRes = await fetch('/api/verify-flutterwave', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          reference: reference.reference, 
+          transaction_id: response.transaction_id,
+          tx_ref: response.tx_ref,
           userId: user?.uid,
           isVerification: true
         }),
       });
-      const data = await response.json();
+      const data = await verifyRes.json();
       if (data.status === 'success') {
         await handleUpdateProfile({ isVerified: true });
         toast.success('Congratulations! You are now verified.');
-        navigate(`/payment-success?reference=${reference.reference}&plan=Verification`);
+        navigate(`/payment-success?reference=${response.tx_ref}&plan=Verification`);
       } else {
         toast.error('Verification failed. Please contact support.');
       }
@@ -479,10 +482,16 @@ const Dashboard: React.FC = () => {
     if (config.isMock) {
       toast.info("🛠️ Simulating verification payment in Mock Mode...");
       setTimeout(() => {
-        onVerificationSuccess({ reference: config.reference });
+        onVerificationSuccess({ transaction_id: 'MOCK_ID', tx_ref: config.tx_ref });
       }, 1500);
     } else {
-      initializeVerification({ onSuccess: onVerificationSuccess, onClose: onVerificationClose });
+      handleFlutterVerification({
+        callback: (response) => {
+          onVerificationSuccess(response);
+          closePaymentModal();
+        },
+        onClose: () => onVerificationClose()
+      });
     }
   };
 

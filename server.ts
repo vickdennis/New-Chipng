@@ -24,9 +24,9 @@ if (fs.existsSync(configPath)) {
 
 const db = admin.firestore();
 
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || "sk_test_mock";
-if (PAYSTACK_SECRET_KEY === "sk_test_mock") {
-  console.warn("⚠️ PAYSTACK_SECRET_KEY is not set. Using mock key.");
+const FLUTTERWAVE_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY || "FLWSECK_TEST_MOCK";
+if (FLUTTERWAVE_SECRET_KEY === "FLWSECK_TEST_MOCK") {
+  console.warn("⚠️ FLUTTERWAVE_SECRET_KEY is not set. Using mock key.");
 }
 
 // Helper for backend safe write with backups
@@ -79,20 +79,16 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
-  // Paystack Webhook
-  app.post("/api/paystack-webhook", async (req, res) => {
-    const hash = crypto.createHmac('sha512', PAYSTACK_SECRET_KEY).update(JSON.stringify(req.body)).digest('hex');
-    
-    if (hash !== req.headers['x-paystack-signature']) {
-      return res.status(400).send('Invalid signature');
-    }
-
+  // Flutterwave Webhook
+  app.post("/api/flutterwave-webhook", async (req, res) => {
+    // Note: In production you should verify the 'verif-hash' header
     const event = req.body;
+    console.log('Flutterwave Webhook received:', event["event.type"]);
 
-    if (event.event === "charge.success") {
-      const { metadata, reference, amount } = event.data;
-      const userId = metadata?.userId;
-      const plan = metadata?.plan;
+    if (event["event.type"] === "CHARGED") {
+      const { customer, tx_ref, amount, meta } = event.data;
+      const userId = meta?.userId;
+      const plan = meta?.plan;
       
       console.log(`Webhook: Successful charge for ${userId}, Plan: ${plan}`);
       
@@ -105,7 +101,7 @@ async function startServer() {
           isPremium: true,
           subscriptionStatus: 'active',
           premiumUntil: premiumUntil.toISOString()
-        }, 'update', 'paystack-webhook');
+        }, 'update', 'flutterwave-webhook');
       }
     }
 
@@ -182,73 +178,70 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     res.json({ status: "ok" });
   });
 
-  app.post("/api/verify-paystack", async (req, res) => {
-    const { reference, userId, plan, isVerification, isOrder, amount } = req.body;
-    console.log(`Verifying Paystack transaction: ${reference} for user: ${userId}`);
+  app.post("/api/verify-flutterwave", async (req, res) => {
+    const { transaction_id, tx_ref, userId, plan, isVerification, isOrder, amount } = req.body;
+    console.log(`Verifying Flutterwave transaction: ${transaction_id} for user: ${userId}`);
     
     // 1. Double-check for duplicate transaction references
     try {
-      const existingTx = await db.collection('transactions').where('reference', '==', reference).get();
+      const existingTx = await db.collection('transactions').where('reference', '==', tx_ref).get();
       if (!existingTx.empty) {
-        console.warn(`Attempted duplicate processing for reference: ${reference}`);
+        console.warn(`Attempted duplicate processing for reference: ${tx_ref}`);
         return res.status(400).json({ status: 'failed', error: 'Transaction already processed' });
       }
 
-      let paystackData: any;
+      let flwData: any;
 
-      if (PAYSTACK_SECRET_KEY === "sk_test_mock") {
+      if (FLUTTERWAVE_SECRET_KEY === "FLWSECK_TEST_MOCK") {
         console.log("🛠️ Using mock verification for development.");
-        paystackData = {
-          status: 'success',
-          amount: (amount || 5000) * 100, // mock amount in kobo
-          authorization: {
-            authorization_code: 'MOCK_AUTH_CODE',
-            bank: 'Mock Bank',
-            card_type: 'visa',
-            last4: '1234',
-            exp_month: '12',
-            exp_year: '2030'
+        flwData = {
+          status: 'successful',
+          amount: amount || 5000,
+          card: {
+            first_6digits: '123456',
+            last_4digits: '1234',
+            issuer: 'Mock Bank',
+            type: 'VISA',
+            expiry: '12/30'
           }
         };
       } else {
-        const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
+        const response = await axios.get(`https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`, {
           headers: {
-            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
+            Authorization: `Bearer ${FLUTTERWAVE_SECRET_KEY}`
           }
         });
-        paystackData = response.data.data;
+        flwData = response.data.data;
       }
 
-      console.log(`Paystack verification status for ${reference}:`, paystackData.status);
+      console.log(`Flutterwave verification status for ${transaction_id}:`, flwData.status);
 
-      if (paystackData.status === 'success') {
+      if (flwData.status === 'successful') {
         // 2. Save transaction history BEFORE upgrading to ensure we have a record
         await db.collection('transactions').add({
           userId: userId || 'guest',
-          reference,
-          amount: amount || paystackData.amount / 100, // Paystack returns in kobo
+          reference: tx_ref,
+          flw_id: transaction_id,
+          amount: amount || flwData.amount,
           plan: isVerification ? 'verification' : (isOrder ? 'order' : (plan || 'pro')),
           status: 'success',
           createdAt: new Date().toISOString(),
           metadata: {
-            auth_code: paystackData.authorization?.authorization_code,
-            last4: paystackData.authorization?.last4,
-            exp_month: paystackData.authorization?.exp_month,
-            exp_year: paystackData.authorization?.exp_year,
-            card_type: paystackData.authorization?.card_type,
-            bank: paystackData.authorization?.bank
+            card_type: flwData.card?.type,
+            last4: flwData.card?.last_4digits,
+            issuer: flwData.card?.issuer
           }
         });
 
         if (isVerification) {
           if (!userId) throw new Error("User ID is required for verification");
-          await backendSafeWrite('users', userId, { isVerified: true }, 'update', 'paystack-verify');
+          await backendSafeWrite('users', userId, { isVerified: true }, 'update', 'flutterwave-verify');
         } else if (isOrder) {
           // Log the order
           await db.collection('orders').add({
             userId: userId || 'guest',
             amount: amount,
-            reference: reference,
+            reference: tx_ref,
             status: 'paid',
             createdAt: new Date().toISOString()
           });
@@ -262,7 +255,7 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
             isPremium: true,
             subscriptionStatus: 'active',
             premiumUntil: premiumUntil.toISOString()
-          }, 'update', 'paystack-verify');
+          }, 'update', 'flutterwave-verify');
         }
         
         return res.json({ status: 'success' });

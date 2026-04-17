@@ -4,8 +4,8 @@ import { Check, ArrowRight, Star, Zap, ShieldCheck, Loader2 } from 'lucide-react
 import { auth } from '../firebase';
 import { toast } from 'sonner';
 import { PlanType } from '../types';
-import { usePaystackPayment } from 'react-paystack';
-import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
+import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
+import { prepareFlutterwaveConfig, getFlutterwavePublicKey } from '../utils/flutterwave';
 
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -76,40 +76,43 @@ const Pricing: React.FC = () => {
   };
 
   const config: any = React.useMemo(() => {
-    if (!selectedPlan || !auth.currentUser) return { publicKey: getPaystackPublicKey() };
+    if (!selectedPlan || !auth.currentUser) return { public_key: getFlutterwavePublicKey() };
     
     try {
-      return preparePaystackConfig({
+      return prepareFlutterwaveConfig({
         email: auth.currentUser.email,
         amountNaira: getAmount(selectedPlan),
+        title: `Chip NG - ${selectedPlan.toUpperCase()} Plan`,
+        description: `Upgrade to ${selectedPlan} plan`,
         metadata: {
           userId: auth.currentUser.uid,
           plan: selectedPlan
         }
       });
     } catch (e) {
-      return { publicKey: getPaystackPublicKey() };
+      return { public_key: getFlutterwavePublicKey() };
     }
   }, [selectedPlan, auth.currentUser]);
 
-  const initializePayment = usePaystackPayment(config);
+  const handleFlutterPayment = useFlutterwave(config);
 
-  const onSuccess = async (reference: any) => {
+  const onSuccess = async (response: any) => {
     setLoading(selectedPlan);
     try {
-      const response = await fetch('/api/verify-paystack', {
+      const verifyRes = await fetch('/api/verify-flutterwave', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          reference: reference.reference, 
+          transaction_id: response.transaction_id,
+          tx_ref: response.tx_ref,
           userId: auth.currentUser?.uid,
           plan: selectedPlan
         }),
       });
-      const data = await response.json();
+      const data = await verifyRes.json();
       if (data.status === 'success') {
         toast.success(`Successfully upgraded to ${selectedPlan?.toUpperCase()}!`);
-        navigate(`/payment-success?reference=${reference.reference}&plan=${selectedPlan}`);
+        navigate(`/payment-success?reference=${response.tx_ref}&plan=${selectedPlan}`);
       } else {
         toast.error('Payment verification failed. Please contact support.');
       }
@@ -138,17 +141,23 @@ const Pricing: React.FC = () => {
   };
 
   React.useEffect(() => {
-    if (selectedPlan && config.publicKey) {
+    if (selectedPlan && config.public_key) {
       if (config.isMock) {
         toast.info("🛠️ Simulating payment in Mock Mode...");
         setTimeout(() => {
-          onSuccess({ reference: config.reference });
+          onSuccess({ transaction_id: 'MOCK_ID', tx_ref: config.tx_ref });
         }, 1500);
       } else {
-        initializePayment({ onSuccess, onClose });
+        handleFlutterPayment({
+          callback: (response) => {
+            onSuccess(response);
+            closePaymentModal();
+          },
+          onClose: () => onClose()
+        });
       }
     }
-  }, [selectedPlan, config]);
+  }, [selectedPlan]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-white transition-colors duration-300">

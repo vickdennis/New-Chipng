@@ -4,8 +4,8 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { ShoppingBag, Search, Filter, ArrowLeft, ShoppingCart, X, Check, Plus } from 'lucide-react';
 import { Product } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
-import { usePaystackPayment } from 'react-paystack';
-import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
+import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
+import { prepareFlutterwaveConfig, getFlutterwavePublicKey } from '../utils/flutterwave';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
@@ -74,42 +74,45 @@ const Shop: React.FC = () => {
   const totalAmount = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
 
   const shopConfig = React.useMemo(() => {
-    if (totalAmount <= 0 || !user) return { publicKey: getPaystackPublicKey() };
+    if (totalAmount <= 0 || !user) return { public_key: getFlutterwavePublicKey() };
 
     try {
-      return preparePaystackConfig({
+      return prepareFlutterwaveConfig({
         email: user.email,
         amountNaira: totalAmount,
+        title: 'Chip Shop Order',
+        description: `Payment for ${cart.length} items in cart`,
         metadata: {
           userId: user.uid,
           isOrder: true
         }
       });
     } catch (e) {
-      return { publicKey: getPaystackPublicKey() };
+      return { public_key: getFlutterwavePublicKey() } as any;
     }
-  }, [user, totalAmount]);
+  }, [user, totalAmount, cart.length]);
 
-  const initializeShopPayment = usePaystackPayment(shopConfig);
+  const handleFlutterShopPayment = useFlutterwave(shopConfig);
 
-  const onShopSuccess = async (reference: any) => {
+  const onShopSuccess = async (response: any) => {
     try {
-      const response = await fetch('/api/verify-paystack', {
+      const verifyRes = await fetch('/api/verify-flutterwave', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          reference: reference.reference, 
+          transaction_id: response.transaction_id,
+          tx_ref: response.tx_ref,
           userId: user?.uid,
           isOrder: true,
           amount: totalAmount
         }),
       });
-      const data = await response.json();
+      const data = await verifyRes.json();
       if (data.status === 'success') {
         setCart([]);
         setShowCart(false);
         toast.success('Order placed successfully!');
-        navigate(`/payment-success?reference=${reference.reference}&plan=Order`);
+        navigate(`/payment-success?reference=${response.tx_ref}&plan=Order`);
       } else {
         toast.error('Payment verification failed.');
       }
@@ -128,10 +131,16 @@ const Shop: React.FC = () => {
     if (config.isMock) {
       toast.info("🛠️ Simulating shop payment in Mock Mode...");
       setTimeout(() => {
-        onShopSuccess({ reference: config.reference });
+        onShopSuccess({ transaction_id: 'MOCK_ID', tx_ref: config.tx_ref });
       }, 1500);
     } else {
-      initializeShopPayment({ onSuccess: onShopSuccess, onClose: onShopClose });
+      handleFlutterShopPayment({
+        callback: (response) => {
+          onShopSuccess(response);
+          closePaymentModal();
+        },
+        onClose: () => onShopClose()
+      });
     }
   };
 
@@ -360,7 +369,7 @@ const Shop: React.FC = () => {
                     onClick={triggerShopPayment}
                     className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all shadow-xl shadow-lime-400/20"
                   >
-                    Checkout with Paystack
+                    Checkout with Flutterwave
                   </button>
                 </div>
               )}
