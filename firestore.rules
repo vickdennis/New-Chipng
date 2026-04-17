@@ -65,6 +65,25 @@
 //   - seoDescription: string (optional)
 //   - seoKeywords: array (optional)
 //
+// Collection: /products/{productId}
+// Fields:
+//   - name: string (required)
+//   - description: string (required)
+//   - price: number (required)
+//   - image: string (required)
+//   - category: string (required)
+//   - stock: number (required)
+//   - active: boolean (required)
+//
+// Collection: /backups/{backupId} (and users_backup, blogs_backup, links_backup)
+// Fields:
+//   - originalId: string (required)
+//   - collectionName: string (required)
+//   - data: map (required)
+//   - action: string (required, 'create', 'update', 'delete', 'rollback')
+//   - timestamp: string (required)
+//   - performedBy: string (required)
+//
 // ===============================================================
 
 rules_version = '2';
@@ -109,9 +128,9 @@ service cloud.firestore {
              (!('role' in data) || data.role in ['user', 'admin']) &&
              (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
              (!('username' in data) || (data.username is string && data.username.size() >= 3 && data.username.size() <= 30)) &&
-             (!('theme' in data) || data.theme in ['minimal', 'neon', 'glassmorphism', 'dark', 'sunset']) &&
+             (!('theme' in data) || data.theme in ['minimal', 'neon', 'glassmorphism', 'dark', 'sunset', 'ocean', 'forest', 'royal', 'coffee', 'midnight', 'lavender', 'emerald', 'cyberpunk', 'retro', 'nordic', 'sakura', 'gold', 'brutalist', 'clay', 'matrix', 'vibrant', 'pastel', 'monochrome', 'deepsea', 'minimalist-dark', 'desert']) &&
              (!('buttonStyle' in data) || data.buttonStyle in ['rounded', 'pill', 'square']) &&
-             (!('backgroundType' in data) || data.backgroundType in ['solid', 'gradient']);
+             (!('backgroundType' in data) || data.backgroundType in ['solid', 'gradient', 'image']);
     }
 
     function isValidLink(data) {
@@ -121,6 +140,27 @@ service cloud.firestore {
              isValidUrl(data.url) &&
              data.active is bool &&
              data.position is number;
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['name', 'description', 'price', 'image', 'category', 'stock', 'active']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
+             data.description is string && data.description.size() <= 2000 &&
+             data.price is number && data.price >= 0 &&
+             (data.image == "" || isValidUrl(data.image)) &&
+             data.category is string &&
+             data.stock is number &&
+             data.active is bool;
+    }
+
+    function isValidBackup(data) {
+      return data.keys().hasAll(['originalId', 'collectionName', 'data', 'action', 'timestamp', 'performedBy']) &&
+             data.originalId is string &&
+             data.collectionName is string &&
+             data.data is map &&
+             data.action in ['create', 'update', 'delete', 'rollback'] &&
+             data.timestamp is string &&
+             data.performedBy is string;
     }
 
     // ===============================================================
@@ -144,11 +184,12 @@ service cloud.firestore {
 
     match /links/{linkId} {
       allow read: if true;
-      allow create: if isAuthenticated() && isOwner(request.resource.data.userId) && isValidLink(request.resource.data);
+      allow create: if (isAuthenticated() && isOwner(request.resource.data.userId) && isValidLink(request.resource.data)) || isAdmin();
       allow update: if (isAuthenticated() && isOwner(resource.data.userId) && isValidLink(request.resource.data)) ||
+                      isAdmin() ||
                       (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicks']) &&
                        request.resource.data.clicks == resource.data.clicks + 1);
-      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+      allow delete: if (isAuthenticated() && isOwner(resource.data.userId)) || isAdmin();
     }
 
     match /analytics/{analyticsId} {
@@ -159,6 +200,28 @@ service cloud.firestore {
     match /blogs/{blogId} {
       allow read: if true; // Allow all to read, but we'll filter by published in the app for non-admins
       allow create, update, delete: if isAdmin();
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() && isValidProduct(request.resource.data);
+    }
+
+    match /users_backup/{backupId} {
+      allow read, write: if isAdmin() && isValidBackup(request.resource.data);
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+      allow create, update, delete: if false; // Only via backend
+    }
+
+    match /blogs_backup/{backupId} {
+      allow read, write: if isAdmin() && isValidBackup(request.resource.data);
+    }
+
+    match /links_backup/{backupId} {
+      allow read, write: if isAdmin() && isValidBackup(request.resource.data);
     }
   }
 }

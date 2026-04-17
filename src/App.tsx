@@ -13,6 +13,8 @@ import BlogList from './pages/BlogList';
 import BlogPost from './pages/BlogPost';
 import AdminBlogDashboard from './pages/AdminBlogDashboard';
 import AdminBlogEditor from './pages/AdminBlogEditor';
+import Shop from './pages/Shop';
+import PaymentSuccess from './pages/PaymentSuccess';
 import { Toaster } from 'sonner';
 
 import ErrorBoundary from './components/ErrorBoundary';
@@ -39,12 +41,14 @@ const App: React.FC = () => {
               <Route path="/signup" element={<Signup />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/pricing" element={<Pricing />} />
+              <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
               <Route path="/blog" element={<BlogList />} />
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPanel /></ProtectedRoute>} />
               <Route path="/admin/blog" element={<ProtectedRoute adminOnly><AdminBlogDashboard /></ProtectedRoute>} />
               <Route path="/admin/blog/new" element={<ProtectedRoute adminOnly><AdminBlogEditor /></ProtectedRoute>} />
               <Route path="/admin/blog/edit/:id" element={<ProtectedRoute adminOnly><AdminBlogEditor /></ProtectedRoute>} />
+              <Route path="/shop" element={<Shop />} />
               <Route path="/:username" element={<PublicProfile />} />
             </Routes>
           </Router>

@@ -19,7 +19,8 @@ import {
   Layout, Link as LinkIcon, User, Settings, BarChart2, 
   Plus, Trash2, GripVertical, Eye, EyeOff, Image as ImageIcon,
   LogOut, ExternalLink, Copy, Check, Moon, Sun, Palette,
-  Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash
+  Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash,
+  CreditCard, Calendar
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -29,11 +30,15 @@ import {
 } from 'recharts';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { toast } from 'sonner';
-import { Link, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment } from '../types';
+import { Link, Transaction, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment } from '../types';
 import { auth } from '../firebase';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import UpgradeModal from '../components/UpgradeModal';
-import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2 } from 'lucide-react';
+import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2, BadgeCheck } from 'lucide-react';
+import { usePaystackPayment } from 'react-paystack';
+import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
+import { VerificationBadge } from '../components/VerificationBadge';
+import { safeWrite } from '../services/backupService';
 
 const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, isUploading }: { 
   link: Link; 
@@ -195,11 +200,15 @@ const Dashboard: React.FC = () => {
   const [profileForm, setProfileForm] = useState({
     username: '',
     displayName: '',
-    bio: ''
+    bio: '',
+    contactEmail: '',
+    phone: '',
+    address: ''
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [links, setLinks] = useState<Link[]>([]);
-  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'settings'>('links');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings'>('links');
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [upgradeModal, setUpgradeModal] = useState<{ isOpen: boolean; requiredPlan: PlanType; featureName: string }>({
@@ -224,7 +233,10 @@ const Dashboard: React.FC = () => {
         setProfileForm({
           username: data.username || '',
           displayName: data.displayName || '',
-          bio: data.bio || ''
+          bio: data.bio || '',
+          phone: data.phone || '',
+          address: data.address || '',
+          contactEmail: data.contactEmail || ''
         });
       }
     }, (error) => {
@@ -239,9 +251,21 @@ const Dashboard: React.FC = () => {
       handleFirestoreError(error, OperationType.LIST, 'links');
     });
 
+    const qTx = query(collection(db, 'transactions'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const unsubTx = onSnapshot(qTx, (snapshot) => {
+      setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction)));
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'transactions');
+    });
+
+    // Trigger subscription expiry check on load
+    fetch('/api/cron/check-subscriptions', { method: 'POST' })
+      .catch(err => console.error('Expiry check failed:', err));
+
     return () => {
       unsubProfile();
       unsubLinks();
+      unsubTx();
     };
   }, [user]);
 
@@ -330,8 +354,10 @@ const Dashboard: React.FC = () => {
       if (!currentData.theme) updatePayload.theme = 'minimal';
       if (!currentData.buttonStyle) updatePayload.buttonStyle = 'rounded';
 
-      await updateDoc(userRef, updatePayload);
-      toast.success('Profile updated');
+      const success = await safeWrite('users', user.uid, updatePayload, 'update', user.uid);
+      if (success) {
+        toast.success('Profile updated');
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `users/${user.uid}`);
     } finally {
@@ -341,12 +367,12 @@ const Dashboard: React.FC = () => {
 
   const [isUploading, setIsUploading] = useState(false);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'background' | 'link-icon', linkId?: string) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profile' | 'cover' | 'background' | 'link-icon', linkId?: string) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    if (type === 'background' && !hasAccess('pro')) {
-      checkFeatureAccess('pro', 'Custom Background');
+    if ((type === 'background' || type === 'cover') && !hasAccess('pro')) {
+      checkFeatureAccess('pro', type === 'background' ? 'Custom Background' : 'Cover Image');
       return;
     }
 
@@ -356,7 +382,7 @@ const Dashboard: React.FC = () => {
     }
 
     setIsUploading(true);
-    const folder = type === 'profile' ? 'profiles' : type === 'background' ? 'backgrounds' : 'link-icons';
+    const folder = type === 'profile' ? 'profiles' : type === 'cover' ? 'covers' : type === 'background' ? 'backgrounds' : 'link-icons';
     const timestamp = Date.now();
     const storageRef = ref(storage, `${folder}/${user.uid}/${timestamp}_${file.name}`);
     
@@ -371,6 +397,8 @@ const Dashboard: React.FC = () => {
       
       if (type === 'profile') {
         await handleUpdateProfile({ photoURL: url });
+      } else if (type === 'cover') {
+        await handleUpdateProfile({ coverImage: url });
       } else if (type === 'background') {
         await handleUpdateProfile({ backgroundImage: url, backgroundType: 'image' });
       } else if (type === 'link-icon' && linkId) {
@@ -397,6 +425,66 @@ const Dashboard: React.FC = () => {
   const handleUpgrade = () => {
     navigate('/pricing');
   };
+  
+  const verificationConfig = React.useMemo(() => {
+    if (!user) return { publicKey: getPaystackPublicKey() };
+
+    try {
+      return preparePaystackConfig({
+        email: user.email,
+        amountNaira: 1000,
+        metadata: {
+          userId: user.uid,
+          isVerification: true
+        }
+      });
+    } catch (e) {
+      return { publicKey: getPaystackPublicKey() };
+    }
+  }, [user]);
+
+  const initializeVerification = usePaystackPayment(verificationConfig);
+
+  const onVerificationSuccess = async (reference: any) => {
+    try {
+      const response = await fetch('/api/verify-paystack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          reference: reference.reference, 
+          userId: user?.uid,
+          isVerification: true
+        }),
+      });
+      const data = await response.json();
+      if (data.status === 'success') {
+        await handleUpdateProfile({ isVerified: true });
+        toast.success('Congratulations! You are now verified.');
+        navigate(`/payment-success?reference=${reference.reference}&plan=Verification`);
+      } else {
+        toast.error('Verification failed. Please contact support.');
+      }
+    } catch (error) {
+      console.error('Error verifying verification payment:', error);
+      toast.error('Error verifying payment');
+    }
+  };
+
+  const onVerificationClose = () => {
+    toast.error('Payment cancelled');
+  };
+
+  const triggerVerification = () => {
+    const config = verificationConfig as any;
+    if (config.isMock) {
+      toast.info("🛠️ Simulating verification payment in Mock Mode...");
+      setTimeout(() => {
+        onVerificationSuccess({ reference: config.reference });
+      }, 1500);
+    } else {
+      initializeVerification({ onSuccess: onVerificationSuccess, onClose: onVerificationClose });
+    }
+  };
 
   const hasAccess = (requiredPlan: PlanType) => {
     if (!profile) return false;
@@ -420,6 +508,24 @@ const Dashboard: React.FC = () => {
       featureName
     });
     return false;
+  };
+
+  const calculateCompletion = () => {
+    if (!profile) return 0;
+    const fields = [
+      profile.username,
+      profile.displayName,
+      profile.bio,
+      profile.photoURL,
+      profile.coverImage,
+      profile.phone,
+      profile.address,
+      profile.contactEmail,
+      profile.socialLinks && Object.values(profile.socialLinks).some(v => v),
+      links.length > 0
+    ];
+    const filledFields = fields.filter(f => !!f).length;
+    return Math.round((filledFields / fields.length) * 100);
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">Loading...</div>;
@@ -447,6 +553,8 @@ const Dashboard: React.FC = () => {
             { id: 'links', icon: LinkIcon, label: 'Links' },
             { id: 'appearance', icon: Palette, label: 'Appearance' },
             { id: 'business', icon: Crown, label: 'Business' },
+            { id: 'verification', icon: BadgeCheck, label: 'Verification' },
+            { id: 'billing', icon: CreditCard, label: 'Billing' },
             { id: 'analytics', icon: BarChart2, label: 'Analytics' },
             { id: 'settings', icon: Settings, label: 'Settings' }
           ].map((item) => (
@@ -483,7 +591,7 @@ const Dashboard: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 p-6 md:p-12 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
-          <header className="flex items-center justify-between mb-12">
+          <header className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-zinc-900 dark:text-white capitalize">{activeTab}</h1>
               <p className="text-zinc-500">Manage your profile and links</p>
@@ -506,6 +614,37 @@ const Dashboard: React.FC = () => {
               </a>
             </div>
           </header>
+
+          {/* Progress Bar */}
+          <div className="mb-12 bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border-2 border-lime-400/20 shadow-xl shadow-lime-400/5">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-lime-400/10 rounded-xl">
+                  <TrendingUp className="w-6 h-6 text-lime-500" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-lg dark:text-white">Profile Completion</h3>
+                  <p className="text-xs text-zinc-500">Boost your profile visibility</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-2xl font-black text-lime-500">{calculateCompletion()}%</span>
+              </div>
+            </div>
+            <div className="w-full h-4 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-lime-400 to-lime-500 transition-all duration-1000 ease-out relative"
+                style={{ width: `${calculateCompletion()}%` }}
+              >
+                <div className="absolute inset-0 bg-white/20 animate-pulse" />
+              </div>
+            </div>
+            <p className="mt-6 text-sm font-medium text-zinc-600 dark:text-zinc-400">
+              {calculateCompletion() < 100 
+                ? "Complete your profile to build more trust with your audience! Add social links, a bio, and a profile photo." 
+                : "Your profile is fully optimized! You're ready to share it with the world."}
+            </p>
+          </div>
 
           {activeTab === 'links' && (
             <div className="space-y-6">
@@ -542,6 +681,36 @@ const Dashboard: React.FC = () => {
               {/* Profile Section */}
               <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
                 <h2 className="text-xl font-bold dark:text-white">Profile</h2>
+                
+                {/* Cover Image */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-zinc-500">Cover Image</label>
+                    {!hasAccess('pro') && (
+                      <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
+                        <Crown className="w-2.5 h-2.5" /> PRO
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative group h-32 w-full bg-zinc-100 dark:bg-zinc-800 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                    {profile.coverImage ? (
+                      <img src={profile.coverImage} alt="Cover" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-zinc-400">
+                        <ImageIcon className="w-8 h-8" />
+                      </div>
+                    )}
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                      {isUploading ? (
+                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
+                      ) : (
+                        <ImageIcon className="w-6 h-6" />
+                      )}
+                      <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'cover')} accept="image/*" disabled={isUploading} />
+                    </label>
+                  </div>
+                </div>
+
                 <div className="flex items-center gap-8">
                   <div className="relative group">
                     <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 border-zinc-50 dark:border-zinc-950 shadow-xl">
@@ -594,6 +763,38 @@ const Dashboard: React.FC = () => {
                         className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white h-24 resize-none"
                         placeholder="Tell your story..."
                       />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-zinc-500">Phone Number</label>
+                        <input 
+                          type="tel" 
+                          value={profileForm.phone}
+                          onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                          placeholder="+234..."
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-zinc-500">Contact Email</label>
+                        <input 
+                          type="email" 
+                          value={profileForm.contactEmail}
+                          onChange={(e) => setProfileForm({ ...profileForm, contactEmail: e.target.value })}
+                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                          placeholder="contact@example.com"
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-2">
+                        <label className="text-sm font-medium text-zinc-500">Address</label>
+                        <input 
+                          type="text" 
+                          value={profileForm.address}
+                          onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                          placeholder="Your location"
+                        />
+                      </div>
                     </div>
                     <button 
                       onClick={() => handleUpdateProfile(profileForm)}
@@ -680,30 +881,30 @@ const Dashboard: React.FC = () => {
                 </div>
                 <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${!hasAccess('pro') ? 'opacity-50 pointer-events-none' : ''}`}>
                   {[
-                    { id: 'instagram', icon: Instagram, label: 'Instagram' },
-                    { id: 'twitter', icon: Twitter, label: 'Twitter' },
-                    { id: 'linkedin', icon: Linkedin, label: 'LinkedIn' },
-                    { id: 'youtube', icon: Youtube, label: 'YouTube' },
-                    { id: 'facebook', icon: Facebook, label: 'Facebook' },
-                    { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp' },
-                    { id: 'tiktok', icon: Music2, label: 'TikTok' },
-                    { id: 'reddit', icon: MessageSquare, label: 'Reddit' },
-                    { id: 'discord', icon: Disc, label: 'Discord' },
-                    { id: 'telegram', icon: Send, label: 'Telegram' },
-                    { id: 'pinterest', icon: Pin, label: 'Pinterest' },
-                    { id: 'spotify', icon: Music, label: 'Spotify' },
-                    { id: 'applemusic', icon: Apple, label: 'Apple Music' },
-                    { id: 'soundcloud', icon: Cloud, label: 'SoundCloud' },
-                    { id: 'threads', icon: AtSign, label: 'Threads' },
-                    { id: 'mastodon', icon: Hash, label: 'Mastodon' },
-                    { id: 'github', icon: Github, label: 'GitHub' },
-                    { id: 'twitch', icon: Twitch, label: 'Twitch' },
-                    { id: 'snapchat', icon: Ghost, label: 'Snapchat' },
-                    { id: 'mail', icon: Mail, label: 'Email' }
+                    { id: 'instagram', icon: Instagram, label: 'Instagram', color: '#E4405F' },
+                    { id: 'twitter', icon: Twitter, label: 'Twitter', color: '#1DA1F2' },
+                    { id: 'linkedin', icon: Linkedin, label: 'LinkedIn', color: '#0077B5' },
+                    { id: 'youtube', icon: Youtube, label: 'YouTube', color: '#FF0000' },
+                    { id: 'facebook', icon: Facebook, label: 'Facebook', color: '#1877F2' },
+                    { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp', color: '#25D366' },
+                    { id: 'tiktok', icon: Music2, label: 'TikTok', color: '#000000' },
+                    { id: 'reddit', icon: MessageSquare, label: 'Reddit', color: '#FF4500' },
+                    { id: 'discord', icon: Disc, label: 'Discord', color: '#5865F2' },
+                    { id: 'telegram', icon: Send, label: 'Telegram', color: '#26A5E4' },
+                    { id: 'pinterest', icon: Pin, label: 'Pinterest', color: '#BD081C' },
+                    { id: 'spotify', icon: Music, label: 'Spotify', color: '#1DB954' },
+                    { id: 'applemusic', icon: Apple, label: 'Apple Music', color: '#FA243C' },
+                    { id: 'soundcloud', icon: Cloud, label: 'SoundCloud', color: '#FF3300' },
+                    { id: 'threads', icon: AtSign, label: 'Threads', color: '#000000' },
+                    { id: 'mastodon', icon: Hash, label: 'Mastodon', color: '#6364FF' },
+                    { id: 'github', icon: Github, label: 'GitHub', color: '#181717' },
+                    { id: 'twitch', icon: Twitch, label: 'Twitch', color: '#9146FF' },
+                    { id: 'snapchat', icon: Ghost, label: 'Snapchat', color: '#FFFC00' },
+                    { id: 'mail', icon: Mail, label: 'Email', color: '#D44638' }
                   ].map((social) => (
                     <div key={social.id} className="space-y-2">
                       <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                        <social.icon className="w-3 h-3" /> {social.label}
+                        <social.icon className="w-3 h-3" style={{ color: social.color }} /> {social.label}
                       </label>
                       <input 
                         type="text" 
@@ -919,6 +1120,134 @@ const Dashboard: React.FC = () => {
             </div>
           )}
 
+          {activeTab === 'verification' && profile && (
+            <div className="space-y-8">
+              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold dark:text-white">Get Verified</h2>
+                  {profile.isVerified && (
+                    <span className="px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full text-xs font-bold flex items-center gap-1">
+                      <BadgeCheck className="w-3 h-3" /> VERIFIED
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-8 bg-zinc-50 dark:bg-zinc-800 rounded-[2rem] border border-zinc-100 dark:border-zinc-700 text-center space-y-6">
+                  <div className="w-20 h-20 bg-[#1D9BF0] rounded-full flex items-center justify-center mx-auto shadow-xl shadow-blue-500/20">
+                    <VerificationBadge size={40} />
+                  </div>
+                  <div className="max-w-md mx-auto space-y-2">
+                    <h3 className="text-2xl font-bold dark:text-white">Twitter-style Verification</h3>
+                    <p className="text-zinc-500">Stand out from the crowd with a blue verification badge on your profile. Build trust and credibility with your audience.</p>
+                  </div>
+                  
+                  <div className="py-6 border-y border-zinc-200 dark:border-zinc-700">
+                    <div className="text-4xl font-black dark:text-white">₦1,000<span className="text-lg font-normal text-zinc-500">/month</span></div>
+                  </div>
+
+                  {!profile.isVerified ? (
+                    <button
+                      onClick={triggerVerification}
+                      className="w-full py-4 bg-[#1D9BF0] text-white rounded-2xl font-bold hover:bg-[#1A8CD8] transition-all shadow-lg shadow-blue-500/20"
+                    >
+                      Get Verified Now
+                    </button>
+                  ) : (
+                    <div className="p-4 bg-blue-500/5 rounded-xl border border-blue-500/20 text-blue-500 font-bold">
+                      You are already verified!
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {[
+                    { title: 'Trust', desc: 'Build instant trust with your audience' },
+                    { title: 'Credibility', desc: 'Show that you are the real deal' },
+                    { title: 'Visibility', desc: 'Stand out in search results' }
+                  ].map((benefit, i) => (
+                    <div key={i} className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700">
+                      <h4 className="font-bold dark:text-white mb-1">{benefit.title}</h4>
+                      <p className="text-xs text-zinc-500">{benefit.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          )}
+
+          {activeTab === 'billing' && (
+            <div className="space-y-8">
+              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-none">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-lime-400/10 rounded-xl text-lime-500">
+                      <CreditCard className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold dark:text-white">Current Plan</h2>
+                      <p className="text-sm text-zinc-500">Manage your subscription and billing history</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="text-sm font-bold uppercase tracking-wider text-zinc-400">{profile?.plan}</div>
+                      <div className={`text-xs font-bold ${profile?.subscriptionStatus === 'active' ? 'text-lime-500' : 'text-zinc-500'}`}>
+                        {profile?.subscriptionStatus === 'active' ? 'Active' : 'Inactive'}
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => navigate('/pricing')}
+                      className="px-6 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 rounded-xl text-sm font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all"
+                    >
+                      {profile?.plan === 'business' ? 'Manage' : 'Upgrade'}
+                    </button>
+                  </div>
+                </div>
+
+                {profile?.isPremium && profile.premiumUntil && (
+                  <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-4 h-4 text-zinc-400" />
+                      <span className="text-sm text-zinc-500 italic">Expires on</span>
+                    </div>
+                    <div className="font-bold text-zinc-900 dark:text-white">
+                      {format(new Date(profile.premiumUntil), 'MMMM dd, yyyy')}
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-none">
+                <h3 className="text-lg font-bold dark:text-white mb-6">Transaction History</h3>
+                <div className="space-y-4">
+                  {transactions.length > 0 ? (
+                    transactions.map((tx) => (
+                      <div key={tx.id} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl group border border-zinc-100 dark:border-zinc-800">
+                        <div className="flex items-center gap-4">
+                          <div className={`p-2 rounded-xl ${tx.status === 'success' ? 'bg-lime-400/10 text-lime-500' : 'bg-red-400/10 text-red-500'}`}>
+                            <CreditCard className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="font-bold text-zinc-900 dark:text-white capitalize">{tx.plan} Plan</div>
+                            <div className="text-xs text-zinc-500">{format(new Date(tx.createdAt), 'MMM dd, yyyy • HH:mm')}</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-zinc-900 dark:text-white">₦{tx.amount?.toLocaleString()}</div>
+                          <div className="text-[10px] font-mono text-zinc-400 leading-none">{tx.reference}</div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-12 text-zinc-400 bg-zinc-50 dark:bg-zinc-800/30 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800">
+                      No transactions found
+                    </div>
+                  )}
+                </div>
+              </section>
+            </div>
+          )}
+
           {activeTab === 'analytics' && (
             <div className="space-y-8">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -1041,7 +1370,7 @@ const Dashboard: React.FC = () => {
                       onClick={handleUpgrade}
                       className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:scale-[1.02] transition-all"
                     >
-                      Upgrade for $9.99/mo
+                      Upgrade for ₦10,000/mo
                     </button>
                   </div>
                 ) : (
