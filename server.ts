@@ -25,49 +25,6 @@ if (fs.existsSync(configPath)) {
 const db = admin.firestore();
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY || "sk_test_mock";
-if (PAYSTACK_SECRET_KEY === "sk_test_mock") {
-  console.warn("⚠️ PAYSTACK_SECRET_KEY is not set. Using mock key.");
-}
-
-// Helper for backend safe write with backups
-async function backendSafeWrite(collectionName: string, documentId: string, data: any, action: 'update' | 'create', performedBy: string = 'system') {
-  try {
-    const docRef = db.collection(collectionName).doc(documentId);
-    const now = new Date().toISOString();
-    
-    // Backup before modification
-    if (action === 'update') {
-      const docSnap = await docRef.get();
-      if (docSnap.exists) {
-        await db.collection(`${collectionName}_backup`).add({
-          originalId: documentId,
-          collectionName,
-          data: docSnap.data(),
-          action: 'update',
-          timestamp: now,
-          performedBy
-        });
-      }
-    }
-
-    if (action === 'update') {
-      await docRef.update({
-        ...data,
-        updatedAt: now
-      });
-    } else {
-      await docRef.set({
-        ...data,
-        createdAt: now,
-        updatedAt: now
-      });
-    }
-    return true;
-  } catch (error) {
-    console.error(`Backend safeWrite failed for ${collectionName}/${documentId}:`, error);
-    return false;
-  }
-}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -90,22 +47,26 @@ async function startServer() {
     const event = req.body;
 
     if (event.event === "charge.success") {
-      const { metadata, reference, amount } = event.data;
+      const { metadata } = event.data;
       const userId = metadata?.userId;
       const plan = metadata?.plan;
       
-      console.log(`Webhook: Successful charge for ${userId}, Plan: ${plan}`);
-      
-      if (userId && plan) {
-        const premiumUntil = new Date();
-        premiumUntil.setDate(premiumUntil.getDate() + 30);
-        
-        await backendSafeWrite('users', userId, {
-          plan,
-          isPremium: true,
-          subscriptionStatus: 'active',
-          premiumUntil: premiumUntil.toISOString()
-        }, 'update', 'paystack-webhook');
+      if (userId) {
+        try {
+          const premiumUntil = new Date();
+          premiumUntil.setDate(premiumUntil.getDate() + 30);
+          
+          await db.collection('users').doc(userId).update({
+            plan: plan || 'pro',
+            isPremium: true,
+            subscriptionStatus: 'active',
+            premiumUntil: premiumUntil.toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+          console.log(`User ${userId} upgraded to ${plan} via Paystack webhook`);
+        } catch (error) {
+          console.error('Failed to update user premium status in Paystack webhook:', error);
+        }
       }
     }
 
@@ -183,126 +144,31 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
   });
 
   app.post("/api/verify-paystack", async (req, res) => {
-    const { reference, userId, plan, isVerification, isOrder, amount } = req.body;
-    console.log(`Verifying Paystack transaction: ${reference} for user: ${userId}`);
-    
-    // 1. Double-check for duplicate transaction references
+    const { reference, userId, plan } = req.body;
     try {
-      const existingTx = await db.collection('transactions').where('reference', '==', reference).get();
-      if (!existingTx.empty) {
-        console.warn(`Attempted duplicate processing for reference: ${reference}`);
-        return res.status(400).json({ status: 'failed', error: 'Transaction already processed' });
-      }
-
-      let paystackData: any;
-
-      if (PAYSTACK_SECRET_KEY === "sk_test_mock") {
-        console.log("🛠️ Using mock verification for development.");
-        paystackData = {
-          status: 'success',
-          amount: (amount || 5000) * 100, // mock amount in kobo
-          authorization: {
-            authorization_code: 'MOCK_AUTH_CODE',
-            bank: 'Mock Bank',
-            card_type: 'visa',
-            last4: '1234',
-            exp_month: '12',
-            exp_year: '2030'
-          }
-        };
-      } else {
-        const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
-          headers: {
-            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
-          }
-        });
-        paystackData = response.data.data;
-      }
-
-      console.log(`Paystack verification status for ${reference}:`, paystackData.status);
-
-      if (paystackData.status === 'success') {
-        // 2. Save transaction history BEFORE upgrading to ensure we have a record
-        await db.collection('transactions').add({
-          userId: userId || 'guest',
-          reference,
-          amount: amount || paystackData.amount / 100, // Paystack returns in kobo
-          plan: isVerification ? 'verification' : (isOrder ? 'order' : (plan || 'pro')),
-          status: 'success',
-          createdAt: new Date().toISOString(),
-          metadata: {
-            auth_code: paystackData.authorization?.authorization_code,
-            last4: paystackData.authorization?.last4,
-            exp_month: paystackData.authorization?.exp_month,
-            exp_year: paystackData.authorization?.exp_year,
-            card_type: paystackData.authorization?.card_type,
-            bank: paystackData.authorization?.bank
-          }
-        });
-
-        if (isVerification) {
-          if (!userId) throw new Error("User ID is required for verification");
-          await backendSafeWrite('users', userId, { isVerified: true }, 'update', 'paystack-verify');
-        } else if (isOrder) {
-          // Log the order
-          await db.collection('orders').add({
-            userId: userId || 'guest',
-            amount: amount,
-            reference: reference,
-            status: 'paid',
-            createdAt: new Date().toISOString()
-          });
-        } else {
-          if (!userId) throw new Error("User ID is required for subscription");
-          const premiumUntil = new Date();
-          premiumUntil.setDate(premiumUntil.getDate() + 30);
-          
-          await backendSafeWrite('users', userId, {
-            plan: plan || 'pro',
-            isPremium: true,
-            subscriptionStatus: 'active',
-            premiumUntil: premiumUntil.toISOString()
-          }, 'update', 'paystack-verify');
+      const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
+        headers: {
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
         }
+      });
+
+      if (response.data.data.status === 'success') {
+        const premiumUntil = new Date();
+        premiumUntil.setDate(premiumUntil.getDate() + 30);
+        
+        await db.collection('users').doc(userId).update({
+          plan: plan || 'pro',
+          isPremium: true,
+          subscriptionStatus: 'active',
+          premiumUntil: premiumUntil.toISOString(),
+          updatedAt: new Date().toISOString()
+        });
         
         return res.json({ status: 'success' });
       }
       
       res.status(400).json({ status: 'failed' });
     } catch (error: any) {
-      console.error('Paystack verification error:', error.message);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // 3. Subscription Expiry Logic
-  app.post("/api/cron/check-subscriptions", async (req, res) => {
-    // This could be called by a scheduled task
-    const now = new Date().toISOString();
-    try {
-      const expiredSnapshot = await db.collection('users')
-        .where('isPremium', '==', true)
-        .where('premiumUntil', '<', now)
-        .get();
-
-      if (expiredSnapshot.empty) {
-        return res.json({ status: 'success', count: 0 });
-      }
-
-      const batch = db.batch();
-      expiredSnapshot.forEach(doc => {
-        batch.update(doc.ref, {
-          isPremium: false,
-          subscriptionStatus: 'inactive',
-          updatedAt: now
-        });
-      });
-      
-      await batch.commit();
-      console.log(`Processed ${expiredSnapshot.size} expired subscriptions`);
-      res.json({ status: 'success', count: expiredSnapshot.size });
-    } catch (error: any) {
-      console.error('Subscription expiry check failed:', error);
       res.status(500).json({ error: error.message });
     }
   });

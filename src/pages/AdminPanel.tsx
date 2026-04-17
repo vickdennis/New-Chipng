@@ -6,7 +6,7 @@ import {
 } from 'firebase/firestore';
 import { 
   Users, Shield, Trash2, Ban, CheckCircle, 
-  Search, ArrowLeft, BarChart2, TrendingUp, ExternalLink,
+  Search, ArrowLeft, BarChart2, TrendingUp,
   DollarSign, Crown, BadgeCheck, FileText, ShoppingBag, Plus, Edit, Package, History, RotateCcw, Share2,
   Link as LinkIcon, Instagram, Twitter, Linkedin, Youtube, Facebook, MessageCircle, Music2, MessageSquare, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash, Github, Twitch, Ghost, Mail
 } from 'lucide-react';
@@ -22,7 +22,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { rollbackDocument, BackupDocument, safeWrite, createBackup } from '../services/backupService';
+import { rollbackDocument, BackupDocument } from '../services/backupService';
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -120,22 +120,26 @@ const AdminPanel: React.FC = () => {
 
   const handleToggleStatus = async (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    const success = await safeWrite('users', userId, { status: newStatus }, 'update', user?.uid);
-    if (success) {
+    try {
+      await updateDoc(doc(db, 'users', userId), { status: newStatus });
       toast.success(`User ${newStatus === 'active' ? 'activated' : 'suspended'}`);
+    } catch (error) {
+      toast.error('Failed to update status');
     }
   };
 
   const handleUpdatePlan = async (userId: string, newPlan: string) => {
-    const isPremium = newPlan !== 'basic';
-    const success = await safeWrite('users', userId, { 
-      plan: newPlan,
-      isPremium: isPremium,
-      subscriptionStatus: isPremium ? 'active' : 'inactive'
-    }, 'update', user?.uid);
-    
-    if (success) {
+    try {
+      const isPremium = newPlan !== 'basic';
+      await updateDoc(doc(db, 'users', userId), { 
+        plan: newPlan,
+        isPremium: isPremium,
+        subscriptionStatus: isPremium ? 'active' : 'inactive'
+      });
       toast.success(`User upgraded to ${newPlan.toUpperCase()}`);
+    } catch (error) {
+      console.error('Error updating plan:', error);
+      toast.error('Failed to update plan');
     }
   };
 
@@ -159,9 +163,11 @@ const AdminPanel: React.FC = () => {
   };
 
   const handleToggleVerify = async (userId: string, currentStatus: boolean) => {
-    const success = await safeWrite('users', userId, { isVerified: !currentStatus }, 'update', user?.uid);
-    if (success) {
+    try {
+      await updateDoc(doc(db, 'users', userId), { isVerified: !currentStatus });
       toast.success(`User ${!currentStatus ? 'verified' : 'unverified'}`);
+    } catch (error) {
+      toast.error('Failed to update verification status');
     }
   };
 
@@ -179,19 +185,16 @@ const AdminPanel: React.FC = () => {
 
     setIsUploadingProductImage(true);
     const timestamp = Date.now();
-    // Include user UID in path for better security rule compatibility
-    const storageRef = ref(storage, `products/${user?.uid || 'admin'}/${timestamp}_${file.name}`);
+    const storageRef = ref(storage, `products/${timestamp}_${file.name}`);
 
     try {
-      console.log('Uploading product image...', file.name);
       const snapshot = await uploadBytes(storageRef, file);
       const url = await getDownloadURL(snapshot.ref);
-      console.log('Product image uploaded successfully:', url);
       setProductForm(prev => ({ ...prev, image: url }));
       toast.success('Product image uploaded');
     } catch (error) {
       console.error('Product image upload error:', error);
-      toast.error('Failed to upload product image. Please check your connection and permissions.');
+      toast.error('Failed to upload product image');
     } finally {
       setIsUploadingProductImage(false);
     }
@@ -253,18 +256,7 @@ const AdminPanel: React.FC = () => {
 
   const handleSaveUser = async (userId: string, data: Partial<User>) => {
     try {
-      // Create backup before batch operation
-      await createBackup('users', userId, 'update', user?.uid);
-
-      // Sanitize data for updateDoc - remove fields that shouldn't be in the document body
-      const { uid, id, ...updateData } = data as any;
-      
-      // Ensure socialLinks is an object
-      if (updateData.socialLinks && typeof updateData.socialLinks !== 'object') {
-        updateData.socialLinks = {};
-      }
-
-      await updateDoc(doc(db, 'users', userId), updateData);
+      await updateDoc(doc(db, 'users', userId), data);
       
       // Save links if any were modified
       const batch = writeBatch(db);
@@ -277,19 +269,18 @@ const AdminPanel: React.FC = () => {
       editingUserLinks.forEach(link => {
         if (link.id.startsWith('new-')) {
           const newLinkRef = doc(collection(db, 'links'));
-          const { id: _, ...linkData } = link;
+          const { id, ...linkData } = link;
           batch.set(newLinkRef, {
             ...linkData,
             userId: userId
           });
         } else {
           const linkRef = doc(db, 'links', link.id);
-          const { id: _, ...linkData } = link;
           batch.update(linkRef, {
-            title: linkData.title,
-            url: linkData.url,
-            active: linkData.active,
-            position: linkData.position
+            title: link.title,
+            url: link.url,
+            active: link.active,
+            position: link.position
           });
         }
       });
@@ -301,7 +292,7 @@ const AdminPanel: React.FC = () => {
       setDeletedLinkIds([]);
     } catch (error) {
       console.error('Error updating user:', error);
-      toast.error('Failed to update user. Please check permissions.');
+      toast.error('Failed to update user');
     }
   };
 
@@ -357,13 +348,14 @@ const AdminPanel: React.FC = () => {
   const handleSaveProduct = async () => {
     try {
       if (editingProduct) {
-        const { id, ...updateData } = productForm as any;
-        const success = await safeWrite('products', editingProduct.id, updateData, 'update', user?.uid);
-        if (success) toast.success('Product updated');
+        await updateDoc(doc(db, 'products', editingProduct.id), productForm);
+        toast.success('Product updated');
       } else {
-        const { id, ...newData } = productForm as any;
-        const success = await safeWrite('products', null, newData, 'create', user?.uid);
-        if (success) toast.success('Product added');
+        await addDoc(collection(db, 'products'), {
+          ...productForm,
+          createdAt: new Date().toISOString()
+        });
+        toast.success('Product added');
       }
       setIsAddingProduct(false);
       setEditingProduct(null);
@@ -375,9 +367,11 @@ const AdminPanel: React.FC = () => {
 
   const handleDeleteProduct = async (id: string) => {
     if (!window.confirm('Delete this product?')) return;
-    const success = await safeWrite('products', id, null, 'delete', user?.uid);
-    if (success) {
+    try {
+      await deleteDoc(doc(db, 'products', id));
       toast.success('Product deleted');
+    } catch (error) {
+      toast.error('Failed to delete product');
     }
   };
 
@@ -450,17 +444,18 @@ const AdminPanel: React.FC = () => {
             Shop
           </button>
           <button 
-            onClick={() => setActiveTab('blog')}
-            className={`px-8 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${activeTab === 'blog' ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'}`}
-          >
-            Blog
-          </button>
-          <button 
             onClick={() => setActiveTab('backups')}
             className={`px-8 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${activeTab === 'backups' ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'}`}
           >
             Backups
           </button>
+          <Link 
+            to="/admin/blog"
+            className="px-8 py-3 rounded-2xl font-bold bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white transition-all flex items-center gap-2 whitespace-nowrap"
+          >
+            <FileText className="w-4 h-4" />
+            Blog Manager
+          </Link>
         </div>
 
         {activeTab === 'users' ? (
@@ -611,7 +606,7 @@ const AdminPanel: React.FC = () => {
                   </div>
                   <TrendingUp className="w-5 h-5 text-lime-600 dark:text-lime-500" />
                 </div>
-                <div className="text-3xl font-bold mb-1 text-zinc-950 dark:text-white">₦12,450.00</div>
+                <div className="text-3xl font-bold mb-1 text-zinc-950 dark:text-white">$12,450.00</div>
                 <div className="text-zinc-500 text-sm font-medium">Monthly Recurring Revenue</div>
               </div>
               <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-8 rounded-[2.5rem]">
@@ -649,7 +644,7 @@ const AdminPanel: React.FC = () => {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-zinc-800" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} unit="₦" />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} unit="$" />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '12px', color: '#fff' }}
                       itemStyle={{ color: '#a3e635' }}
@@ -833,37 +828,6 @@ const AdminPanel: React.FC = () => {
                 ))}
               </div>
             )}
-          </div>
-        ) : activeTab === 'blog' ? (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold dark:text-white">Blog Management</h2>
-                <p className="text-zinc-500">Create and manage AI-powered blog posts</p>
-              </div>
-              <Link 
-                to="/admin/blog/new"
-                className="flex items-center gap-2 px-6 py-3 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all"
-              >
-                <Plus className="w-5 h-5" />
-                New Post
-              </Link>
-            </div>
-            
-            <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-12 text-center">
-              <div className="w-20 h-20 bg-lime-400/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <FileText className="w-10 h-10 text-lime-500" />
-              </div>
-              <h3 className="text-xl font-bold dark:text-white mb-2">Manage your content</h3>
-              <p className="text-zinc-500 mb-8 max-w-md mx-auto">Use the dedicated Blog Manager to create SEO-optimized, AI-generated posts for your platform.</p>
-              <Link 
-                to="/admin/blog"
-                className="inline-flex items-center gap-2 px-8 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-bold hover:scale-105 transition-all"
-              >
-                Open Blog Manager
-                <ExternalLink className="w-4 h-4" />
-              </Link>
-            </div>
           </div>
         ) : activeTab === 'backups' ? (
           <div className="space-y-8">
@@ -1179,24 +1143,6 @@ const AdminPanel: React.FC = () => {
                   type="text" 
                   defaultValue={editingUser.displayName}
                   onChange={(e) => setEditingUser({ ...editingUser, displayName: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-500">Profile Image URL</label>
-                <input 
-                  type="text" 
-                  defaultValue={editingUser.photoURL}
-                  onChange={(e) => setEditingUser({ ...editingUser, photoURL: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-500">Cover Image URL</label>
-                <input 
-                  type="text" 
-                  defaultValue={editingUser.coverImage}
-                  onChange={(e) => setEditingUser({ ...editingUser, coverImage: e.target.value })}
                   className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
                 />
               </div>
