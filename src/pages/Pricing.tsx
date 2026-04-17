@@ -96,8 +96,9 @@ const Pricing: React.FC = () => {
 
   const handleFlutterPayment = useFlutterwave(config);
 
-  const onSuccess = async (response: any) => {
-    setLoading(selectedPlan);
+  const onSuccess = async (response: any, planOverride: PlanType | null = null) => {
+    const finalPlan = planOverride || selectedPlan;
+    setLoading(finalPlan);
     try {
       const verifyRes = await fetch('/api/verify-flutterwave', {
         method: 'POST',
@@ -106,13 +107,13 @@ const Pricing: React.FC = () => {
           transaction_id: response.transaction_id,
           tx_ref: response.tx_ref,
           userId: auth.currentUser?.uid,
-          plan: selectedPlan
+          plan: finalPlan
         }),
       });
       const data = await verifyRes.json();
       if (data.status === 'success') {
-        toast.success(`Successfully upgraded to ${selectedPlan?.toUpperCase()}!`);
-        navigate(`/payment-success?reference=${response.tx_ref}&plan=${selectedPlan}`);
+        toast.success(`Successfully upgraded to ${finalPlan?.toUpperCase()}!`);
+        navigate(`/payment-success?reference=${response.tx_ref}&plan=${finalPlan}`);
       } else {
         toast.error('Payment verification failed. Please contact support.');
       }
@@ -137,17 +138,33 @@ const Pricing: React.FC = () => {
       navigate('/login');
       return;
     }
-    setSelectedPlan(plan);
+    
+    const configData = prepareFlutterwaveConfig({
+      email: auth.currentUser.email,
+      amountNaira: getAmount(plan),
+      title: `Chip NG - ${plan.toUpperCase()} Plan`,
+      description: `Upgrade to ${plan} plan`,
+      metadata: {
+        userId: auth.currentUser.uid,
+        plan: plan
+      }
+    });
+
+    if (configData.isMock) {
+      toast.info("🛠️ Simulating payment in Mock Mode...");
+      setLoading(plan);
+      setTimeout(() => {
+        onSuccess({ transaction_id: 'MOCK_ID', tx_ref: configData.tx_ref }, plan);
+      }, 1500);
+    } else {
+      setSelectedPlan(plan);
+      // Wait for re-render so config is updated, or just rely on the effect
+    }
   };
 
   React.useEffect(() => {
-    if (selectedPlan && config.public_key) {
-      if (config.isMock) {
-        toast.info("🛠️ Simulating payment in Mock Mode...");
-        setTimeout(() => {
-          onSuccess({ transaction_id: 'MOCK_ID', tx_ref: config.tx_ref });
-        }, 1500);
-      } else {
+    if (selectedPlan && config.public_key && !config.isMock) {
+      try {
         handleFlutterPayment({
           callback: (response) => {
             onSuccess(response);
@@ -155,9 +172,13 @@ const Pricing: React.FC = () => {
           },
           onClose: () => onClose()
         });
+      } catch (error) {
+        console.error("❌ Flutterwave Trigger Error:", error);
+        toast.error("Failed to start payment. Please try again.");
+        setSelectedPlan(null);
       }
     }
-  }, [selectedPlan]);
+  }, [selectedPlan, config, handleFlutterPayment]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-white transition-colors duration-300">

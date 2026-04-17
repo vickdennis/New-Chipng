@@ -1,7 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_PAYSTACK_PUBLIC_KEY: string
+  readonly VITE_FLUTTERWAVE_PUBLIC_KEY: string
+  readonly NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY: string
 }
 
 interface ImportMeta {

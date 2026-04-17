@@ -43,12 +43,12 @@ export const prepareFlutterwaveConfig = (params: {
   const publicKey = getFlutterwavePublicKey();
   
   // ALLOW MOCK MODE
-  const isMockMode = publicKey === 'FLWPUBK_TEST_MOCK';
+  const isMockMode = publicKey.includes('MOCK');
 
-  if (!isMockMode && !publicKey.startsWith('FLWPUBK_')) {
-    const error = "Invalid Flutterwave Public Key format.";
+  if (!isMockMode && !publicKey.startsWith('FLWPUBK')) {
+    const error = "Invalid Flutterwave Public Key format. It should start with FLWPUBK";
     console.error("❌ Flutterwave Error:", error);
-    toast.error("Invalid Flutterwave Public Key. It should start with FLWPUBK_.");
+    toast.error("Invalid Flutterwave Public Key. Please check your settings.");
     throw new Error(error);
   }
 
@@ -60,7 +60,8 @@ export const prepareFlutterwaveConfig = (params: {
     email,
     amount: amountNaira,
     tx_ref,
-    publicKey: publicKey.substring(0, 15) + "...",
+    publicKey: publicKey.substring(0, 10) + "...",
+    isMock: isMockMode,
     metadata
   });
 
