@@ -4,7 +4,7 @@ import {
   ArrowLeft, Save, Eye, EyeOff, 
   Image as ImageIcon, Tag, Globe, 
   FileText, Search, Loader2, Trash2,
-  Upload, X, CheckCircle2, Sparkles, Wand2
+  Upload, X, CheckCircle2
 } from 'lucide-react';
 import { blogService } from '../services/blogService';
 import { BlogPost } from '../types';
@@ -13,7 +13,6 @@ import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { clsx } from 'clsx';
 import ThemeToggle from '../components/ThemeToggle';
-import { GoogleGenAI } from '@google/genai';
 
 const AdminBlogEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -44,62 +43,6 @@ const AdminBlogEditor: React.FC = () => {
 
   const [tagInput, setTagInput] = useState('');
   const [keywordInput, setKeywordInput] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState('');
-
-  const generateWithAI = async () => {
-    if (!aiPrompt.trim()) {
-      toast.error('Please enter a topic for the AI to write about');
-      return;
-    }
-
-    setIsGenerating(true);
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-
-      const prompt = `Write a professional blog post about "${aiPrompt}". 
-      Return the response in JSON format with the following keys:
-      - title: A catchy title
-      - content: Full blog post content in Markdown format
-      - excerpt: A short 2-sentence summary
-      - seoTitle: SEO optimized title
-      - seoDescription: SEO optimized description
-      - seoKeywords: Array of 5-10 relevant keywords
-      - tags: Array of 3-5 relevant tags`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json'
-        }
-      });
-
-      const text = response.text;
-      
-      if (text) {
-        const data = JSON.parse(text);
-        setFormData(prev => ({
-          ...prev,
-          title: data.title || prev.title,
-          content: data.content || prev.content,
-          excerpt: data.excerpt || prev.excerpt,
-          seoTitle: data.seoTitle || prev.seoTitle,
-          seoDescription: data.seoDescription || prev.seoDescription,
-          seoKeywords: data.seoKeywords || prev.seoKeywords,
-          tags: data.tags || prev.tags
-        }));
-        toast.success('Blog post generated successfully!');
-      } else {
-        throw new Error('Failed to parse AI response');
-      }
-    } catch (error) {
-      console.error('AI Generation error:', error);
-      toast.error('Failed to generate blog post with AI');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   useEffect(() => {
     if (imageFile) {
@@ -284,38 +227,6 @@ const AdminBlogEditor: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
           {/* Main Content Area */}
           <div className="lg:col-span-2 space-y-8">
-            {/* AI Generator Box */}
-            {!preview && !id && (
-              <div className="bg-gradient-to-br from-lime-400/10 to-blue-500/10 border border-lime-400/20 rounded-[2.5rem] p-8 space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-lime-400 rounded-2xl flex items-center justify-center shadow-lg shadow-lime-400/20">
-                    <Sparkles className="w-5 h-5 text-zinc-950" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold dark:text-white">AI Blog Writer</h3>
-                    <p className="text-sm text-zinc-500">Generate a full SEO-optimized blog post in seconds</p>
-                  </div>
-                </div>
-                <div className="flex gap-4">
-                  <input 
-                    type="text" 
-                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder="Enter a topic (e.g. The future of Link-in-bio tools in Nigeria)"
-                    className="flex-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-6 py-4 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                  />
-                  <button 
-                    onClick={generateWithAI}
-                    disabled={isGenerating}
-                    className="px-8 py-4 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-bold hover:scale-[1.02] transition-all flex items-center gap-2 disabled:opacity-50 shadow-xl"
-                  >
-                    {isGenerating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
-                    Generate
-                  </button>
-                </div>
-              </div>
-            )}
-
             {preview ? (
               <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-12 min-h-[600px]">
                 {formData.coverImage && (

@@ -112,61 +112,12 @@
         "seoKeywords": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["title", "slug", "content", "excerpt", "author", "createdAt", "updatedAt", "published"]
-    },
-    "Product": {
-      "title": "Product",
-      "description": "A product available in the shop.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "price": { "type": "number" },
-        "image": { "type": "string", "format": "uri" },
-        "category": { "type": "string" },
-        "stock": { "type": "number" },
-        "active": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["name", "description", "price", "image", "category", "stock", "active"]
-    },
-    "Backup": {
-      "title": "Backup",
-      "description": "A snapshot of a document for recovery purposes.",
-      "type": "object",
-      "properties": {
-        "originalId": { "type": "string" },
-        "collectionName": { "type": "string" },
-        "data": { "type": "object" },
-        "action": { "type": "string", "enum": ["create", "update", "delete", "rollback"] },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "performedBy": { "type": "string" }
-      },
-      "required": ["originalId", "collectionName", "data", "action", "timestamp", "performedBy"]
-    },
-    "Transaction": {
-      "title": "Transaction",
-      "description": "Payment transaction history.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "reference": { "type": "string" },
-        "amount": { "type": "number" },
-        "plan": { "type": "string" },
-        "status": { "type": "string", "enum": ["success", "failed", "pending"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "metadata": { "type": "object" }
-      },
-      "required": ["userId", "reference", "amount", "plan", "status", "createdAt"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
       "description": "User and profile data."
-    },
-    "/transactions/{transactionId}": {
-      "schema": "Transaction",
-      "description": "Payment transactions."
     },
     "/links/{linkId}": {
       "schema": "Link",
@@ -179,22 +130,6 @@
     "/blogs/{blogId}": {
       "schema": "Blog",
       "description": "Blog posts."
-    },
-    "/products/{productId}": {
-      "schema": "Product",
-      "description": "Shop products."
-    },
-    "/users_backup/{backupId}": {
-      "schema": "Backup",
-      "description": "Backups for users collection."
-    },
-    "/blogs_backup/{backupId}": {
-      "schema": "Backup",
-      "description": "Backups for blogs collection."
-    },
-    "/links_backup/{backupId}": {
-      "schema": "Backup",
-      "description": "Backups for links collection."
     }
   }
 }
