@@ -478,21 +478,13 @@ const Dashboard: React.FC = () => {
   };
 
   const triggerVerification = () => {
-    const config = verificationConfig as any;
-    if (config.isMock) {
-      toast.info("🛠️ Simulating verification payment in Mock Mode...");
-      setTimeout(() => {
-        onVerificationSuccess({ transaction_id: 'MOCK_ID', tx_ref: config.tx_ref });
-      }, 1500);
-    } else {
-      handleFlutterVerification({
-        callback: (response) => {
-          onVerificationSuccess(response);
-          closePaymentModal();
-        },
-        onClose: () => onVerificationClose()
-      });
-    }
+    handleFlutterVerification({
+      callback: (response) => {
+        onVerificationSuccess(response);
+        closePaymentModal();
+      },
+      onClose: () => onVerificationClose()
+    });
   };
 
   const hasAccess = (requiredPlan: PlanType) => {

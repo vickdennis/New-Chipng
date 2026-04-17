@@ -127,21 +127,13 @@ const Shop: React.FC = () => {
   };
 
   const triggerShopPayment = () => {
-    const config = shopConfig as any;
-    if (config.isMock) {
-      toast.info("🛠️ Simulating shop payment in Mock Mode...");
-      setTimeout(() => {
-        onShopSuccess({ transaction_id: 'MOCK_ID', tx_ref: config.tx_ref });
-      }, 1500);
-    } else {
-      handleFlutterShopPayment({
-        callback: (response) => {
-          onShopSuccess(response);
-          closePaymentModal();
-        },
-        onClose: () => onShopClose()
-      });
-    }
+    handleFlutterShopPayment({
+      callback: (response) => {
+        onShopSuccess(response);
+        closePaymentModal();
+      },
+      onClose: () => onShopClose()
+    });
   };
 
   if (loading) return (

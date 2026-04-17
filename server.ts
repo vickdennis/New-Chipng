@@ -24,9 +24,9 @@ if (fs.existsSync(configPath)) {
 
 const db = admin.firestore();
 
-const FLUTTERWAVE_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY || "FLWSECK_TEST_MOCK";
-if (FLUTTERWAVE_SECRET_KEY === "FLWSECK_TEST_MOCK") {
-  console.warn("⚠️ FLUTTERWAVE_SECRET_KEY is not set. Using mock key.");
+const FLUTTERWAVE_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY;
+if (!FLUTTERWAVE_SECRET_KEY) {
+  console.error("❌ FLUTTERWAVE_SECRET_KEY is not set. Transactions will fail.");
 }
 
 // Helper for backend safe write with backups
@@ -192,27 +192,16 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
 
       let flwData: any;
 
-      if (FLUTTERWAVE_SECRET_KEY === "FLWSECK_TEST_MOCK") {
-        console.log("🛠️ Using mock verification for development.");
-        flwData = {
-          status: 'successful',
-          amount: amount || 5000,
-          card: {
-            first_6digits: '123456',
-            last_4digits: '1234',
-            issuer: 'Mock Bank',
-            type: 'VISA',
-            expiry: '12/30'
-          }
-        };
-      } else {
-        const response = await axios.get(`https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`, {
-          headers: {
-            Authorization: `Bearer ${FLUTTERWAVE_SECRET_KEY}`
-          }
-        });
-        flwData = response.data.data;
+      if (!FLUTTERWAVE_SECRET_KEY) {
+        throw new Error("Flutterwave Secret Key is missing. Cannot verify transaction.");
       }
+
+      const response = await axios.get(`https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`, {
+        headers: {
+          Authorization: `Bearer ${FLUTTERWAVE_SECRET_KEY}`
+        }
+      });
+      flwData = response.data.data;
 
       console.log(`Flutterwave verification status for ${transaction_id}:`, flwData.status);
 

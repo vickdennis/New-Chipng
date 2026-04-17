@@ -139,31 +139,22 @@ const Pricing: React.FC = () => {
       return;
     }
     
-    const configData = prepareFlutterwaveConfig({
-      email: auth.currentUser.email,
-      amountNaira: getAmount(plan),
-      title: `Chip NG - ${plan.toUpperCase()} Plan`,
-      description: `Upgrade to ${plan} plan`,
-      metadata: {
-        userId: auth.currentUser.uid,
-        plan: plan
-      }
-    });
-
-    if (configData.isMock) {
-      toast.info("🛠️ Simulating payment in Mock Mode...");
-      setLoading(plan);
-      setTimeout(() => {
-        onSuccess({ transaction_id: 'MOCK_ID', tx_ref: configData.tx_ref }, plan);
-      }, 1500);
-    } else {
+    // Validate config exists before triggering
+    try {
+      prepareFlutterwaveConfig({
+        email: auth.currentUser.email,
+        amountNaira: getAmount(plan),
+        title: `Chip NG - ${plan.toUpperCase()} Plan`,
+        description: `Upgrade to ${plan} plan`,
+      });
       setSelectedPlan(plan);
-      // Wait for re-render so config is updated, or just rely on the effect
+    } catch (error) {
+      // Errors are handled inside prepareFlutterwaveConfig (toasts etc)
     }
   };
 
   React.useEffect(() => {
-    if (selectedPlan && config.public_key && !config.isMock) {
+    if (selectedPlan && config.public_key) {
       try {
         handleFlutterPayment({
           callback: (response) => {

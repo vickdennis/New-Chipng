@@ -9,12 +9,16 @@ export const generateReference = (prefix: string = 'chipng'): string => {
 };
 
 /**
- * Gets the Flutterwave public key from env or returns mock
+ * Gets the Flutterwave public key from env
  */
 export const getFlutterwavePublicKey = (): string => {
-  return import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY || 
-         import.meta.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY || 
-         'FLWPUBK_TEST_MOCK';
+  const key = import.meta.env.VITE_FLUTTERWAVE_PUBLIC_KEY || 
+              import.meta.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY;
+  
+  if (!key) {
+    console.error("❌ Flutterwave Error: Public key is missing in environment variables.");
+  }
+  return key || '';
 };
 
 /**
@@ -42,13 +46,10 @@ export const prepareFlutterwaveConfig = (params: {
   // 2. Validate Public Key
   const publicKey = getFlutterwavePublicKey();
   
-  // ALLOW MOCK MODE
-  const isMockMode = publicKey.includes('MOCK');
-
-  if (!isMockMode && !publicKey.startsWith('FLWPUBK')) {
-    const error = "Invalid Flutterwave Public Key format. It should start with FLWPUBK";
+  if (!publicKey || !publicKey.startsWith('FLWPUBK')) {
+    const error = "Invalid or missing Flutterwave Public Key. It must start with FLWPUBK";
     console.error("❌ Flutterwave Error:", error);
-    toast.error("Invalid Flutterwave Public Key. Please check your settings.");
+    toast.error("Flutterwave configuration is incomplete. Please add your Public Key in Settings.");
     throw new Error(error);
   }
 
@@ -61,7 +62,6 @@ export const prepareFlutterwaveConfig = (params: {
     amount: amountNaira,
     tx_ref,
     publicKey: publicKey.substring(0, 10) + "...",
-    isMock: isMockMode,
     metadata
   });
 
@@ -82,6 +82,6 @@ export const prepareFlutterwaveConfig = (params: {
       logo: 'https://picsum.photos/seed/chipng/200/200',
     },
     meta: metadata || {},
-    isMock: isMockMode
+    isMock: false
   };
 };
