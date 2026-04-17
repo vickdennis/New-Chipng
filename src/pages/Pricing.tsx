@@ -5,6 +5,7 @@ import { auth } from '../firebase';
 import { toast } from 'sonner';
 import { PlanType } from '../types';
 import { usePaystackPayment } from 'react-paystack';
+import { preparePaystackConfig } from '../utils/paystack';
 
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -67,30 +68,29 @@ const Pricing: React.FC = () => {
 
   const getAmount = (plan: PlanType) => {
     switch (plan) {
-      case 'business': return 15000 * 100;
-      case 'pro': return 10000 * 100;
-      case 'basic': return 5000 * 100;
+      case 'business': return 15000;
+      case 'pro': return 10000;
+      case 'basic': return 5000;
       default: return 0;
     }
   };
 
-  const config: any = React.useMemo(() => ({
-    reference: `sub_${Date.now()}_${auth.currentUser?.uid || 'guest'}`,
-    email: auth.currentUser?.email || 'customer@chipng.com',
-    amount: selectedPlan ? Math.round(getAmount(selectedPlan)) : 0,
-    publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
-    metadata: {
-      userId: auth.currentUser?.uid,
-      plan: selectedPlan,
-      custom_fields: [
-        {
-          display_name: "Plan",
-          variable_name: "plan",
-          value: selectedPlan || ""
+  const config: any = React.useMemo(() => {
+    if (!selectedPlan || !auth.currentUser) return { publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '' };
+    
+    try {
+      return preparePaystackConfig({
+        email: auth.currentUser.email,
+        amountNaira: getAmount(selectedPlan),
+        metadata: {
+          userId: auth.currentUser.uid,
+          plan: selectedPlan
         }
-      ]
+      });
+    } catch (e) {
+      return { publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '' };
     }
-  }), [selectedPlan, auth.currentUser]);
+  }, [selectedPlan, auth.currentUser]);
 
   const initializePayment = usePaystackPayment(config);
 

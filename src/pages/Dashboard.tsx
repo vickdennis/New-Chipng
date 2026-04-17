@@ -36,6 +36,7 @@ import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import UpgradeModal from '../components/UpgradeModal';
 import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2, BadgeCheck } from 'lucide-react';
 import { usePaystackPayment } from 'react-paystack';
+import { preparePaystackConfig } from '../utils/paystack';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { safeWrite } from '../services/backupService';
 
@@ -425,12 +426,22 @@ const Dashboard: React.FC = () => {
     navigate('/pricing');
   };
   
-  const verificationConfig = React.useMemo(() => ({
-    reference: `verify_${Date.now()}_${user?.uid || 'unknown'}`,
-    email: user?.email || 'customer@chipng.com',
-    amount: Math.round(1000 * 100),
-    publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
-  }), [user]);
+  const verificationConfig = React.useMemo(() => {
+    if (!user) return { publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '' };
+
+    try {
+      return preparePaystackConfig({
+        email: user.email,
+        amountNaira: 1000,
+        metadata: {
+          userId: user.uid,
+          isVerification: true
+        }
+      });
+    } catch (e) {
+      return { publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '' };
+    }
+  }, [user]);
 
   const initializeVerification = usePaystackPayment(verificationConfig);
 

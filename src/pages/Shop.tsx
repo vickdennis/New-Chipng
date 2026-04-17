@@ -5,6 +5,7 @@ import { ShoppingBag, Search, Filter, ArrowLeft, ShoppingCart, X, Check, Plus } 
 import { Product } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { usePaystackPayment } from 'react-paystack';
+import { preparePaystackConfig } from '../utils/paystack';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
@@ -72,12 +73,22 @@ const Shop: React.FC = () => {
 
   const totalAmount = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
 
-  const shopConfig = React.useMemo(() => ({
-    reference: `shop_${Date.now()}_${user?.uid || 'guest'}`,
-    email: user?.email || 'customer@chipng.com',
-    amount: Math.round(totalAmount * 100),
-    publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
-  }), [user, totalAmount]);
+  const shopConfig = React.useMemo(() => {
+    if (totalAmount <= 0 || !user) return { publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '' };
+
+    try {
+      return preparePaystackConfig({
+        email: user.email,
+        amountNaira: totalAmount,
+        metadata: {
+          userId: user.uid,
+          isOrder: true
+        }
+      });
+    } catch (e) {
+      return { publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '' };
+    }
+  }, [user, totalAmount]);
 
   const initializeShopPayment = usePaystackPayment(shopConfig);
 
