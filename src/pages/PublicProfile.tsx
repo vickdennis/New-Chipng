@@ -196,26 +196,26 @@ const PublicProfile: React.FC = () => {
   };
 
   const socialIcons = [
-    { id: 'instagram', icon: Instagram, url: (val: string) => val.startsWith('http') ? val : `https://instagram.com/${val}` },
-    { id: 'twitter', icon: Twitter, url: (val: string) => val.startsWith('http') ? val : `https://twitter.com/${val}` },
-    { id: 'linkedin', icon: Linkedin, url: (val: string) => val.startsWith('http') ? val : `https://linkedin.com/in/${val}` },
-    { id: 'youtube', icon: Youtube, url: (val: string) => val.startsWith('http') ? val : `https://youtube.com/@${val}` },
-    { id: 'facebook', icon: Facebook, url: (val: string) => val.startsWith('http') ? val : `https://facebook.com/${val}` },
-    { id: 'whatsapp', icon: MessageCircle, url: (val: string) => val.startsWith('http') ? val : `https://wa.me/${val}` },
-    { id: 'tiktok', icon: Music2, url: (val: string) => val.startsWith('http') ? val : `https://tiktok.com/@${val}` },
-    { id: 'reddit', icon: MessageSquare, url: (val: string) => val.startsWith('http') ? val : `https://reddit.com/u/${val}` },
-    { id: 'discord', icon: Disc, url: (val: string) => val.startsWith('http') ? val : `https://discord.gg/${val}` },
-    { id: 'telegram', icon: Send, url: (val: string) => val.startsWith('http') ? val : `https://t.me/${val}` },
-    { id: 'pinterest', icon: Pin, url: (val: string) => val.startsWith('http') ? val : `https://pinterest.com/${val}` },
-    { id: 'spotify', icon: Music, url: (val: string) => val.startsWith('http') ? val : `https://open.spotify.com/user/${val}` },
-    { id: 'applemusic', icon: Apple, url: (val: string) => val.startsWith('http') ? val : `https://music.apple.com/profile/${val}` },
-    { id: 'soundcloud', icon: Cloud, url: (val: string) => val.startsWith('http') ? val : `https://soundcloud.com/${val}` },
-    { id: 'threads', icon: AtSign, url: (val: string) => val.startsWith('http') ? val : `https://threads.net/@${val}` },
-    { id: 'mastodon', icon: Hash, url: (val: string) => val.startsWith('http') ? val : `https://mastodon.social/@${val}` },
-    { id: 'github', icon: Github, url: (val: string) => val.startsWith('http') ? val : `https://github.com/${val}` },
-    { id: 'twitch', icon: Twitch, url: (val: string) => val.startsWith('http') ? val : `https://twitch.tv/${val}` },
-    { id: 'snapchat', icon: Ghost, url: (val: string) => val.startsWith('http') ? val : `https://snapchat.com/add/${val}` },
-    { id: 'mail', icon: Mail, url: (val: string) => val.startsWith('mailto:') ? val : `mailto:${val}` }
+    { id: 'instagram', icon: Instagram, color: '#E4405F', url: (val: string) => val.startsWith('http') ? val : `https://instagram.com/${val}` },
+    { id: 'twitter', icon: Twitter, color: '#1DA1F2', url: (val: string) => val.startsWith('http') ? val : `https://twitter.com/${val}` },
+    { id: 'linkedin', icon: Linkedin, color: '#0077B5', url: (val: string) => val.startsWith('http') ? val : `https://linkedin.com/in/${val}` },
+    { id: 'youtube', icon: Youtube, color: '#FF0000', url: (val: string) => val.startsWith('http') ? val : `https://youtube.com/@${val}` },
+    { id: 'facebook', icon: Facebook, color: '#1877F2', url: (val: string) => val.startsWith('http') ? val : `https://facebook.com/${val}` },
+    { id: 'whatsapp', icon: MessageCircle, color: '#25D366', url: (val: string) => val.startsWith('http') ? val : `https://wa.me/${val}` },
+    { id: 'tiktok', icon: Music2, color: '#000000', url: (val: string) => val.startsWith('http') ? val : `https://tiktok.com/@${val}` },
+    { id: 'reddit', icon: MessageSquare, color: '#FF4500', url: (val: string) => val.startsWith('http') ? val : `https://reddit.com/u/${val}` },
+    { id: 'discord', icon: Disc, color: '#5865F2', url: (val: string) => val.startsWith('http') ? val : `https://discord.gg/${val}` },
+    { id: 'telegram', icon: Send, color: '#26A5E4', url: (val: string) => val.startsWith('http') ? val : `https://t.me/${val}` },
+    { id: 'pinterest', icon: Pin, color: '#BD081C', url: (val: string) => val.startsWith('http') ? val : `https://pinterest.com/${val}` },
+    { id: 'spotify', icon: Music, color: '#1DB954', url: (val: string) => val.startsWith('http') ? val : `https://open.spotify.com/user/${val}` },
+    { id: 'applemusic', icon: Apple, color: '#FA243C', url: (val: string) => val.startsWith('http') ? val : `https://music.apple.com/profile/${val}` },
+    { id: 'soundcloud', icon: Cloud, color: '#FF3300', url: (val: string) => val.startsWith('http') ? val : `https://soundcloud.com/${val}` },
+    { id: 'threads', icon: AtSign, color: '#000000', url: (val: string) => val.startsWith('http') ? val : `https://threads.net/@${val}` },
+    { id: 'mastodon', icon: Hash, color: '#6364FF', url: (val: string) => val.startsWith('http') ? val : `https://mastodon.social/@${val}` },
+    { id: 'github', icon: Github, color: '#181717', url: (val: string) => val.startsWith('http') ? val : `https://github.com/${val}` },
+    { id: 'twitch', icon: Twitch, color: '#9146FF', url: (val: string) => val.startsWith('http') ? val : `https://twitch.tv/${val}` },
+    { id: 'snapchat', icon: Ghost, color: '#FFFC00', url: (val: string) => val.startsWith('http') ? val : `https://snapchat.com/add/${val}` },
+    { id: 'mail', icon: Mail, color: '#D44638', url: (val: string) => val.startsWith('mailto:') ? val : `mailto:${val}` }
   ];
 
   return (
@@ -277,7 +277,29 @@ const PublicProfile: React.FC = () => {
             )}
           </div>
           {profile.displayName && <h2 className="text-lg opacity-80 mb-4">{profile.displayName}</h2>}
-          {profile.bio && <p className="text-base opacity-70 max-w-sm leading-relaxed mb-8">{profile.bio}</p>}
+          {profile.bio && <p className="text-base opacity-70 max-w-sm leading-relaxed mb-6">{profile.bio}</p>}
+
+          {/* Contact Info */}
+          <div className="flex flex-wrap justify-center gap-6 mb-8 text-sm opacity-60">
+            {profile.phone && (
+              <div className="flex items-center gap-2">
+                <MessageCircle className="w-4 h-4" />
+                <span>{profile.phone}</span>
+              </div>
+            )}
+            {(profile.contactEmail || profile.email) && (
+              <div className="flex items-center gap-2">
+                <Mail className="w-4 h-4" />
+                <span>{profile.contactEmail || profile.email}</span>
+              </div>
+            )}
+            {profile.address && (
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4" />
+                <span>{profile.address}</span>
+              </div>
+            )}
+          </div>
 
           {/* Social Icons */}
           {profile.socialLinks && Object.values(profile.socialLinks).some(v => v) && (
@@ -292,6 +314,7 @@ const PublicProfile: React.FC = () => {
                     target="_blank"
                     rel="noopener noreferrer"
                     className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-all hover:scale-110"
+                    style={{ color: social.color }}
                   >
                     <social.icon className="w-5 h-5" />
                   </a>

@@ -128,9 +128,9 @@ service cloud.firestore {
              (!('role' in data) || data.role in ['user', 'admin']) &&
              (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
              (!('username' in data) || (data.username is string && data.username.size() >= 3 && data.username.size() <= 30)) &&
-             (!('theme' in data) || data.theme in ['minimal', 'neon', 'glassmorphism', 'dark', 'sunset']) &&
+             (!('theme' in data) || data.theme in ['minimal', 'neon', 'glassmorphism', 'dark', 'sunset', 'ocean', 'forest', 'royal', 'coffee', 'midnight', 'lavender', 'emerald', 'cyberpunk', 'retro', 'nordic', 'sakura', 'gold', 'brutalist', 'clay', 'matrix', 'vibrant', 'pastel', 'monochrome', 'deepsea', 'minimalist-dark', 'desert']) &&
              (!('buttonStyle' in data) || data.buttonStyle in ['rounded', 'pill', 'square']) &&
-             (!('backgroundType' in data) || data.backgroundType in ['solid', 'gradient']);
+             (!('backgroundType' in data) || data.backgroundType in ['solid', 'gradient', 'image']);
     }
 
     function isValidLink(data) {
@@ -147,7 +147,7 @@ service cloud.firestore {
              data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
              data.description is string && data.description.size() <= 2000 &&
              data.price is number && data.price >= 0 &&
-             isValidUrl(data.image) &&
+             (data.image == "" || isValidUrl(data.image)) &&
              data.category is string &&
              data.stock is number &&
              data.active is bool;
@@ -184,11 +184,12 @@ service cloud.firestore {
 
     match /links/{linkId} {
       allow read: if true;
-      allow create: if isAuthenticated() && isOwner(request.resource.data.userId) && isValidLink(request.resource.data);
+      allow create: if (isAuthenticated() && isOwner(request.resource.data.userId) && isValidLink(request.resource.data)) || isAdmin();
       allow update: if (isAuthenticated() && isOwner(resource.data.userId) && isValidLink(request.resource.data)) ||
+                      isAdmin() ||
                       (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clicks']) &&
                        request.resource.data.clicks == resource.data.clicks + 1);
-      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+      allow delete: if (isAuthenticated() && isOwner(resource.data.userId)) || isAdmin();
     }
 
     match /analytics/{analyticsId} {
@@ -208,6 +209,11 @@ service cloud.firestore {
 
     match /users_backup/{backupId} {
       allow read, write: if isAdmin() && isValidBackup(request.resource.data);
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+      allow create, update, delete: if false; // Only via backend
     }
 
     match /blogs_backup/{backupId} {

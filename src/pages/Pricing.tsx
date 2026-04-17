@@ -5,6 +5,7 @@ import { auth } from '../firebase';
 import { toast } from 'sonner';
 import { PlanType } from '../types';
 import { usePaystackPayment } from 'react-paystack';
+import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
 
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -67,23 +68,29 @@ const Pricing: React.FC = () => {
 
   const getAmount = (plan: PlanType) => {
     switch (plan) {
-      case 'business': return 15000 * 100;
-      case 'pro': return 10000 * 100;
-      case 'basic': return 5000 * 100;
+      case 'business': return 15000;
+      case 'pro': return 10000;
+      case 'basic': return 5000;
       default: return 0;
     }
   };
 
-  const config: any = {
-    reference: (new Date()).getTime().toString(),
-    email: auth.currentUser?.email || '',
-    amount: selectedPlan ? getAmount(selectedPlan) : 0,
-    publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
-    metadata: {
-      userId: auth.currentUser?.uid,
-      plan: selectedPlan,
+  const config: any = React.useMemo(() => {
+    if (!selectedPlan || !auth.currentUser) return { publicKey: getPaystackPublicKey() };
+    
+    try {
+      return preparePaystackConfig({
+        email: auth.currentUser.email,
+        amountNaira: getAmount(selectedPlan),
+        metadata: {
+          userId: auth.currentUser.uid,
+          plan: selectedPlan
+        }
+      });
+    } catch (e) {
+      return { publicKey: getPaystackPublicKey() };
     }
-  };
+  }, [selectedPlan, auth.currentUser]);
 
   const initializePayment = usePaystackPayment(config);
 
@@ -102,7 +109,7 @@ const Pricing: React.FC = () => {
       const data = await response.json();
       if (data.status === 'success') {
         toast.success(`Successfully upgraded to ${selectedPlan?.toUpperCase()}!`);
-        navigate('/dashboard');
+        navigate(`/payment-success?reference=${reference.reference}&plan=${selectedPlan}`);
       } else {
         toast.error('Payment verification failed. Please contact support.');
       }

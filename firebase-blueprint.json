@@ -142,12 +142,31 @@
         "performedBy": { "type": "string" }
       },
       "required": ["originalId", "collectionName", "data", "action", "timestamp", "performedBy"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Payment transaction history.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "reference": { "type": "string" },
+        "amount": { "type": "number" },
+        "plan": { "type": "string" },
+        "status": { "type": "string", "enum": ["success", "failed", "pending"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "metadata": { "type": "object" }
+      },
+      "required": ["userId", "reference", "amount", "plan", "status", "createdAt"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
       "description": "User and profile data."
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Payment transactions."
     },
     "/links/{linkId}": {
       "schema": "Link",

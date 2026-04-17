@@ -6,8 +6,9 @@ import {
 } from 'firebase/firestore';
 import { 
   Users, Shield, Trash2, Ban, CheckCircle, 
-  Search, ArrowLeft, BarChart2, TrendingUp,
-  DollarSign, Crown, BadgeCheck, FileText, ShoppingBag, Plus, Edit, Package, History, RotateCcw
+  Search, ArrowLeft, BarChart2, TrendingUp, ExternalLink,
+  DollarSign, Crown, BadgeCheck, FileText, ShoppingBag, Plus, Edit, Package, History, RotateCcw, Share2,
+  Link as LinkIcon, Instagram, Twitter, Linkedin, Youtube, Facebook, MessageCircle, Music2, MessageSquare, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash, Github, Twitch, Ghost, Mail
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -16,10 +17,12 @@ import {
   ResponsiveContainer, BarChart, Bar, Cell
 } from 'recharts';
 import { toast } from 'sonner';
-import { User, Product } from '../types';
+import { User, Product, Link as LinkType } from '../types';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../firebase';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { rollbackDocument, BackupDocument } from '../services/backupService';
+import { rollbackDocument, BackupDocument, safeWrite, createBackup } from '../services/backupService';
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -32,6 +35,29 @@ const AdminPanel: React.FC = () => {
   const [backupCollection, setBackupCollection] = useState<'users' | 'blogs' | 'links'>('users');
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUserLinks, setEditingUserLinks] = useState<LinkType[]>([]);
+  const [deletedLinkIds, setDeletedLinkIds] = useState<string[]>([]);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [userForm, setUserForm] = useState<Partial<User>>({
+    email: '',
+    username: '',
+    displayName: '',
+    role: 'user',
+    status: 'active',
+    plan: 'basic',
+    subscriptionStatus: 'inactive',
+    isPremium: false,
+    isVerified: false,
+    theme: 'minimal',
+    buttonStyle: 'rounded',
+    backgroundType: 'solid',
+    socialLinks: {},
+    phone: '',
+    address: '',
+    contactEmail: ''
+  });
+  const [isUploadingProductImage, setIsUploadingProductImage] = useState(false);
   const [productForm, setProductForm] = useState<Partial<Product>>({
     name: '',
     description: '',
@@ -94,26 +120,22 @@ const AdminPanel: React.FC = () => {
 
   const handleToggleStatus = async (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    try {
-      await updateDoc(doc(db, 'users', userId), { status: newStatus });
+    const success = await safeWrite('users', userId, { status: newStatus }, 'update', user?.uid);
+    if (success) {
       toast.success(`User ${newStatus === 'active' ? 'activated' : 'suspended'}`);
-    } catch (error) {
-      toast.error('Failed to update status');
     }
   };
 
   const handleUpdatePlan = async (userId: string, newPlan: string) => {
-    try {
-      const isPremium = newPlan !== 'basic';
-      await updateDoc(doc(db, 'users', userId), { 
-        plan: newPlan,
-        isPremium: isPremium,
-        subscriptionStatus: isPremium ? 'active' : 'inactive'
-      });
+    const isPremium = newPlan !== 'basic';
+    const success = await safeWrite('users', userId, { 
+      plan: newPlan,
+      isPremium: isPremium,
+      subscriptionStatus: isPremium ? 'active' : 'inactive'
+    }, 'update', user?.uid);
+    
+    if (success) {
       toast.success(`User upgraded to ${newPlan.toUpperCase()}`);
-    } catch (error) {
-      console.error('Error updating plan:', error);
-      toast.error('Failed to update plan');
     }
   };
 
@@ -137,11 +159,9 @@ const AdminPanel: React.FC = () => {
   };
 
   const handleToggleVerify = async (userId: string, currentStatus: boolean) => {
-    try {
-      await updateDoc(doc(db, 'users', userId), { isVerified: !currentStatus });
+    const success = await safeWrite('users', userId, { isVerified: !currentStatus }, 'update', user?.uid);
+    if (success) {
       toast.success(`User ${!currentStatus ? 'verified' : 'unverified'}`);
-    } catch (error) {
-      toast.error('Failed to update verification status');
     }
   };
 
@@ -153,17 +173,197 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingProductImage(true);
+    const timestamp = Date.now();
+    // Include user UID in path for better security rule compatibility
+    const storageRef = ref(storage, `products/${user?.uid || 'admin'}/${timestamp}_${file.name}`);
+
+    try {
+      console.log('Uploading product image...', file.name);
+      const snapshot = await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(snapshot.ref);
+      console.log('Product image uploaded successfully:', url);
+      setProductForm(prev => ({ ...prev, image: url }));
+      toast.success('Product image uploaded');
+    } catch (error) {
+      console.error('Product image upload error:', error);
+      toast.error('Failed to upload product image. Please check your connection and permissions.');
+    } finally {
+      setIsUploadingProductImage(false);
+    }
+  };
+
+  const socialIconsList = [
+    { id: 'instagram', icon: Instagram, label: 'Instagram' },
+    { id: 'twitter', icon: Twitter, label: 'Twitter' },
+    { id: 'linkedin', icon: Linkedin, label: 'LinkedIn' },
+    { id: 'youtube', icon: Youtube, label: 'YouTube' },
+    { id: 'facebook', icon: Facebook, label: 'Facebook' },
+    { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp' },
+    { id: 'tiktok', icon: Music2, label: 'TikTok' },
+    { id: 'threads', icon: MessageSquare, label: 'Threads' },
+    { id: 'discord', icon: Disc, label: 'Discord' },
+    { id: 'telegram', icon: Send, label: 'Telegram' },
+    { id: 'snapchat', icon: Ghost, label: 'Snapchat' },
+    { id: 'pinterest', icon: Pin, label: 'Pinterest' },
+    { id: 'spotify', icon: Music, label: 'Spotify' },
+    { id: 'appleMusic', icon: Apple, label: 'Apple Music' },
+    { id: 'soundcloud', icon: Cloud, label: 'SoundCloud' },
+    { id: 'twitch', icon: Twitch, label: 'Twitch' },
+    { id: 'github', icon: Github, label: 'GitHub' },
+    { id: 'email', icon: Mail, label: 'Email' },
+  ];
+
+  const handleEditUser = async (user: User) => {
+    setEditingUser(user);
+    try {
+      const q = query(collection(db, 'links'), where('userId', '==', user.uid), orderBy('position', 'asc'));
+      const snapshot = await getDocs(q);
+      setEditingUserLinks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LinkType)));
+    } catch (error) {
+      console.error('Error fetching user links:', error);
+      toast.error('Failed to load user links');
+    }
+  };
+
+  const handleAddLinkToUser = () => {
+    if (!editingUser) return;
+    const newLink: LinkType = {
+      id: `new-${Date.now()}`,
+      userId: editingUser.uid,
+      title: 'New Link',
+      url: 'https://',
+      active: true,
+      position: editingUserLinks.length,
+      clicks: 0
+    };
+    setEditingUserLinks([...editingUserLinks, newLink]);
+  };
+
+  const handleDeleteLinkFromUser = (linkId: string) => {
+    if (!linkId.startsWith('new-')) {
+      setDeletedLinkIds([...deletedLinkIds, linkId]);
+    }
+    setEditingUserLinks(editingUserLinks.filter(l => l.id !== linkId));
+  };
+
+  const handleSaveUser = async (userId: string, data: Partial<User>) => {
+    try {
+      // Create backup before batch operation
+      await createBackup('users', userId, 'update', user?.uid);
+
+      // Sanitize data for updateDoc - remove fields that shouldn't be in the document body
+      const { uid, id, ...updateData } = data as any;
+      
+      // Ensure socialLinks is an object
+      if (updateData.socialLinks && typeof updateData.socialLinks !== 'object') {
+        updateData.socialLinks = {};
+      }
+
+      await updateDoc(doc(db, 'users', userId), updateData);
+      
+      // Save links if any were modified
+      const batch = writeBatch(db);
+
+      // Delete links that were removed
+      deletedLinkIds.forEach(linkId => {
+        batch.delete(doc(db, 'links', linkId));
+      });
+
+      editingUserLinks.forEach(link => {
+        if (link.id.startsWith('new-')) {
+          const newLinkRef = doc(collection(db, 'links'));
+          const { id: _, ...linkData } = link;
+          batch.set(newLinkRef, {
+            ...linkData,
+            userId: userId
+          });
+        } else {
+          const linkRef = doc(db, 'links', link.id);
+          const { id: _, ...linkData } = link;
+          batch.update(linkRef, {
+            title: linkData.title,
+            url: linkData.url,
+            active: linkData.active,
+            position: linkData.position
+          });
+        }
+      });
+      await batch.commit();
+
+      toast.success('User and links updated successfully');
+      setEditingUser(null);
+      setEditingUserLinks([]);
+      setDeletedLinkIds([]);
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error('Failed to update user. Please check permissions.');
+    }
+  };
+
+  const handleAddUser = async () => {
+    if (!userForm.email || !userForm.username) {
+      toast.error('Email and Username are required');
+      return;
+    }
+
+    try {
+      // Check if username exists
+      const q = query(collection(db, 'users'), where('username', '==', userForm.username));
+      const snapshot = await getDocs(q);
+      if (!snapshot.empty) {
+        toast.error('Username already taken');
+        return;
+      }
+
+      const newUser = {
+        ...userForm,
+        createdAt: new Date().toISOString(),
+        totalClicks: 0,
+        socialLinks: userForm.socialLinks || {}
+      };
+
+      await addDoc(collection(db, 'users'), newUser);
+      toast.success('User added successfully');
+      setIsAddingUser(false);
+      setUserForm({
+        email: '',
+        username: '',
+        displayName: '',
+        role: 'user',
+        status: 'active',
+        plan: 'basic',
+        subscriptionStatus: 'inactive',
+        isPremium: false,
+        isVerified: false,
+        theme: 'minimal',
+        buttonStyle: 'rounded',
+        backgroundType: 'solid',
+        socialLinks: {},
+        phone: '',
+        address: '',
+        contactEmail: ''
+      });
+    } catch (error) {
+      console.error('Error adding user:', error);
+      toast.error('Failed to add user');
+    }
+  };
+
   const handleSaveProduct = async () => {
     try {
       if (editingProduct) {
-        await updateDoc(doc(db, 'products', editingProduct.id), productForm);
-        toast.success('Product updated');
+        const { id, ...updateData } = productForm as any;
+        const success = await safeWrite('products', editingProduct.id, updateData, 'update', user?.uid);
+        if (success) toast.success('Product updated');
       } else {
-        await addDoc(collection(db, 'products'), {
-          ...productForm,
-          createdAt: new Date().toISOString()
-        });
-        toast.success('Product added');
+        const { id, ...newData } = productForm as any;
+        const success = await safeWrite('products', null, newData, 'create', user?.uid);
+        if (success) toast.success('Product added');
       }
       setIsAddingProduct(false);
       setEditingProduct(null);
@@ -175,11 +375,9 @@ const AdminPanel: React.FC = () => {
 
   const handleDeleteProduct = async (id: string) => {
     if (!window.confirm('Delete this product?')) return;
-    try {
-      await deleteDoc(doc(db, 'products', id));
+    const success = await safeWrite('products', id, null, 'delete', user?.uid);
+    if (success) {
       toast.success('Product deleted');
-    } catch (error) {
-      toast.error('Failed to delete product');
     }
   };
 
@@ -252,18 +450,17 @@ const AdminPanel: React.FC = () => {
             Shop
           </button>
           <button 
+            onClick={() => setActiveTab('blog')}
+            className={`px-8 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${activeTab === 'blog' ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'}`}
+          >
+            Blog
+          </button>
+          <button 
             onClick={() => setActiveTab('backups')}
             className={`px-8 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${activeTab === 'backups' ? 'bg-lime-400 text-zinc-950' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white'}`}
           >
             Backups
           </button>
-          <Link 
-            to="/admin/blog"
-            className="px-8 py-3 rounded-2xl font-bold bg-zinc-100 dark:bg-zinc-900 text-zinc-500 hover:text-zinc-950 dark:hover:text-white transition-all flex items-center gap-2 whitespace-nowrap"
-          >
-            <FileText className="w-4 h-4" />
-            Blog Manager
-          </Link>
         </div>
 
         {activeTab === 'users' ? (
@@ -287,6 +484,18 @@ const AdminPanel: React.FC = () => {
                   <div className="text-zinc-500 text-sm font-medium">{stat.label}</div>
                 </div>
               ))}
+            </div>
+
+            {/* Users Table Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold dark:text-white">User Management</h3>
+              <button 
+                onClick={() => setIsAddingUser(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all"
+              >
+                <Plus className="w-5 h-5" />
+                Add User
+              </button>
             </div>
 
             {/* Users Table */}
@@ -351,6 +560,13 @@ const AdminPanel: React.FC = () => {
                               <option value="business">Business</option>
                             </select>
                             <button 
+                              onClick={() => handleEditUser(user)} 
+                              className="p-2 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded-lg transition-colors text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                              title="Edit User"
+                            >
+                              <Edit className="w-5 h-5" />
+                            </button>
+                            <button 
                               onClick={() => handleToggleVerify(user.uid, user.isVerified || false)} 
                               className={`p-2 rounded-lg transition-colors ${user.isVerified ? 'text-[#0095f6] bg-[#0095f6]/10' : 'text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800'}`}
                               title={user.isVerified ? 'Unverify' : 'Verify'}
@@ -395,7 +611,7 @@ const AdminPanel: React.FC = () => {
                   </div>
                   <TrendingUp className="w-5 h-5 text-lime-600 dark:text-lime-500" />
                 </div>
-                <div className="text-3xl font-bold mb-1 text-zinc-950 dark:text-white">$12,450.00</div>
+                <div className="text-3xl font-bold mb-1 text-zinc-950 dark:text-white">₦12,450.00</div>
                 <div className="text-zinc-500 text-sm font-medium">Monthly Recurring Revenue</div>
               </div>
               <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-8 rounded-[2.5rem]">
@@ -433,7 +649,7 @@ const AdminPanel: React.FC = () => {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" className="dark:stroke-zinc-800" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} unit="$" />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} unit="₦" />
                     <Tooltip 
                       contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '12px', color: '#fff' }}
                       itemStyle={{ color: '#a3e635' }}
@@ -506,13 +722,38 @@ const AdminPanel: React.FC = () => {
                     />
                   </div>
                   <div className="md:col-span-2 space-y-2">
-                    <label className="text-sm font-medium text-zinc-500">Image URL</label>
+                    <label className="text-sm font-medium text-zinc-500">Product Image</label>
+                    <div className="flex items-center gap-4">
+                      <div className="w-20 h-20 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+                        {productForm.image ? (
+                          <img src={productForm.image} alt="Preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-zinc-400">
+                            <Package className="w-8 h-8" />
+                          </div>
+                        )}
+                      </div>
+                      <label className="flex-1 py-3 px-4 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-xl text-center font-bold cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all flex items-center justify-center gap-2">
+                        {isUploadingProductImage ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-4 h-4" />
+                            Upload Product Image
+                          </>
+                        )}
+                        <input type="file" className="hidden" onChange={handleProductImageUpload} accept="image/*" disabled={isUploadingProductImage} />
+                      </label>
+                    </div>
                     <input 
                       type="text" 
                       value={productForm.image}
                       onChange={(e) => setProductForm({ ...productForm, image: e.target.value })}
-                      className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                      placeholder="https://images.unsplash.com/..."
+                      className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white mt-2"
+                      placeholder="Or paste image URL..."
                     />
                   </div>
                   <div className="md:col-span-2 space-y-2">
@@ -592,6 +833,37 @@ const AdminPanel: React.FC = () => {
                 ))}
               </div>
             )}
+          </div>
+        ) : activeTab === 'blog' ? (
+          <div className="space-y-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold dark:text-white">Blog Management</h2>
+                <p className="text-zinc-500">Create and manage AI-powered blog posts</p>
+              </div>
+              <Link 
+                to="/admin/blog/new"
+                className="flex items-center gap-2 px-6 py-3 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all"
+              >
+                <Plus className="w-5 h-5" />
+                New Post
+              </Link>
+            </div>
+            
+            <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-12 text-center">
+              <div className="w-20 h-20 bg-lime-400/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <FileText className="w-10 h-10 text-lime-500" />
+              </div>
+              <h3 className="text-xl font-bold dark:text-white mb-2">Manage your content</h3>
+              <p className="text-zinc-500 mb-8 max-w-md mx-auto">Use the dedicated Blog Manager to create SEO-optimized, AI-generated posts for your platform.</p>
+              <Link 
+                to="/admin/blog"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-bold hover:scale-105 transition-all"
+              >
+                Open Blog Manager
+                <ExternalLink className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
         ) : activeTab === 'backups' ? (
           <div className="space-y-8">
@@ -735,6 +1007,375 @@ const AdminPanel: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Add User Modal */}
+      {isAddingUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] max-w-2xl w-full max-h-[90vh] overflow-y-auto space-y-8 relative">
+            <button 
+              onClick={() => setIsAddingUser(false)}
+              className="absolute top-6 right-6 p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full text-zinc-500 transition-colors"
+            >
+              <Trash2 className="w-6 h-6 rotate-45" />
+            </button>
+
+            <div>
+              <h3 className="text-2xl font-bold dark:text-white">Add New User</h3>
+              <p className="text-zinc-500">Create a new user account manually</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Email Address</label>
+                <input 
+                  type="email" 
+                  value={userForm.email}
+                  onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                  placeholder="user@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Username</label>
+                <input 
+                  type="text" 
+                  value={userForm.username}
+                  onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                  placeholder="username"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Display Name</label>
+                <input 
+                  type="text" 
+                  value={userForm.displayName}
+                  onChange={(e) => setUserForm({ ...userForm, displayName: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                  placeholder="Full Name"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Phone</label>
+                <input 
+                  type="text" 
+                  value={userForm.phone}
+                  onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                  placeholder="+234..."
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Address</label>
+                <input 
+                  type="text" 
+                  value={userForm.address}
+                  onChange={(e) => setUserForm({ ...userForm, address: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                  placeholder="Lagos, Nigeria"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Contact Email</label>
+                <input 
+                  type="email" 
+                  value={userForm.contactEmail}
+                  onChange={(e) => setUserForm({ ...userForm, contactEmail: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                  placeholder="contact@example.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Role</label>
+                <select 
+                  value={userForm.role}
+                  onChange={(e) => setUserForm({ ...userForm, role: e.target.value as any })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Social Media Links Section for Add User */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-bold dark:text-white flex items-center gap-2">
+                <Share2 className="w-5 h-5 text-lime-400" />
+                Social Media Links
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {socialIconsList.map((social) => (
+                  <div key={social.id} className="space-y-1">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
+                      <social.icon className="w-3 h-3" />
+                      {social.label}
+                    </label>
+                    <input 
+                      type="text" 
+                      value={userForm.socialLinks?.[social.id as keyof typeof userForm.socialLinks] || ''}
+                      onChange={(e) => setUserForm({ 
+                        ...userForm, 
+                        socialLinks: { 
+                          ...userForm.socialLinks, 
+                          [social.id]: e.target.value 
+                        } 
+                      })}
+                      placeholder={`Enter ${social.label} username/ID`}
+                      className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button 
+                onClick={handleAddUser}
+                className="flex-1 py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all"
+              >
+                Create User
+              </button>
+              <button 
+                onClick={() => setIsAddingUser(false)}
+                className="px-8 py-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-2xl font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] max-w-2xl w-full max-h-[90vh] overflow-y-auto space-y-8 relative">
+            <button 
+              onClick={() => setEditingUser(null)}
+              className="absolute top-6 right-6 p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full text-zinc-500 transition-colors"
+            >
+              <Trash2 className="w-6 h-6 rotate-45" />
+            </button>
+
+            <div>
+              <h3 className="text-2xl font-bold dark:text-white">Edit User Account</h3>
+              <p className="text-zinc-500">Modify user details and settings</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Username</label>
+                <input 
+                  type="text" 
+                  defaultValue={editingUser.username}
+                  onChange={(e) => setEditingUser({ ...editingUser, username: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Display Name</label>
+                <input 
+                  type="text" 
+                  defaultValue={editingUser.displayName}
+                  onChange={(e) => setEditingUser({ ...editingUser, displayName: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Profile Image URL</label>
+                <input 
+                  type="text" 
+                  defaultValue={editingUser.photoURL}
+                  onChange={(e) => setEditingUser({ ...editingUser, photoURL: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Cover Image URL</label>
+                <input 
+                  type="text" 
+                  defaultValue={editingUser.coverImage}
+                  onChange={(e) => setEditingUser({ ...editingUser, coverImage: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Phone</label>
+                <input 
+                  type="text" 
+                  defaultValue={editingUser.phone}
+                  onChange={(e) => setEditingUser({ ...editingUser, phone: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Address</label>
+                <input 
+                  type="text" 
+                  defaultValue={editingUser.address}
+                  onChange={(e) => setEditingUser({ ...editingUser, address: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Contact Email</label>
+                <input 
+                  type="email" 
+                  defaultValue={editingUser.contactEmail}
+                  onChange={(e) => setEditingUser({ ...editingUser, contactEmail: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                />
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <label className="text-sm font-medium text-zinc-500">Bio</label>
+                <textarea 
+                  defaultValue={editingUser.bio}
+                  onChange={(e) => setEditingUser({ ...editingUser, bio: e.target.value })}
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white h-24 resize-none"
+                />
+              </div>
+            </div>
+
+            {/* User Links Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="text-lg font-bold dark:text-white flex items-center gap-2">
+                  <LinkIcon className="w-5 h-5 text-lime-400" />
+                  User Links
+                </h4>
+                <button 
+                  onClick={handleAddLinkToUser}
+                  className="flex items-center gap-2 px-4 py-2 bg-lime-400/10 text-lime-600 rounded-xl text-sm font-bold hover:bg-lime-400/20 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Link
+                </button>
+              </div>
+              <div className="space-y-4">
+                {editingUserLinks.map((link, idx) => (
+                  <div key={link.id} className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase">Title</label>
+                        <input 
+                          type="text" 
+                          value={link.title}
+                          onChange={(e) => {
+                            const newLinks = [...editingUserLinks];
+                            newLinks[idx].title = e.target.value;
+                            setEditingUserLinks(newLinks);
+                          }}
+                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase">URL</label>
+                        <input 
+                          type="text" 
+                          value={link.url}
+                          onChange={(e) => {
+                            const newLinks = [...editingUserLinks];
+                            newLinks[idx].url = e.target.value;
+                            setEditingUserLinks(newLinks);
+                          }}
+                          className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="checkbox" 
+                            checked={link.active}
+                            onChange={(e) => {
+                              const newLinks = [...editingUserLinks];
+                              newLinks[idx].active = e.target.checked;
+                              setEditingUserLinks(newLinks);
+                            }}
+                            className="w-4 h-4 rounded border-zinc-300 text-lime-500 focus:ring-lime-500"
+                          />
+                          <span className="text-xs text-zinc-500">Active</span>
+                        </div>
+                        <button 
+                          onClick={() => handleDeleteLinkFromUser(link.id)}
+                          className="p-1.5 text-zinc-400 hover:text-red-500 transition-colors"
+                          title="Delete Link"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase">Position</label>
+                        <input 
+                          type="number" 
+                          value={link.position}
+                          onChange={(e) => {
+                            const newLinks = [...editingUserLinks];
+                            newLinks[idx].position = parseInt(e.target.value) || 0;
+                            setEditingUserLinks(newLinks);
+                          }}
+                          className="w-16 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-xs outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {editingUserLinks.length === 0 && (
+                  <p className="text-center text-zinc-500 py-4 italic">No links found for this user.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Social Media Links Section */}
+            <div className="space-y-4">
+              <h4 className="text-lg font-bold dark:text-white flex items-center gap-2">
+                <Share2 className="w-5 h-5 text-lime-400" />
+                Social Media Links
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {socialIconsList.map((social) => (
+                  <div key={social.id} className="space-y-1">
+                    <label className="text-[10px] font-bold text-zinc-500 uppercase flex items-center gap-2">
+                      <social.icon className="w-3 h-3" />
+                      {social.label}
+                    </label>
+                    <input 
+                      type="text" 
+                      value={editingUser.socialLinks?.[social.id as keyof typeof editingUser.socialLinks] || ''}
+                      onChange={(e) => setEditingUser({ 
+                        ...editingUser, 
+                        socialLinks: { 
+                          ...editingUser.socialLinks, 
+                          [social.id]: e.target.value 
+                        } 
+                      })}
+                      placeholder={`Enter ${social.label} username/ID`}
+                      className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button 
+                onClick={() => handleSaveUser(editingUser.uid, editingUser)}
+                className="flex-1 py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all"
+              >
+                Save Changes
+              </button>
+              <button 
+                onClick={() => setEditingUser(null)}
+                className="px-8 py-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-2xl font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
