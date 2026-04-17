@@ -5,7 +5,7 @@ import { ShoppingBag, Search, Filter, ArrowLeft, ShoppingCart, X, Check, Plus } 
 import { Product } from '../types';
 import { Link, useNavigate } from 'react-router-dom';
 import { usePaystackPayment } from 'react-paystack';
-import { preparePaystackConfig } from '../utils/paystack';
+import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import Navbar from '../components/Navbar';
@@ -74,7 +74,7 @@ const Shop: React.FC = () => {
   const totalAmount = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
 
   const shopConfig = React.useMemo(() => {
-    if (totalAmount <= 0 || !user) return { publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '' };
+    if (totalAmount <= 0 || !user) return { publicKey: getPaystackPublicKey() };
 
     try {
       return preparePaystackConfig({
@@ -86,17 +86,11 @@ const Shop: React.FC = () => {
         }
       });
     } catch (e) {
-      return { publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '' };
+      return { publicKey: getPaystackPublicKey() };
     }
   }, [user, totalAmount]);
 
   const initializeShopPayment = usePaystackPayment(shopConfig);
-
-  React.useEffect(() => {
-    if (!import.meta.env.VITE_PAYSTACK_PUBLIC_KEY) {
-      console.error("❌ VITE_PAYSTACK_PUBLIC_KEY is missing in environment variables.");
-    }
-  }, []);
 
   const onShopSuccess = async (reference: any) => {
     try {

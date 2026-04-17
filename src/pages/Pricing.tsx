@@ -5,7 +5,7 @@ import { auth } from '../firebase';
 import { toast } from 'sonner';
 import { PlanType } from '../types';
 import { usePaystackPayment } from 'react-paystack';
-import { preparePaystackConfig } from '../utils/paystack';
+import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
 
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -76,7 +76,7 @@ const Pricing: React.FC = () => {
   };
 
   const config: any = React.useMemo(() => {
-    if (!selectedPlan || !auth.currentUser) return { publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '' };
+    if (!selectedPlan || !auth.currentUser) return { publicKey: getPaystackPublicKey() };
     
     try {
       return preparePaystackConfig({
@@ -88,17 +88,11 @@ const Pricing: React.FC = () => {
         }
       });
     } catch (e) {
-      return { publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '' };
+      return { publicKey: getPaystackPublicKey() };
     }
   }, [selectedPlan, auth.currentUser]);
 
   const initializePayment = usePaystackPayment(config);
-
-  React.useEffect(() => {
-    if (!import.meta.env.VITE_PAYSTACK_PUBLIC_KEY) {
-      console.error("❌ VITE_PAYSTACK_PUBLIC_KEY is missing in environment variables.");
-    }
-  }, []);
 
   const onSuccess = async (reference: any) => {
     setLoading(selectedPlan);

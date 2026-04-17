@@ -194,30 +194,49 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         return res.status(400).json({ status: 'failed', error: 'Transaction already processed' });
       }
 
-      const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
-        headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
-        }
-      });
+      let paystackData: any;
 
-      console.log(`Paystack verification response for ${reference}:`, response.data.data.status);
+      if (PAYSTACK_SECRET_KEY === "sk_test_mock") {
+        console.log("🛠️ Using mock verification for development.");
+        paystackData = {
+          status: 'success',
+          amount: (amount || 5000) * 100, // mock amount in kobo
+          authorization: {
+            authorization_code: 'MOCK_AUTH_CODE',
+            bank: 'Mock Bank',
+            card_type: 'visa',
+            last4: '1234',
+            exp_month: '12',
+            exp_year: '2030'
+          }
+        };
+      } else {
+        const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
+          headers: {
+            Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
+          }
+        });
+        paystackData = response.data.data;
+      }
 
-      if (response.data.data.status === 'success') {
+      console.log(`Paystack verification status for ${reference}:`, paystackData.status);
+
+      if (paystackData.status === 'success') {
         // 2. Save transaction history BEFORE upgrading to ensure we have a record
         await db.collection('transactions').add({
           userId: userId || 'guest',
           reference,
-          amount: amount || response.data.data.amount / 100, // Paystack returns in kobo
+          amount: amount || paystackData.amount / 100, // Paystack returns in kobo
           plan: isVerification ? 'verification' : (isOrder ? 'order' : (plan || 'pro')),
           status: 'success',
           createdAt: new Date().toISOString(),
           metadata: {
-            auth_code: response.data.data.authorization?.authorization_code,
-            last4: response.data.data.authorization?.last4,
-            exp_month: response.data.data.authorization?.exp_month,
-            exp_year: response.data.data.authorization?.exp_year,
-            card_type: response.data.data.authorization?.card_type,
-            bank: response.data.data.authorization?.bank
+            auth_code: paystackData.authorization?.authorization_code,
+            last4: paystackData.authorization?.last4,
+            exp_month: paystackData.authorization?.exp_month,
+            exp_year: paystackData.authorization?.exp_year,
+            card_type: paystackData.authorization?.card_type,
+            bank: paystackData.authorization?.bank
           }
         });
 

@@ -36,7 +36,7 @@ import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import UpgradeModal from '../components/UpgradeModal';
 import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2, BadgeCheck } from 'lucide-react';
 import { usePaystackPayment } from 'react-paystack';
-import { preparePaystackConfig } from '../utils/paystack';
+import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { safeWrite } from '../services/backupService';
 
@@ -427,7 +427,7 @@ const Dashboard: React.FC = () => {
   };
   
   const verificationConfig = React.useMemo(() => {
-    if (!user) return { publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '' };
+    if (!user) return { publicKey: getPaystackPublicKey() };
 
     try {
       return preparePaystackConfig({
@@ -439,17 +439,11 @@ const Dashboard: React.FC = () => {
         }
       });
     } catch (e) {
-      return { publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '' };
+      return { publicKey: getPaystackPublicKey() };
     }
   }, [user]);
 
   const initializeVerification = usePaystackPayment(verificationConfig);
-
-  React.useEffect(() => {
-    if (!import.meta.env.VITE_PAYSTACK_PUBLIC_KEY) {
-      console.error("❌ VITE_PAYSTACK_PUBLIC_KEY is missing in environment variables.");
-    }
-  }, []);
 
   const onVerificationSuccess = async (reference: any) => {
     try {

@@ -8,6 +8,12 @@ export const generateReference = (prefix: string = 'chipng'): string => {
   return `${prefix}_${Date.now()}_${Math.floor(Math.random() * 1000000)}`;
 };
 
+export const getPaystackPublicKey = (): string => {
+  return import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 
+         import.meta.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 
+         'pk_test_mock';
+};
+
 /**
  * Validates and prepares Paystack configuration
  */
@@ -27,13 +33,15 @@ export const preparePaystackConfig = (params: {
   }
 
   // 2. Validate Public Key
-  // Check both Vite and Next.js style env vars for compatibility
-  const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || import.meta.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
+  const publicKey = getPaystackPublicKey();
   
-  if (!publicKey || (!publicKey.startsWith('pk_test_') && !publicKey.startsWith('pk_live_'))) {
-    const error = "Invalid or missing Paystack Public Key.";
+  // ALLOW MOCK MODE
+  const isMockMode = publicKey === 'pk_test_mock';
+
+  if (!isMockMode && !publicKey.startsWith('pk_test_') && !publicKey.startsWith('pk_live_')) {
+    const error = "Invalid Paystack Public Key format.";
     console.error("❌ Paystack Error:", error);
-    toast.error("Payment system configuration error. Please contact support.");
+    toast.error("Invalid Paystack Public Key. It should start with pk_test_ or pk_live_.");
     throw new Error(error);
   }
 
