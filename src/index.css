@@ -47,10 +47,189 @@
   100% { transform: translateX(100%); }
 }
 
+@keyframes gradient-move {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes flicker {
+  0%, 19.999%, 22%, 62.999%, 64%, 64.999%, 70%, 100% { opacity: 0.99; filter: drop-shadow(0 0 1px rgba(57, 255, 20, 0.4)); }
+  20%, 21.999%, 63%, 63.999%, 65%, 69.999% { opacity: 0.4; filter: none; }
+}
+
+@keyframes pan {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-10%, -10%) scale(1.1); }
+}
+
+@keyframes waves {
+  0% { transform: translateX(0) translateZ(0) scaleY(1); }
+  50% { transform: translateX(-25%) translateZ(0) scaleY(0.8); }
+  100% { transform: translateX(-50%) translateZ(0) scaleY(1); }
+}
+
+@keyframes sakura-fall {
+  0% { transform: translate(0, -10%) rotate(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translate(20%, 110%) rotate(360deg); opacity: 0; }
+}
+
+@keyframes code-rain {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
 
 .animate-shine {
   animation: shine 2s infinite;
+}
+
+.gradient-move {
+  background-size: 400% 400%;
+  animation: gradient-move 15s ease infinite;
+}
+
+.neon-flicker {
+  animation: flicker 2s infinite;
+}
+
+.sunset-shimmer {
+  background-size: 200% 200%;
+  animation: gradient-move 10s ease-in-out infinite;
+}
+
+.ocean-waves {
+  animation: waves 20s linear infinite;
+}
+
+.leaf-sway {
+  animation: float 6s ease-in-out infinite;
+}
+
+.gold-glimmer {
+  animation: shine 3s linear infinite;
+}
+
+.steam-rise {
+  animation: float 4s ease-in-out infinite;
+}
+
+.star-twinkle {
+  animation: pulse-slow 4s ease-in-out infinite;
+}
+
+.soft-float {
+  animation: float 8s ease-in-out infinite;
+}
+
+.gem-pulse {
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
+.glitch-static {
+  animation: pulse-slow 0.1s infinite;
+}
+
+.grain-distort {
+  animation: shine 0.5s infinite;
+}
+
+.snow-fall {
+  animation: float 5s linear infinite;
+}
+
+.sakura-drift {
+  animation: sakura-fall 10s linear infinite;
+}
+
+.aurora-gold {
+  background-size: 300% 300%;
+  animation: gradient-move 8s ease infinite;
+}
+
+.jitter-move {
+  animation: float 0.2s infinite;
+}
+
+.morph-clay {
+  animation: pulse-slow 5s ease-in-out infinite;
+}
+
+.code-rain {
+  animation: code-rain 20s linear infinite;
+}
+
+.color-flow {
+  background-size: 400% 400%;
+  animation: gradient-move 12s ease infinite;
+}
+
+.soft-pulse {
+  animation: pulse-slow 6s ease-in-out infinite;
+}
+
+.bubble-float {
+  animation: float 7s ease-in-out infinite;
+}
+
+.sand-drift {
+  animation: waves 30s linear infinite;
+}
+
+.nebula-swirl {
+  animation: gradient-move 20s ease infinite;
+}
+
+.sugar-gloss {
+  animation: shine 4s ease-in-out infinite;
+}
+
+.cog-rotate {
+  animation: shine 5s linear infinite;
+}
+
+.dust-specks {
+  animation: pulse-slow 8s ease-in-out infinite;
+}
+
+.water-ripple {
+  animation: pulse-slow 3s ease-in-out infinite;
+}
+
+.neon-pulse-purple {
+  animation: flicker 3s infinite;
+}
+
+.abyssal-glow {
+  animation: pulse-slow 10s ease-in-out infinite;
+}
+
+.horizon-glow {
+  animation: pulse-slow 5s ease-in-out infinite;
+}
+
+.cyber-glitch {
+  animation: pulse-slow 0.2s infinite;
+}
+
+.breeze-sway {
+  animation: float 5s ease-in-out infinite;
+}
+
+.regal-shimmer {
+  animation: shine 2s linear infinite;
+}
+
+.shadow-drift {
+  animation: float 20s ease-in-out infinite;
 }
