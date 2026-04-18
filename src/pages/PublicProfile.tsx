@@ -8,19 +8,24 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
-  Share2, QrCode, X, Copy, Check, 
-  ExternalLink, Link as LinkIcon, AlertCircle,
+  Share2, QrCode, X, Check, 
+  Link as LinkIcon, AlertCircle,
   Youtube, Music2, UserPlus,
   Instagram, Twitter, Linkedin, Facebook, MessageCircle,
-  MapPin, Calendar, Clock, ChevronRight, Github, Twitch, Mail, Ghost, MessageSquare,
-  Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash
+  MapPin, Mail, Ghost, MessageSquare,
+  Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash, Github, Twitch
 } from 'lucide-react';
 import Logo from '../components/Logo';
-import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { toast } from 'sonner';
-import { User, Link, THEMES, ThemeType, ButtonStyle } from '../types';
+import { User, Link, THEMES } from '../types';
 import { Helmet } from 'react-helmet-async';
-import { VerificationBadge } from '../components/VerificationBadge';
+import { isAfter, isBefore } from 'date-fns';
+
+// New Components
+import { ProfileBackground } from '../components/profile/ProfileBackground';
+import { ProfileHeader } from '../components/profile/ProfileHeader';
+import { LinkCard } from '../components/profile/LinkCard';
+import { ExtraSections } from '../components/profile/ExtraSections';
 
 const PublicProfile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
@@ -76,17 +81,13 @@ const PublicProfile: React.FC = () => {
         unsubLinks = onSnapshot(q, (snapshot) => {
           const allLinks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Link));
           
-          // Filter by scheduling
           const now = new Date();
           const filteredLinks = allLinks.filter(link => {
             if (!link.scheduledStart && !link.scheduledEnd) return true;
-            
             const start = link.scheduledStart ? new Date(link.scheduledStart) : null;
             const end = link.scheduledEnd ? new Date(link.scheduledEnd) : null;
-            
             if (start && isBefore(now, start)) return false;
             if (end && isAfter(now, end)) return false;
-            
             return true;
           });
 
@@ -131,7 +132,6 @@ const PublicProfile: React.FC = () => {
 
   const saveContact = () => {
     if (!profile) return;
-    
     const vcardLines = [
       'BEGIN:VCARD',
       'VERSION:3.0',
@@ -141,18 +141,12 @@ const PublicProfile: React.FC = () => {
       profile.bio ? `NOTE:${profile.bio}` : '',
       `URL:${window.location.href}`,
     ];
-
-    // Add WhatsApp as phone if available
     if (profile.socialLinks?.whatsapp) {
       const phone = profile.socialLinks.whatsapp.replace(/\D/g, '');
-      if (phone) {
-        vcardLines.push(`TEL;TYPE=CELL:${phone}`);
-      }
+      if (phone) vcardLines.push(`TEL;TYPE=CELL:${phone}`);
     }
-
     vcardLines.push('END:VCARD');
     const vcard = vcardLines.join('\n');
-
     const blob = new Blob([vcard], { type: 'text/vcard' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -165,362 +159,201 @@ const PublicProfile: React.FC = () => {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-zinc-950 transition-colors duration-300">
-      <div className="w-12 h-12 border-4 border-lime-500 dark:border-lime-400 border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen flex items-center justify-center bg-zinc-950">
+      <motion.div 
+        animate={{ scale: [1, 1.2, 1], opacity: [0.3, 1, 0.3] }}
+        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <Logo size="lg" variant="icon-only" />
+      </motion.div>
     </div>
   );
 
   if (error || !profile) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-zinc-950 text-zinc-950 dark:text-white p-6 transition-colors duration-300">
-      <AlertCircle className="w-16 h-16 text-zinc-200 dark:text-zinc-800 mb-6" />
-      <h1 className="text-4xl font-bold tracking-tighter mb-4 text-zinc-950 dark:text-white">{error || 'Profile not found'}</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-white p-6">
+      <AlertCircle className="w-16 h-16 text-zinc-800 mb-6" />
+      <h1 className="text-4xl font-black mb-4">{error || 'Profile Not Found'}</h1>
       <p className="text-zinc-500 mb-8 text-center max-w-md">
         The profile you are looking for doesn't exist or has been removed.
       </p>
-      <RouterLink to="/" className="bg-lime-400 text-zinc-950 px-8 py-3 rounded-2xl font-bold hover:bg-lime-300 transition-all">
-        Go Home
+      <RouterLink to="/" className="bg-lime-400 text-black px-8 py-3 rounded-full font-black uppercase tracking-tighter hover:scale-105 transition-transform">
+        Back Home
       </RouterLink>
     </div>
   );
 
   const theme = THEMES[profile.theme];
-  const btnStyle = profile.buttonStyle === 'rounded' ? 'rounded-2xl' : profile.buttonStyle === 'pill' ? 'rounded-full' : 'rounded-none';
-
-  const getFavicon = (url: string) => {
-    try {
-      const domain = new URL(url).hostname;
-      return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-    } catch (e) {
-      return null;
-    }
-  };
 
   const socialIcons = [
-    { id: 'instagram', icon: Instagram, color: '#E4405F', url: (val: string) => val.startsWith('http') ? val : `https://instagram.com/${val}` },
-    { id: 'twitter', icon: Twitter, color: '#1DA1F2', url: (val: string) => val.startsWith('http') ? val : `https://twitter.com/${val}` },
-    { id: 'linkedin', icon: Linkedin, color: '#0077B5', url: (val: string) => val.startsWith('http') ? val : `https://linkedin.com/in/${val}` },
-    { id: 'youtube', icon: Youtube, color: '#FF0000', url: (val: string) => val.startsWith('http') ? val : `https://youtube.com/@${val}` },
-    { id: 'facebook', icon: Facebook, color: '#1877F2', url: (val: string) => val.startsWith('http') ? val : `https://facebook.com/${val}` },
-    { id: 'whatsapp', icon: MessageCircle, color: '#25D366', url: (val: string) => val.startsWith('http') ? val : `https://wa.me/${val}` },
-    { id: 'tiktok', icon: Music2, color: '#000000', url: (val: string) => val.startsWith('http') ? val : `https://tiktok.com/@${val}` },
-    { id: 'reddit', icon: MessageSquare, color: '#FF4500', url: (val: string) => val.startsWith('http') ? val : `https://reddit.com/u/${val}` },
-    { id: 'discord', icon: Disc, color: '#5865F2', url: (val: string) => val.startsWith('http') ? val : `https://discord.gg/${val}` },
-    { id: 'telegram', icon: Send, color: '#26A5E4', url: (val: string) => val.startsWith('http') ? val : `https://t.me/${val}` },
-    { id: 'pinterest', icon: Pin, color: '#BD081C', url: (val: string) => val.startsWith('http') ? val : `https://pinterest.com/${val}` },
-    { id: 'spotify', icon: Music, color: '#1DB954', url: (val: string) => val.startsWith('http') ? val : `https://open.spotify.com/user/${val}` },
-    { id: 'applemusic', icon: Apple, color: '#FA243C', url: (val: string) => val.startsWith('http') ? val : `https://music.apple.com/profile/${val}` },
-    { id: 'soundcloud', icon: Cloud, color: '#FF3300', url: (val: string) => val.startsWith('http') ? val : `https://soundcloud.com/${val}` },
-    { id: 'threads', icon: AtSign, color: '#000000', url: (val: string) => val.startsWith('http') ? val : `https://threads.net/@${val}` },
-    { id: 'mastodon', icon: Hash, color: '#6364FF', url: (val: string) => val.startsWith('http') ? val : `https://mastodon.social/@${val}` },
-    { id: 'github', icon: Github, color: '#181717', url: (val: string) => val.startsWith('http') ? val : `https://github.com/${val}` },
-    { id: 'twitch', icon: Twitch, color: '#9146FF', url: (val: string) => val.startsWith('http') ? val : `https://twitch.tv/${val}` },
-    { id: 'snapchat', icon: Ghost, color: '#FFFC00', url: (val: string) => val.startsWith('http') ? val : `https://snapchat.com/add/${val}` },
-    { id: 'mail', icon: Mail, color: '#D44638', url: (val: string) => val.startsWith('mailto:') ? val : `mailto:${val}` }
+    { id: 'instagram', icon: Instagram, color: 'text-white/60 hover:text-[#E4405F]', url: (val: string) => val.startsWith('http') ? val : `https://instagram.com/${val}` },
+    { id: 'twitter', icon: Twitter, color: 'text-white/60 hover:text-[#1DA1F2]', url: (val: string) => val.startsWith('http') ? val : `https://twitter.com/${val}` },
+    { id: 'linkedin', icon: Linkedin, color: 'text-white/60 hover:text-[#0077B5]', url: (val: string) => val.startsWith('http') ? val : `https://linkedin.com/in/${val}` },
+    { id: 'youtube', icon: Youtube, color: 'text-white/60 hover:text-[#FF0000]', url: (val: string) => val.startsWith('http') ? val : `https://youtube.com/@${val}` },
+    { id: 'facebook', icon: Facebook, color: 'text-white/60 hover:text-[#1877F2]', url: (val: string) => val.startsWith('http') ? val : `https://facebook.com/${val}` },
+    { id: 'whatsapp', icon: MessageCircle, color: 'text-white/60 hover:text-[#25D366]', url: (val: string) => val.startsWith('http') ? val : `https://wa.me/${val}` },
+    { id: 'tiktok', icon: Music2, color: 'text-white/60 hover:text-white', url: (val: string) => val.startsWith('http') ? val : `https://tiktok.com/@${val}` },
+    { id: 'reddit', icon: MessageSquare, color: 'text-white/60 hover:text-[#FF4500]', url: (val: string) => val.startsWith('http') ? val : `https://reddit.com/u/${val}` },
+    { id: 'discord', icon: Disc, color: 'text-white/60 hover:text-[#5865F2]', url: (val: string) => val.startsWith('http') ? val : `https://discord.gg/${val}` },
+    { id: 'telegram', icon: Send, color: 'text-white/60 hover:text-[#26A5E4]', url: (val: string) => val.startsWith('http') ? val : `https://t.me/${val}` },
+    { id: 'pinterest', icon: Pin, color: 'text-white/60 hover:text-[#BD081C]', url: (val: string) => val.startsWith('http') ? val : `https://pinterest.com/${val}` },
+    { id: 'spotify', icon: Music, color: 'text-white/60 hover:text-[#1DB954]', url: (val: string) => val.startsWith('http') ? val : `https://open.spotify.com/user/${val}` },
+    { id: 'applemusic', icon: Apple, color: 'text-white/60 hover:text-[#FA243C]', url: (val: string) => val.startsWith('http') ? val : `https://music.apple.com/profile/${val}` },
+    { id: 'soundcloud', icon: Cloud, color: 'text-white/60 hover:text-[#FF3300]', url: (val: string) => val.startsWith('http') ? val : `https://soundcloud.com/${val}` },
+    { id: 'threads', icon: AtSign, color: 'text-white/60 hover:text-white', url: (val: string) => val.startsWith('http') ? val : `https://threads.net/@${val}` },
+    { id: 'mastodon', icon: Hash, color: 'text-white/60 hover:text-[#6364FF]', url: (val: string) => val.startsWith('http') ? val : `https://mastodon.social/@${val}` },
+    { id: 'github', icon: Github, color: 'text-white/60 hover:text-white', url: (val: string) => val.startsWith('http') ? val : `https://github.com/${val}` },
+    { id: 'twitch', icon: Twitch, color: 'text-white/60 hover:text-[#9146FF]', url: (val: string) => val.startsWith('http') ? val : `https://twitch.tv/${val}` },
+    { id: 'snapchat', icon: Ghost, color: 'text-white/60 hover:text-[#FFFC00]', url: (val: string) => val.startsWith('http') ? val : `https://snapchat.com/add/${val}` },
+    { id: 'mail', icon: Mail, color: 'text-white/60 hover:text-[#D44638]', url: (val: string) => val.startsWith('mailto:') ? val : `mailto:${val}` }
   ];
 
   return (
-    <div className={`min-h-screen relative ${theme.background} ${theme.text} selection:bg-white selection:text-black`}>
-      {/* Custom Background Image */}
-      {profile.backgroundType === 'image' && profile.backgroundImage && (
-        <div 
-          className="fixed inset-0 z-0 opacity-40 pointer-events-none"
-          style={{ 
-            backgroundImage: `url(${profile.backgroundImage})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            filter: 'blur(10px)'
-          }}
-        />
-      )}
-
-      {/* Cover Image */}
-      {profile.coverImage && (
-        <div className="absolute top-0 left-0 w-full h-48 z-0">
-          <img 
-            src={profile.coverImage} 
-            alt="" 
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-transparent" />
-        </div>
-      )}
-      
+    <div className={`min-h-screen relative overflow-x-hidden ${theme.text} selection:bg-lime-400 selection:text-black`}>
       <Helmet>
-        <title>{profile.displayName || profile.username} | Chip NG</title>
-        <meta name="description" content={profile.bio || `Check out ${profile.username}'s links on Chip NG.`} />
-        <meta property="og:title" content={`${profile.displayName || profile.username} | Chip NG`} />
-        <meta property="og:description" content={profile.bio || `Check out ${profile.username}'s links on Chip NG.`} />
+        <title>{profile.displayName || profile.username} | Premium Mini Profile</title>
+        <meta name="description" content={profile.bio || `Explore ${profile.displayName}'s exclusive content and links.`} />
+        <meta property="og:title" content={`${profile.displayName || profile.username} | Link Hub`} />
         {profile.photoURL && <meta property="og:image" content={profile.photoURL} />}
       </Helmet>
 
-      <div className="max-w-2xl mx-auto px-6 py-20 flex flex-col items-center relative z-10">
+      {/* Background System */}
+      <ProfileBackground profile={profile} />
+
+      <div className="relative z-50 w-full max-w-[480px] mx-auto pt-16 pb-32 px-6 flex flex-col items-center min-h-screen">
         {/* Profile Header */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center text-center mb-12 w-full"
-        >
-          <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 border-white/20 shadow-2xl mb-6">
-            {profile.photoURL ? (
-              <img src={profile.photoURL} alt={profile.username} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-zinc-400">
-                <LinkIcon className="w-10 h-10" />
-              </div>
-            )}
-          </div>
-          <div className="flex items-center gap-2 mb-2">
-            <h1 className="text-2xl font-bold tracking-tight">@{profile.username}</h1>
-            {profile.isVerified && (
-              <VerificationBadge size={20} />
-            )}
-          </div>
-          {profile.displayName && <h2 className="text-lg opacity-80 mb-4">{profile.displayName}</h2>}
-          {profile.bio && <p className="text-base opacity-70 max-w-sm leading-relaxed mb-6">{profile.bio}</p>}
+        <ProfileHeader profile={profile} />
 
-          {/* Contact Info */}
-          <div className="flex flex-wrap justify-center gap-6 mb-8 text-sm opacity-60">
-            {profile.phone && (
-              <div className="flex items-center gap-2">
-                <MessageCircle className="w-4 h-4" />
-                <span>{profile.phone}</span>
-              </div>
-            )}
-            {(profile.contactEmail || profile.email) && (
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                <span>{profile.contactEmail || profile.email}</span>
-              </div>
-            )}
-            {profile.address && (
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                <span>{profile.address}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Social Icons */}
-          {profile.socialLinks && Object.values(profile.socialLinks).some(v => v) && (
-            <div className="flex flex-wrap justify-center gap-4 mb-8">
-              {socialIcons.map(social => {
-                const value = profile.socialLinks?.[social.id as keyof typeof profile.socialLinks];
-                if (!value) return null;
-                return (
-                  <a 
-                    key={social.id}
-                    href={social.url(value)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-3 bg-white/10 hover:bg-white/20 rounded-full transition-all hover:scale-110"
-                    style={{ color: social.color }}
-                  >
-                    <social.icon className="w-5 h-5" />
-                  </a>
-                );
-              })}
-            </div>
-          )}
-        </motion.div>
-
-        {/* Links List */}
-        <div className="w-full space-y-4">
-          {links.map((link, i) => {
-            if (link.type === 'youtube') {
-              const videoId = link.url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/)?.[1];
-              if (videoId) {
-                return (
-                  <motion.div
-                    key={link.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.1 }}
-                    className={`w-full overflow-hidden ${theme.button} ${btnStyle} border border-white/10`}
-                  >
-                    <div className="aspect-video w-full">
-                      <iframe
-                        src={`https://www.youtube.com/embed/${videoId}`}
-                        className="w-full h-full"
-                        allowFullScreen
-                        title={link.title}
-                      />
-                    </div>
-                    <div className={`p-4 font-bold text-center ${theme.buttonText}`}>
-                      {link.title}
-                    </div>
-                  </motion.div>
-                );
-              }
-            }
-
-            if (link.type === 'tiktok') {
-              return (
-                <motion.button
-                  key={link.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  onClick={() => handleLinkClick(link.id, link.url)}
-                  className={`w-full p-5 ${theme.button} ${theme.buttonText} ${btnStyle} font-bold text-lg transition-all flex items-center justify-between group relative overflow-hidden border border-white/10`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Music2 className="w-5 h-5" />
-                    <span>{link.title}</span>
-                  </div>
-                  <ExternalLink className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </motion.button>
-              );
-            }
-
-            return (
-              <motion.button
-                key={link.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                onClick={() => handleLinkClick(link.id, link.url)}
-                className={`w-full p-5 ${theme.button} ${theme.buttonText} ${btnStyle} font-bold text-lg transition-all flex items-center justify-between group relative overflow-hidden border border-white/10`}
-              >
-                <div className="flex items-center gap-4 w-full">
-                  {(link.icon || getFavicon(link.url)) && (
-                    <img 
-                      src={link.icon || getFavicon(link.url)!} 
-                      alt="" 
-                      className="w-6 h-6 rounded-md object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                  )}
-                  <span className="flex-1 text-center pr-6">{link.title}</span>
-                </div>
-                <ExternalLink className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity absolute right-5" />
-              </motion.button>
-            );
-          })}
-        </div>
-
-        {/* Business Features: Location & Appointments */}
-        <div className="w-full mt-12 space-y-12">
-          {/* Google Maps */}
-          {profile.location?.lat && profile.location?.lng && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`w-full p-6 bg-white/10 backdrop-blur-md border border-white/10 ${btnStyle} overflow-hidden`}
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <MapPin className="w-5 h-5 text-lime-400" />
-                <h3 className="font-bold">Our Location</h3>
-              </div>
-              <div className="aspect-video w-full rounded-xl overflow-hidden mb-4">
-                <iframe
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  style={{ border: 0 }}
-                  src={`https://www.google.com/maps/embed/v1/place?key=${process.env.VITE_GOOGLE_MAPS_API_KEY}&q=${profile.location.lat},${profile.location.lng}`}
-                  allowFullScreen
-                />
-              </div>
-              {profile.location.address && (
-                <p className="text-sm opacity-70">{profile.location.address}</p>
-              )}
-            </motion.div>
-          )}
-
-          {/* Appointments */}
-          {profile.appointmentsEnabled && profile.appointments && profile.appointments.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="w-full space-y-6"
-            >
-              <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-lime-400" />
-                <h3 className="font-bold text-xl">Book an Appointment</h3>
-              </div>
-              <div className="grid gap-4">
-                {profile.appointments.map((apt, idx) => (
-                  <a
-                    key={idx}
-                    href={apt.contactLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`p-5 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/10 ${btnStyle} transition-all group flex items-center justify-between`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-lime-400/20 rounded-xl flex items-center justify-center">
-                        <Clock className="w-6 h-6 text-lime-400" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold">{apt.title}</h4>
-                        <p className="text-sm opacity-60">
-                          {format(new Date(apt.dateTime), 'PPP p')}
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </a>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/20 backdrop-blur-xl border border-white/10 p-2 rounded-full shadow-2xl">
-          <button 
-            onClick={() => setShowQR(true)}
-            className="p-3 hover:bg-white/10 rounded-full transition-colors"
-            title="Show QR Code"
+        {/* Global Social Links Horizontal Rail */}
+        {profile.socialLinks && Object.values(profile.socialLinks).some(v => v) && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="flex flex-wrap justify-center items-center gap-5 mb-10"
           >
-            <QrCode className="w-6 h-6" />
+            {socialIcons.map(social => {
+              const value = profile.socialLinks?.[social.id as keyof typeof profile.socialLinks];
+              if (!value) return null;
+              return (
+                <a 
+                  key={social.id}
+                  href={social.url(value)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${social.color} transition-all duration-300 hover:scale-125`}
+                >
+                  <social.icon className="w-6 h-6" />
+                </a>
+              );
+            })}
+          </motion.div>
+        )}
+
+        {/* Vertical Links Stack */}
+        <div className="w-full space-y-4">
+          {links.map((link, i) => (
+            <LinkCard 
+              key={link.id}
+              link={link}
+              profile={profile}
+              index={i}
+              onClick={handleLinkClick}
+            />
+          ))}
+        </div>
+
+        {/* Extra Sections (Map, Bookings) */}
+        <ExtraSections profile={profile} />
+
+        {/* Footer / Branding */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+          className="mt-auto pt-20 flex flex-col items-center gap-4"
+        >
+          <RouterLink 
+            to="/" 
+            className="group flex flex-col items-center gap-2 opacity-30 hover:opacity-100 transition-all duration-500"
+          >
+            <Logo size="sm" variant="icon-only" className="grayscale group-hover:grayscale-0 transition-all opacity-50 group-hover:opacity-100" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">
+              Created with Chip NG
+            </span>
+          </RouterLink>
+        </motion.div>
+      </div>
+
+      {/* Floating Modern Action Bar */}
+      <motion.div 
+        initial={{ y: 100 }}
+        animate={{ y: 0 }}
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100]"
+      >
+        <div className="flex items-center gap-1.5 p-2 bg-black/40 backdrop-blur-3xl border border-white/10 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+           <button 
+            onClick={() => setShowQR(true)}
+            className="p-3.5 bg-white/5 hover:bg-white/10 text-white rounded-full transition-all hover:-translate-y-1 active:scale-95"
+            title="Scan QR"
+          >
+            <QrCode className="w-5 h-5 shadow-sm" />
           </button>
+          
           <button 
             onClick={saveContact}
-            className="p-3 hover:bg-white/10 rounded-full transition-colors"
-            title="Save Contact"
+            className="flex items-center gap-2 px-6 h-12 bg-lime-400 hover:bg-lime-300 text-black rounded-full font-black text-xs uppercase tracking-widest transition-all hover:shadow-[0_0_20px_rgba(163,230,53,0.4)] active:scale-95"
           >
-            <UserPlus className="w-6 h-6" />
+            <UserPlus className="w-4 h-4" />
+            <span>Save Contact</span>
           </button>
+
           <button 
             onClick={copyLink}
-            className="p-3 hover:bg-white/10 rounded-full transition-colors"
-            title="Copy Link"
+            className="p-3.5 bg-white/5 hover:bg-white/10 text-white rounded-full transition-all hover:-translate-y-1 active:scale-95"
+            title="Share Profile"
           >
-            {copied ? <Check className="w-6 h-6 text-lime-400" /> : <Share2 className="w-6 h-6" />}
+            {copied ? <Check className="w-5 h-5 text-lime-400" /> : <Share2 className="w-5 h-5" />}
           </button>
         </div>
-
-        {/* Branding */}
-        <RouterLink to="/" className="mt-20 opacity-50 hover:opacity-100 transition-opacity">
-          <Logo size="sm" className="!flex-row !gap-3" />
-        </RouterLink>
-      </div>
+      </motion.div>
 
       {/* QR Code Modal */}
       <AnimatePresence>
         {showQR && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 sm:p-0">
+             <motion.div 
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               exit={{ opacity: 0 }}
+               onClick={() => setShowQR(false)}
+               className="absolute inset-0 bg-black/90 backdrop-blur-xl"
+             />
+             
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="bg-white p-8 rounded-[2.5rem] max-w-sm w-full flex flex-col items-center gap-8 relative"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative bg-zinc-900 overflow-hidden border border-white/10 rounded-[2.5rem] max-w-sm w-full flex flex-col items-center gap-8 p-10 shadow-3xl"
             >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-lime-400 to-emerald-500" />
+              
               <button 
                 onClick={() => setShowQR(false)}
-                className="absolute top-6 right-6 p-2 hover:bg-zinc-100 rounded-full text-zinc-900 transition-colors"
+                className="absolute top-6 right-6 p-2 text-white/40 hover:text-white transition-colors"
               >
                 <X className="w-6 h-6" />
               </button>
               
               <div className="text-center">
-                <h3 className="text-2xl font-bold text-zinc-900 mb-2">Scan to visit</h3>
-                <p className="text-zinc-500 text-sm">@{profile.username}'s Chip NG profile</p>
+                <div className="relative inline-block mb-2">
+                  <div className="absolute -inset-1 bg-lime-400/20 blur-lg rounded-full" />
+                  <h3 className="relative text-2xl font-black text-white italic tracking-tight">Scan Profile</h3>
+                </div>
+                <p className="text-white/40 text-sm font-medium">@{profile.username} on Chip NG</p>
               </div>
 
-              <div className="p-4 bg-zinc-50 rounded-3xl border border-zinc-100">
+              <div className="relative group p-4 bg-white rounded-3xl overflow-hidden">
+                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                 <QRCodeSVG 
                   value={window.location.href} 
                   size={200}
@@ -531,9 +364,10 @@ const PublicProfile: React.FC = () => {
 
               <button 
                 onClick={copyLink}
-                className="w-full py-4 bg-zinc-900 text-white rounded-2xl font-bold hover:bg-zinc-800 transition-all"
+                className="w-full h-14 bg-white text-black rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-zinc-200 transition-all flex items-center justify-center gap-2"
               >
-                Copy Profile Link
+                <LinkIcon className="w-4 h-4" />
+                Copy Profile URL
               </button>
             </motion.div>
           </div>
