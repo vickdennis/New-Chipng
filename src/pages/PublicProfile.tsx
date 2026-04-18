@@ -26,6 +26,7 @@ import { ProfileBackground } from '../components/profile/ProfileBackground';
 import { ProfileHeader } from '../components/profile/ProfileHeader';
 import { LinkCard } from '../components/profile/LinkCard';
 import { ExtraSections } from '../components/profile/ExtraSections';
+import { SocialRail } from '../components/profile/SocialRail';
 
 const PublicProfile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
@@ -184,28 +185,6 @@ const PublicProfile: React.FC = () => {
 
   const theme = THEMES[profile.theme];
 
-  const socialIcons = [
-    { id: 'instagram', icon: Instagram, color: 'text-white/60 hover:text-[#E4405F]', url: (val: string) => val.startsWith('http') ? val : `https://instagram.com/${val}` },
-    { id: 'twitter', icon: Twitter, color: 'text-white/60 hover:text-[#1DA1F2]', url: (val: string) => val.startsWith('http') ? val : `https://twitter.com/${val}` },
-    { id: 'linkedin', icon: Linkedin, color: 'text-white/60 hover:text-[#0077B5]', url: (val: string) => val.startsWith('http') ? val : `https://linkedin.com/in/${val}` },
-    { id: 'youtube', icon: Youtube, color: 'text-white/60 hover:text-[#FF0000]', url: (val: string) => val.startsWith('http') ? val : `https://youtube.com/@${val}` },
-    { id: 'facebook', icon: Facebook, color: 'text-white/60 hover:text-[#1877F2]', url: (val: string) => val.startsWith('http') ? val : `https://facebook.com/${val}` },
-    { id: 'whatsapp', icon: MessageCircle, color: 'text-white/60 hover:text-[#25D366]', url: (val: string) => val.startsWith('http') ? val : `https://wa.me/${val}` },
-    { id: 'tiktok', icon: Music2, color: 'text-white/60 hover:text-white', url: (val: string) => val.startsWith('http') ? val : `https://tiktok.com/@${val}` },
-    { id: 'reddit', icon: MessageSquare, color: 'text-white/60 hover:text-[#FF4500]', url: (val: string) => val.startsWith('http') ? val : `https://reddit.com/u/${val}` },
-    { id: 'discord', icon: Disc, color: 'text-white/60 hover:text-[#5865F2]', url: (val: string) => val.startsWith('http') ? val : `https://discord.gg/${val}` },
-    { id: 'telegram', icon: Send, color: 'text-white/60 hover:text-[#26A5E4]', url: (val: string) => val.startsWith('http') ? val : `https://t.me/${val}` },
-    { id: 'pinterest', icon: Pin, color: 'text-white/60 hover:text-[#BD081C]', url: (val: string) => val.startsWith('http') ? val : `https://pinterest.com/${val}` },
-    { id: 'spotify', icon: Music, color: 'text-white/60 hover:text-[#1DB954]', url: (val: string) => val.startsWith('http') ? val : `https://open.spotify.com/user/${val}` },
-    { id: 'applemusic', icon: Apple, color: 'text-white/60 hover:text-[#FA243C]', url: (val: string) => val.startsWith('http') ? val : `https://music.apple.com/profile/${val}` },
-    { id: 'soundcloud', icon: Cloud, color: 'text-white/60 hover:text-[#FF3300]', url: (val: string) => val.startsWith('http') ? val : `https://soundcloud.com/${val}` },
-    { id: 'threads', icon: AtSign, color: 'text-white/60 hover:text-white', url: (val: string) => val.startsWith('http') ? val : `https://threads.net/@${val}` },
-    { id: 'mastodon', icon: Hash, color: 'text-white/60 hover:text-[#6364FF]', url: (val: string) => val.startsWith('http') ? val : `https://mastodon.social/@${val}` },
-    { id: 'github', icon: Github, color: 'text-white/60 hover:text-white', url: (val: string) => val.startsWith('http') ? val : `https://github.com/${val}` },
-    { id: 'twitch', icon: Twitch, color: 'text-white/60 hover:text-[#9146FF]', url: (val: string) => val.startsWith('http') ? val : `https://twitch.tv/${val}` },
-    { id: 'snapchat', icon: Ghost, color: 'text-white/60 hover:text-[#FFFC00]', url: (val: string) => val.startsWith('http') ? val : `https://snapchat.com/add/${val}` },
-    { id: 'mail', icon: Mail, color: 'text-white/60 hover:text-[#D44638]', url: (val: string) => val.startsWith('mailto:') ? val : `mailto:${val}` }
-  ];
 
   return (
     <div className={`min-h-screen relative overflow-x-hidden ${theme.text} selection:bg-lime-400 selection:text-black`}>
@@ -224,30 +203,7 @@ const PublicProfile: React.FC = () => {
         <ProfileHeader profile={profile} />
 
         {/* Global Social Links Horizontal Rail */}
-        {profile.socialLinks && Object.values(profile.socialLinks).some(v => v) && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="flex flex-wrap justify-center items-center gap-5 mb-10"
-          >
-            {socialIcons.map(social => {
-              const value = profile.socialLinks?.[social.id as keyof typeof profile.socialLinks];
-              if (!value) return null;
-              return (
-                <a 
-                  key={social.id}
-                  href={social.url(value)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`${social.color} transition-all duration-300 hover:scale-125`}
-                >
-                  <social.icon className="w-6 h-6" />
-                </a>
-              );
-            })}
-          </motion.div>
-        )}
+        <SocialRail profile={profile} />
 
         {/* Vertical Links Stack */}
         <div className="w-full space-y-4">
