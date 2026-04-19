@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronRight, ChevronLeft, Lightbulb } from 'lucide-react';
+import { X, ChevronRight, ChevronLeft, Lightbulb, GripHorizontal } from 'lucide-react';
 
 interface TourStep {
   targetId: string;
@@ -52,6 +52,7 @@ export const DashboardTour: React.FC<DashboardTourProps> = ({ onFinish, show, on
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  const constraintsRef = useRef(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -119,7 +120,7 @@ export const DashboardTour: React.FC<DashboardTourProps> = ({ onFinish, show, on
   };
 
   return (
-    <div className="fixed inset-0 z-[100] pointer-events-none">
+    <div ref={constraintsRef} className="fixed inset-0 z-[100] pointer-events-none">
       {/* Spotlight Overlay */}
       <AnimatePresence>
         {targetRect && !isMobile && (
@@ -147,12 +148,20 @@ export const DashboardTour: React.FC<DashboardTourProps> = ({ onFinish, show, on
       <AnimatePresence mode="wait">
         <motion.div
           key={currentStep}
+          drag
+          dragConstraints={constraintsRef}
+          dragElastic={0.1}
+          dragMomentum={false}
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 20 }}
           style={getPosition()}
-          className="w-[88vw] max-w-sm bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.4)] pointer-events-auto border border-zinc-200 dark:border-zinc-800"
+          className="w-[88vw] max-w-sm bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.4)] pointer-events-auto border border-zinc-200 dark:border-zinc-800 cursor-grab active:cursor-grabbing"
         >
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 cursor-grab active:cursor-grabbing opacity-20 hover:opacity-50 transition-opacity">
+            <GripHorizontal className="w-6 h-6 text-zinc-400" />
+          </div>
+
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-2 text-amber-500">
               <div className="p-1.5 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
