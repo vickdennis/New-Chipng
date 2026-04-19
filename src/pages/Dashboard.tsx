@@ -20,7 +20,7 @@ import {
   Plus, Trash2, GripVertical, Eye, EyeOff, Image as ImageIcon,
   LogOut, ExternalLink, Copy, Check, Moon, Sun, Palette,
   Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash,
-  CreditCard, Calendar
+  CreditCard, Calendar, LayoutGrid, Star, Square, AlertCircle
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -38,7 +38,13 @@ import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, G
 import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
 import { prepareFlutterwaveConfig, getFlutterwavePublicKey } from '../utils/flutterwave';
 import { VerificationBadge } from '../components/VerificationBadge';
-import { safeWrite } from '../services/backupService';
+import { safeWrite, getBackupHistory, rollbackDocument, BackupData } from '../services/backupService';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, isUploading }: { 
   link: Link; 
@@ -208,7 +214,9 @@ const Dashboard: React.FC = () => {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [links, setLinks] = useState<Link[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings'>('links');
+  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup'>('links');
+  const [backups, setBackups] = useState<BackupData[]>([]);
+  const [isRollingBack, setIsRollingBack] = useState(false);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [upgradeModal, setUpgradeModal] = useState<{ isOpen: boolean; requiredPlan: PlanType; featureName: string }>({
@@ -222,6 +230,27 @@ const Dashboard: React.FC = () => {
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+
+  useEffect(() => {
+    if (activeTab === 'backup' && user) {
+      getBackupHistory('users', user.uid).then(setBackups);
+    }
+  }, [activeTab, user]);
+
+  const handleRollback = async (backupId: string) => {
+    if (!user || !window.confirm('Are you sure you want to restore this version? Current data will be backed up.')) return;
+    setIsRollingBack(true);
+    try {
+      await rollbackDocument('users', user.uid);
+      toast.success('Successfully restored to previous version!');
+      const newHistory = await getBackupHistory('users', user.uid);
+      setBackups(newHistory);
+    } catch (err) {
+      toast.error('Rollback failed. Please try again.');
+    } finally {
+      setIsRollingBack(false);
+    }
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -354,7 +383,7 @@ const Dashboard: React.FC = () => {
       if (!currentData.theme) updatePayload.theme = 'minimal';
       if (!currentData.buttonStyle) updatePayload.buttonStyle = 'rounded';
 
-      const success = await safeWrite('users', user.uid, updatePayload, 'update', user.uid);
+      const success = await safeWrite('users', user.uid, updatePayload, 'update');
       if (success) {
         toast.success('Profile updated');
       }
@@ -371,8 +400,8 @@ const Dashboard: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    if ((type === 'background' || type === 'cover') && !hasAccess('pro')) {
-      checkFeatureAccess('pro', type === 'background' ? 'Custom Background' : 'Cover Image');
+    if (type === 'background' && !hasAccess('pro')) {
+      checkFeatureAccess('pro', 'Custom Background');
       return;
     }
 
@@ -556,6 +585,7 @@ const Dashboard: React.FC = () => {
             { id: 'business', icon: Crown, label: 'Business' },
             { id: 'verification', icon: BadgeCheck, label: 'Verification' },
             { id: 'billing', icon: CreditCard, label: 'Billing' },
+            { id: 'backup', icon: Clock, label: 'Backup' },
             { id: 'analytics', icon: BarChart2, label: 'Analytics' },
             { id: 'settings', icon: Settings, label: 'Settings' }
           ].map((item) => (
@@ -874,13 +904,8 @@ const Dashboard: React.FC = () => {
               <section className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold dark:text-white">Social Icons</h2>
-                  {!hasAccess('pro') && (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                      <Crown className="w-3 h-3" /> PRO
-                    </span>
-                  )}
                 </div>
-                <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${!hasAccess('pro') ? 'opacity-50 pointer-events-none' : ''}`}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
                     { id: 'instagram', icon: Instagram, label: 'Instagram', color: '#E4405F' },
                     { id: 'twitter', icon: Twitter, label: 'Twitter', color: '#1DA1F2' },
@@ -901,6 +926,12 @@ const Dashboard: React.FC = () => {
                     { id: 'github', icon: Github, label: 'GitHub', color: '#181717' },
                     { id: 'twitch', icon: Twitch, label: 'Twitch', color: '#9146FF' },
                     { id: 'snapchat', icon: Ghost, label: 'Snapchat', color: '#FFFC00' },
+                    { id: 'medium', icon: MessageSquare, label: 'Medium', color: '#00ab6c' },
+                    { id: 'behance', icon: ImageIcon, label: 'Behance', color: '#1769ff' },
+                    { id: 'dribbble', icon: Disc, label: 'Dribbble', color: '#ea4c89' },
+                    { id: 'patreon', icon: Star, label: 'Patreon', color: '#f96854' },
+                    { id: 'substack', icon: Send, label: 'Substack', color: '#FF6719' },
+                    { id: 'buymeacoffee', icon: Music, label: 'Buy Me Coffee', color: '#FFDD00' },
                     { id: 'mail', icon: Mail, label: 'Email', color: '#D44638' }
                   ].map((social) => (
                     <div key={social.id} className="space-y-2">
@@ -918,6 +949,63 @@ const Dashboard: React.FC = () => {
                         placeholder={`${social.label} URL or username`}
                       />
                     </div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Layouts Section */}
+              <section className="space-y-6">
+                <h2 className="text-xl font-bold dark:text-white">Profile Layout</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { id: 'list', label: 'Classic List', icon: LinkIcon },
+                    { id: 'grid', label: 'Grid', icon: LayoutGrid },
+                    { id: 'cards', label: 'Big Cards', icon: Square },
+                    { id: 'featured', label: 'Featured First', icon: Star }
+                  ].map((layout) => (
+                    <button
+                      key={layout.id}
+                      onClick={() => handleUpdateProfile({ profileLayout: layout.id as any })}
+                      className={`p-4 rounded-2xl border-2 transition-all text-center space-y-3 ${
+                        (profile.profileLayout || 'list') === layout.id 
+                          ? 'border-lime-400 bg-lime-400/5' 
+                          : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+                      }`}
+                    >
+                      <div className="flex justify-center text-zinc-400">
+                        <layout.icon className="w-6 h-6" />
+                      </div>
+                      <span className="text-sm font-bold dark:text-white">{layout.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* Fonts Section */}
+              <section className="space-y-6">
+                <h2 className="text-xl font-bold dark:text-white">Text Fonts</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { id: 'sans', label: 'Sans-Serif', family: 'font-sans' },
+                    { id: 'serif', label: 'Elegant Serif', family: 'font-serif' },
+                    { id: 'mono', label: 'Mono Code', family: 'font-mono' },
+                    { id: 'display', label: 'Modern Display', family: 'font-display' },
+                    { id: 'modern', label: 'Modern Sans', family: 'font-sans tracking-tight' },
+                    { id: 'elegant', label: 'Cursive Elegant', family: 'font-serif italic' },
+                    { id: 'bold', label: 'Ultra Bold', family: 'font-display font-black uppercase' }
+                  ].map((font) => (
+                    <button
+                      key={font.id}
+                      onClick={() => handleUpdateProfile({ profileFont: font.id as any })}
+                      className={`p-4 rounded-2xl border-2 transition-all text-center space-y-2 ${
+                        (profile.profileFont || 'sans') === font.id 
+                          ? 'border-lime-400 bg-lime-400/5' 
+                          : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
+                      }`}
+                    >
+                      <span className={`text-xl block ${font.family}`}>Abc</span>
+                      <span className="text-xs font-bold text-zinc-500">{font.label}</span>
+                    </button>
                   ))}
                 </div>
               </section>
@@ -1340,6 +1428,81 @@ const Dashboard: React.FC = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'backup' && (
+            <div className="space-y-8">
+              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-6">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold dark:text-white">Profile Versions</h2>
+                  <div className="flex items-center gap-2 text-xs font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">
+                    <Clock className="w-3 h-3" /> AUTO-BACKUP ACTIVE
+                  </div>
+                </div>
+                
+                <p className="text-sm text-zinc-500">
+                  Every time you update your profile, we save a backup. You can restore your profile to any previous version here. 
+                  Note: Restoring will overwrite your current profile data.
+                </p>
+
+                <div className="space-y-4">
+                  {backups.length === 0 ? (
+                    <div className="p-12 text-center text-zinc-500 italic bg-zinc-50 dark:bg-zinc-800/50 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800">
+                      No backups found yet. Start editing your profile to create history.
+                    </div>
+                  ) : (
+                    backups.map((backup, idx) => (
+                      <div key={backup.id} className="flex items-center justify-between p-6 bg-zinc-50 dark:bg-zinc-800 rounded-3xl border border-zinc-100 dark:border-zinc-700 hover:border-lime-400/50 transition-all group">
+                        <div className="flex items-center gap-4">
+                          <div className={cn(
+                            "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
+                            backup.action === 'rollback' ? 'bg-amber-400/10 text-amber-500' : 
+                            backup.action === 'create' ? 'bg-lime-400/10 text-lime-500' : 
+                            'bg-blue-400/10 text-blue-500'
+                          )}>
+                            <Clock className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <div className="font-bold dark:text-white flex items-center gap-2">
+                              {backup.action === 'rollback' ? 'Restored Version' : 
+                               backup.action === 'create' ? 'Initial Creation' : 
+                               `Version ${backups.length - idx}`}
+                              {idx === 0 && <span className="text-[10px] bg-lime-400 text-zinc-950 px-2 py-0.5 rounded-full">LATEST</span>}
+                            </div>
+                            <div className="text-sm text-zinc-500">
+                              {backup.timestamp?.toDate ? format(backup.timestamp.toDate(), 'PPP p') : 'Just now'}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <button 
+                          onClick={() => handleRollback(backup.id!)}
+                          disabled={isRollingBack || idx === 0}
+                          className={cn(
+                            "px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all",
+                            idx === 0 
+                              ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed" 
+                              : "bg-white dark:bg-zinc-700 text-zinc-950 dark:text-white border border-zinc-200 dark:border-zinc-600 hover:bg-lime-400 hover:text-zinc-950 hover:border-lime-400 shadow-sm"
+                          )}
+                        >
+                          {isRollingBack ? 'Restoring...' : 'Restore'}
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+
+              <div className="p-8 bg-amber-50 dark:bg-amber-900/10 rounded-[2.5rem] border border-amber-100 dark:border-amber-900/20">
+                <h3 className="text-amber-700 dark:text-amber-500 font-bold mb-2 flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5" /> Data Recovery Note
+                </h3>
+                <p className="text-sm text-amber-600 dark:text-amber-600/80">
+                  Links and transactions are currently backed up internally but cannot be restored individually through this UI yet. 
+                  Currently, only the main Profile document (Name, Bio, Theme, etc.) supports one-click visual restoration.
+                </p>
               </div>
             </div>
           )}

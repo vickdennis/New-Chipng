@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { User, THEMES } from '../../types';
+import { User, THEMES, FontType } from '../../types';
 import { VerificationBadge } from '../VerificationBadge';
 import { Link2 } from 'lucide-react';
 
@@ -11,12 +11,26 @@ interface ProfileHeaderProps {
 export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile }) => {
   const theme = THEMES[profile.theme];
 
+  const getFontFamily = (font?: FontType) => {
+    switch (font) {
+      case 'serif': return 'font-serif';
+      case 'mono': return 'font-mono';
+      case 'display': return 'font-display';
+      case 'modern': return 'font-sans tracking-tight';
+      case 'elegant': return 'font-serif italic';
+      case 'bold': return 'font-display font-black tracking-tighter uppercase';
+      default: return 'font-sans';
+    }
+  };
+
+  const fontFamily = getFontFamily(profile.profileFont);
+
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      className="flex flex-col items-center text-center w-full px-4 mb-8"
+      className={`flex flex-col items-center text-center w-full px-4 mb-8 ${fontFamily}`}
     >
       {/* Avatar with Glow Effect */}
       <div className="relative mb-6 group">
@@ -38,20 +52,21 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile }) => {
       </div>
 
       {/* Identity */}
-      <div className="flex flex-col items-center gap-1.5">
+      <div className="flex flex-col items-center gap-1">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white drop-shadow-sm">
-            @{profile.username}
-          </h1>
+          {profile.displayName && (
+            <h1 className="text-3xl md:text-4xl font-black text-white drop-shadow-sm">
+              {profile.displayName}
+            </h1>
+          )}
           {profile.isVerified && (
             <VerificationBadge size={22} />
           )}
         </div>
-        {profile.displayName && (
-          <h2 className="text-lg font-medium text-white/90">
-            {profile.displayName}
-          </h2>
-        )}
+        
+        <h2 className="text-lg md:text-xl font-medium text-white/80">
+          @{profile.username}
+        </h2>
       </div>
 
       {/* Bio */}

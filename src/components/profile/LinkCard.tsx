@@ -14,9 +14,10 @@ interface LinkCardProps {
   profile: User;
   onClick: (id: string, url: string) => void;
   index: number;
+  variant?: 'standard' | 'featured' | 'card';
 }
 
-export const LinkCard: React.FC<LinkCardProps> = ({ link, profile, onClick, index }) => {
+export const LinkCard: React.FC<LinkCardProps> = ({ link, profile, onClick, index, variant = 'standard' }) => {
   const theme = THEMES[profile.theme];
   
   const getFavicon = (url: string) => {
@@ -29,6 +30,9 @@ export const LinkCard: React.FC<LinkCardProps> = ({ link, profile, onClick, inde
   };
 
   const btnShape = profile.buttonStyle === 'pill' ? 'rounded-full' : profile.buttonStyle === 'rounded' ? 'rounded-2xl' : 'rounded-none';
+  
+  const isFeatured = variant === 'featured';
+  const isCard = variant === 'card';
 
   return (
     <motion.button
@@ -39,25 +43,33 @@ export const LinkCard: React.FC<LinkCardProps> = ({ link, profile, onClick, inde
         duration: 0.5, 
         ease: [0.16, 1, 0.3, 1] 
       }}
-      whileHover={{ scale: 1.02 }}
+      whileHover={{ scale: isFeatured ? 1.01 : 1.02 }}
       whileTap={{ scale: 0.98 }}
       onClick={() => onClick(link.id, link.url)}
       className={cn(
-        "group relative w-full p-4 md:p-5 flex items-center justify-between",
+        "group relative w-full flex items-center justify-between",
+        isFeatured ? "p-8 md:p-10 flex-col gap-6 text-center h-48 md:h-64 justify-center" : "p-4 md:p-5",
         "bg-white/10 hover:bg-white/15 backdrop-blur-xl",
         "border border-white/20 shadow-xl",
+        (isCard || isFeatured) ? "shadow-2xl shadow-black/20" : "",
         "transition-all duration-300 ease-out",
         btnShape,
-        theme.buttonText // Usually text-white in dark mode LinkMe style
+        theme.buttonText
       )}
     >
-      <div className="flex items-center gap-4 flex-1">
+      <div className={cn(
+        "flex items-center gap-4 flex-1",
+        isFeatured ? "flex-col w-full" : ""
+      )}>
         {/* Favicon Container */}
-        <div className="w-10 h-10 rounded-xl bg-black/20 flex items-center justify-center overflow-hidden flex-shrink-0 group-hover:scale-110 transition-transform">
+        <div className={cn(
+          "rounded-xl bg-black/20 flex items-center justify-center overflow-hidden flex-shrink-0 group-hover:scale-110 transition-transform",
+          isFeatured ? "w-16 h-16 md:w-20 md:h-20" : "w-10 h-10"
+        )}>
           <img 
             src={link.icon || getFavicon(link.url) || ''} 
             alt="" 
-            className="w-6 h-6 object-contain"
+            className={isFeatured ? "w-10 h-10 md:w-12 md:h-12" : "w-6 h-6 object-contain"}
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).style.display = 'none';
             }}
@@ -66,15 +78,20 @@ export const LinkCard: React.FC<LinkCardProps> = ({ link, profile, onClick, inde
         </div>
         
         {/* Title */}
-        <span className="text-lg md:text-xl font-bold text-white tracking-tight text-left truncate pr-4">
+        <span className={cn(
+          "font-bold text-white tracking-tight truncate",
+          isFeatured ? "text-2xl md:text-3xl font-black italic" : "text-lg md:text-xl text-left pr-4"
+        )}>
           {link.title}
         </span>
       </div>
 
-      {/* Right Icon */}
-      <div className="flex-shrink-0 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
-        <ChevronRight className="w-6 h-6 text-white" />
-      </div>
+      {/* Right Icon - Hide in featured */}
+      {!isFeatured && (
+        <div className="flex-shrink-0 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
+          <ChevronRight className="w-6 h-6 text-white" />
+        </div>
+      )}
 
       {/* Subtle Shine Effect on Hover */}
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-500"></div>

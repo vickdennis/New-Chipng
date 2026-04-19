@@ -1,8 +1,11 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Playfair+Display:wght@400;700;900&family=JetBrains+Mono:wght@400;700;800&family=Outfit:wght@400;700;900&family=Space+Grotesk:wght@400;700&family=Fraunces:wght@400;700;900&family=Plus+Jakarta+Sans:wght@400;700;800&display=swap');
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", "Fraunces", serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-display: "Outfit", "Space Grotesk", sans-serif;
 }
 
 @variant dark (&:where(.dark, .dark *));

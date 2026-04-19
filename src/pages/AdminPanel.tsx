@@ -22,13 +22,13 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { rollbackDocument, BackupDocument, safeWrite, createBackup } from '../services/backupService';
+import { rollbackDocument, BackupData, safeWrite, createBackup } from '../services/backupService';
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [backups, setBackups] = useState<BackupDocument[]>([]);
+  const [backups, setBackups] = useState<BackupData[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'users' | 'revenue' | 'brand' | 'blog' | 'shop' | 'backups'>('users');
@@ -107,7 +107,7 @@ const AdminPanel: React.FC = () => {
     const backupsUnsub = onSnapshot(
       query(collection(db, `${backupCollection}_backup`), orderBy('timestamp', 'desc'), limit(50)), 
       (snapshot) => {
-        setBackups(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BackupDocument)));
+        setBackups(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BackupData)));
       }
     );
 
@@ -120,7 +120,7 @@ const AdminPanel: React.FC = () => {
 
   const handleToggleStatus = async (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    const success = await safeWrite('users', userId, { status: newStatus }, 'update', user?.uid);
+    const success = await safeWrite('users', userId, { status: newStatus }, 'update');
     if (success) {
       toast.success(`User ${newStatus === 'active' ? 'activated' : 'suspended'}`);
     }
@@ -132,7 +132,7 @@ const AdminPanel: React.FC = () => {
       plan: newPlan,
       isPremium: isPremium,
       subscriptionStatus: isPremium ? 'active' : 'inactive'
-    }, 'update', user?.uid);
+    }, 'update');
     
     if (success) {
       toast.success(`User upgraded to ${newPlan.toUpperCase()}`);
@@ -159,7 +159,7 @@ const AdminPanel: React.FC = () => {
   };
 
   const handleToggleVerify = async (userId: string, currentStatus: boolean) => {
-    const success = await safeWrite('users', userId, { isVerified: !currentStatus }, 'update', user?.uid);
+    const success = await safeWrite('users', userId, { isVerified: !currentStatus }, 'update');
     if (success) {
       toast.success(`User ${!currentStatus ? 'verified' : 'unverified'}`);
     }
@@ -167,7 +167,7 @@ const AdminPanel: React.FC = () => {
 
   const handleRollback = async (collectionName: string, originalId: string) => {
     if (!window.confirm(`Rollback this document to this version?`)) return;
-    const success = await rollbackDocument(collectionName, originalId, user?.uid);
+    const success = await rollbackDocument(collectionName, originalId);
     if (success) {
       toast.success('Rollback successful');
     }
@@ -254,7 +254,7 @@ const AdminPanel: React.FC = () => {
   const handleSaveUser = async (userId: string, data: Partial<User>) => {
     try {
       // Create backup before batch operation
-      await createBackup('users', userId, 'update', user?.uid);
+      await createBackup('users', userId, 'update');
 
       // Sanitize data for updateDoc - remove fields that shouldn't be in the document body
       const { uid, id, ...updateData } = data as any;
@@ -358,11 +358,11 @@ const AdminPanel: React.FC = () => {
     try {
       if (editingProduct) {
         const { id, ...updateData } = productForm as any;
-        const success = await safeWrite('products', editingProduct.id, updateData, 'update', user?.uid);
+        const success = await safeWrite('products', editingProduct.id, updateData, 'update');
         if (success) toast.success('Product updated');
       } else {
         const { id, ...newData } = productForm as any;
-        const success = await safeWrite('products', null, newData, 'create', user?.uid);
+        const success = await safeWrite('products', null as any, newData, 'create');
         if (success) toast.success('Product added');
       }
       setIsAddingProduct(false);
@@ -375,7 +375,7 @@ const AdminPanel: React.FC = () => {
 
   const handleDeleteProduct = async (id: string) => {
     if (!window.confirm('Delete this product?')) return;
-    const success = await safeWrite('products', id, null, 'delete', user?.uid);
+    const success = await safeWrite('products', id, null, 'delete');
     if (success) {
       toast.success('Product deleted');
     }

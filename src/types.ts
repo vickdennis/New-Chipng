@@ -3,6 +3,8 @@ export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset'
 export type ButtonStyle = 'rounded' | 'pill' | 'square';
 export type BackgroundType = 'solid' | 'gradient' | 'image';
 export type PlanType = 'basic' | 'pro' | 'business';
+export type LayoutType = 'list' | 'grid' | 'cards' | 'featured';
+export type FontType = 'sans' | 'serif' | 'mono' | 'display' | 'modern' | 'elegant' | 'bold';
 
 export interface Product {
   id: string;
@@ -48,6 +50,8 @@ export interface User {
   phone?: string;
   address?: string;
   contactEmail?: string;
+  profileLayout?: LayoutType;
+  profileFont?: FontType;
   location?: {
     lat: number;
     lng: number;

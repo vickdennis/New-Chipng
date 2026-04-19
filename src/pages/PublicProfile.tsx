@@ -205,17 +205,28 @@ const PublicProfile: React.FC = () => {
         {/* Global Social Links Horizontal Rail */}
         <SocialRail profile={profile} />
 
-        {/* Vertical Links Stack */}
-        <div className="w-full space-y-4">
-          {links.map((link, i) => (
-            <LinkCard 
-              key={link.id}
-              link={link}
-              profile={profile}
-              index={i}
-              onClick={handleLinkClick}
-            />
-          ))}
+        {/* Dynamic Links Layout */}
+        <div className={`w-full ${
+          profile.profileLayout === 'grid' 
+            ? 'grid grid-cols-2 gap-4' 
+            : profile.profileLayout === 'cards'
+            ? 'space-y-6'
+            : 'space-y-4'
+        }`}>
+          {links.map((link, i) => {
+            const isFeatured = profile.profileLayout === 'featured' && i === 0;
+            return (
+              <div key={link.id} className={isFeatured ? 'col-span-full' : ''}>
+                <LinkCard 
+                  link={link}
+                  profile={profile}
+                  index={i}
+                  onClick={handleLinkClick}
+                  variant={isFeatured ? 'featured' : profile.profileLayout === 'cards' ? 'card' : 'standard'}
+                />
+              </div>
+            );
+          })}
         </div>
 
         {/* Extra Sections (Map, Bookings) */}
