@@ -11,19 +11,19 @@ interface TourStep {
 
 const TOUR_STEPS: TourStep[] = [
   {
-    targetId: 'tour-links',
+    targetId: 'tour-content-links',
     title: 'Links Management',
     content: 'Manage your social media links here. You can add, edit, or remove links to your profile.',
     position: 'bottom'
   },
   {
-    targetId: 'tour-appearance',
+    targetId: 'tour-content-appearance',
     title: 'Customize Your Look',
     content: 'Change your theme, background, and now your text colors to match your personal brand.',
     position: 'bottom'
   },
   {
-    targetId: 'tour-analytics',
+    targetId: 'tour-content-analytics',
     title: 'Track Performance',
     content: 'See how many people are visiting your profile and which links they are clicking.',
     position: 'bottom'
@@ -51,6 +51,21 @@ interface DashboardTourProps {
 export const DashboardTour: React.FC<DashboardTourProps> = ({ onFinish, show, onStepChange }) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      // Re-calculate target rect on resize
+      const target = document.getElementById(TOUR_STEPS[currentStep].targetId);
+      if (target) {
+        setTargetRect(target.getBoundingClientRect());
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [currentStep]);
 
   useEffect(() => {
     if (show) {
@@ -85,7 +100,6 @@ export const DashboardTour: React.FC<DashboardTourProps> = ({ onFinish, show, on
   if (!show) return null;
 
   const step = TOUR_STEPS[currentStep];
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
   const getPosition = () => {
     if (!targetRect || isMobile) {

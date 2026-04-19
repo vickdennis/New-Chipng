@@ -606,7 +606,7 @@ const Dashboard: React.FC = () => {
           ].map((item) => (
             <button
               key={item.id}
-              id={`tour-${item.id}`}
+              id={`tour-nav-${item.id}`}
               onClick={() => setActiveTab(item.id as any)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                 activeTab === item.id 
@@ -704,7 +704,7 @@ const Dashboard: React.FC = () => {
           </div>
 
           {activeTab === 'links' && (
-            <div id="tour-links" className="space-y-6">
+            <div id="tour-content-links" className="space-y-6">
               <button 
                 onClick={handleAddLink}
                 className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-lime-300 transition-all shadow-lg shadow-lime-400/20"
@@ -734,7 +734,7 @@ const Dashboard: React.FC = () => {
           )}
 
           {activeTab === 'appearance' && profile && (
-            <div id="tour-appearance" className="space-y-12">
+            <div id="tour-content-appearance" className="space-y-12">
               {/* Profile Section */}
               <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
                 <h2 className="text-xl font-bold dark:text-white">Profile</h2>
@@ -1386,7 +1386,7 @@ const Dashboard: React.FC = () => {
           )}
 
           {activeTab === 'analytics' && (
-            <div id="tour-analytics" className="space-y-8">
+            <div id="tour-content-analytics" className="space-y-8">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800">
                   <div className="flex items-center justify-between mb-4">
@@ -1675,9 +1675,9 @@ const Dashboard: React.FC = () => {
           localStorage.setItem('hasSeenTour', 'true');
         }} 
         onStepChange={(targetId) => {
-          if (targetId === 'tour-links') setActiveTab('links');
-          if (targetId === 'tour-appearance') setActiveTab('appearance');
-          if (targetId === 'tour-analytics') setActiveTab('analytics');
+          if (targetId === 'tour-content-links') setActiveTab('links');
+          if (targetId === 'tour-content-appearance') setActiveTab('appearance');
+          if (targetId === 'tour-content-analytics') setActiveTab('analytics');
         }}
       />
     </div>
