@@ -55,7 +55,13 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
   
-  const aiRef = useRef(new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }));
+  const getAI = () => {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) {
+      throw new Error('GEMINI_API_KEY is not defined in the environment.');
+    }
+    return new GoogleGenAI({ apiKey: key });
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -110,7 +116,8 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
         }
       }
 
-      const response = await aiRef.current.models.generateContent({
+      const ai = getAI();
+      const response = await ai.models.generateContent({
         model: "gemini-3-flash-tts-preview",
         contents: [{ parts: [{ text }] }],
         config: {
@@ -297,7 +304,8 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
       Current Links: ${JSON.stringify(links)}
       `;
 
-      const response = await aiRef.current.models.generateContent({
+      const ai = getAI();
+      const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: [
           { role: 'user', parts: [{ text: `CONTEXT: ${currentContext}` }] },
