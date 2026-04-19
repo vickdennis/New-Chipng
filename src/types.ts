@@ -115,7 +115,6 @@ export interface ThemeConfig {
   button: string;
   buttonText: string;
   accent: string;
-  animation?: string;
 }
 
 export interface BlogPost {
@@ -152,7 +151,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-black border-2 border-[#39FF14] hover:bg-[#39FF14] hover:text-black shadow-[0_0_15px_#39FF14]',
     buttonText: 'text-[#39FF14] font-bold',
     accent: 'bg-[#39FF14]',
-    animation: 'neon-flicker',
   },
   glassmorphism: {
     name: 'glassmorphism',
@@ -161,7 +159,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30',
     buttonText: 'text-white',
     accent: 'bg-white',
-    animation: 'gradient-move',
   },
   dark: {
     name: 'dark',
@@ -178,7 +175,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20',
     buttonText: 'text-white',
     accent: 'bg-orange-200',
-    animation: 'sunset-shimmer',
   },
   ocean: {
     name: 'ocean',
@@ -187,7 +183,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30',
     buttonText: 'text-white',
     accent: 'bg-cyan-200',
-    animation: 'ocean-waves',
   },
   forest: {
     name: 'forest',
@@ -196,7 +191,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20',
     buttonText: 'text-white',
     accent: 'bg-emerald-200',
-    animation: 'leaf-sway',
   },
   royal: {
     name: 'royal',
@@ -205,7 +199,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-zinc-900/10 backdrop-blur-md border border-zinc-900/20 hover:bg-zinc-900/20',
     buttonText: 'text-zinc-900',
     accent: 'bg-amber-900',
-    animation: 'gold-glimmer',
   },
   coffee: {
     name: 'coffee',
@@ -214,7 +207,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-stone-800 border border-stone-600 hover:bg-stone-700',
     buttonText: 'text-stone-100',
     accent: 'bg-orange-200',
-    animation: 'steam-rise',
   },
   midnight: {
     name: 'midnight',
@@ -223,7 +215,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700',
     buttonText: 'text-zinc-100',
     accent: 'bg-blue-500',
-    animation: 'star-twinkle',
   },
   lavender: {
     name: 'lavender',
@@ -232,7 +223,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-white/50 backdrop-blur-sm border border-indigo-300 hover:bg-white/80',
     buttonText: 'text-indigo-900',
     accent: 'bg-indigo-500',
-    animation: 'soft-float',
   },
   emerald: {
     name: 'emerald',
@@ -241,7 +231,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-emerald-800 border border-emerald-700 hover:bg-emerald-700',
     buttonText: 'text-emerald-50',
     accent: 'bg-lime-400',
-    animation: 'gem-pulse',
   },
   cyberpunk: {
     name: 'cyberpunk',
@@ -250,7 +239,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-black border-2 border-yellow-400 hover:bg-yellow-400 hover:text-black',
     buttonText: 'text-yellow-400',
     accent: 'bg-fuchsia-500',
-    animation: 'glitch-static',
   },
   retro: {
     name: 'retro',
@@ -259,7 +247,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#d6ad60] border-2 border-[#b68d40] hover:bg-[#b68d40] hover:text-[#f4ebd0]',
     buttonText: 'text-[#f4ebd0]',
     accent: 'bg-[#122620]',
-    animation: 'grain-distort',
   },
   nordic: {
     name: 'nordic',
@@ -268,7 +255,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#4c566a] hover:bg-[#5e81ac]',
     buttonText: 'text-[#eceff4]',
     accent: 'bg-[#88c0d0]',
-    animation: 'snow-fall',
   },
   sakura: {
     name: 'sakura',
@@ -277,7 +263,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-white/60 backdrop-blur-sm border border-rose-300 hover:bg-rose-100',
     buttonText: 'text-rose-900',
     accent: 'bg-rose-400',
-    animation: 'sakura-drift',
   },
   gold: {
     name: 'gold',
@@ -286,7 +271,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-zinc-900 border border-amber-500/50 hover:border-amber-500 hover:bg-amber-500/10',
     buttonText: 'text-amber-500',
     accent: 'bg-amber-500',
-    animation: 'aurora-gold',
   },
   brutalist: {
     name: 'brutalist',
@@ -295,7 +279,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all',
     buttonText: 'text-black font-black italic',
     accent: 'bg-[#0336ff]',
-    animation: 'jitter-move',
   },
   clay: {
     name: 'clay',
@@ -304,7 +287,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#e0e5ec] shadow-[9px_9px_16px_rgb(163,177,198,0.6),-9px_-9px_16px_rgba(255,255,255,0.5)] rounded-2xl hover:shadow-[inset_9px_9px_16px_rgb(163,177,198,0.6),inset_-9px_-9px_16px_rgba(255,255,255,0.5)]',
     buttonText: 'text-zinc-600',
     accent: 'bg-blue-400',
-    animation: 'morph-clay',
   },
   matrix: {
     name: 'matrix',
@@ -313,7 +295,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-black border border-[#00FF41] hover:bg-[#00FF41]/10 shadow-[0_0_10px_#00FF41]',
     buttonText: 'text-[#00FF41] font-mono',
     accent: 'bg-[#003B00]',
-    animation: 'code-rain',
   },
   vibrant: {
     name: 'vibrant',
@@ -322,7 +303,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30 transition-all',
     buttonText: 'text-white font-bold',
     accent: 'bg-yellow-400',
-    animation: 'color-flow',
   },
   pastel: {
     name: 'pastel',
@@ -331,7 +311,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#ff9aa2] hover:bg-[#ffb7b2] rounded-2xl shadow-lg shadow-rose-200/50',
     buttonText: 'text-white font-medium',
     accent: 'bg-[#b2e2f2]',
-    animation: 'soft-pulse',
   },
   monochrome: {
     name: 'monochrome',
@@ -348,7 +327,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#005f73] hover:bg-[#0a9396] border border-[#94d2bd]/30',
     buttonText: 'text-[#e9d8a6]',
     accent: 'bg-[#ee9b00]',
-    animation: 'bubble-float',
   },
   'minimalist-dark': {
     name: 'minimalist-dark',
@@ -365,7 +343,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#d2b48c] hover:bg-[#c19a6b] rounded-full shadow-md',
     buttonText: 'text-[#5d2e0a] font-bold',
     accent: 'bg-[#cd853f]',
-    animation: 'sand-drift',
   },
   galaxy: {
     name: 'galaxy',
@@ -374,7 +351,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#0f3460] border border-[#e94560]/50 hover:border-[#e94560] shadow-[0_0_15px_rgba(233,69,96,0.3)]',
     buttonText: 'text-white',
     accent: 'bg-[#e94560]',
-    animation: 'nebula-swirl',
   },
   candy: {
     name: 'candy',
@@ -383,7 +359,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-white/80 hover:bg-white rounded-full shadow-lg shadow-pink-200/50',
     buttonText: 'text-[#ff4d6d] font-black',
     accent: 'bg-[#ff4d6d]',
-    animation: 'sugar-gloss',
   },
   industrial: {
     name: 'industrial',
@@ -392,7 +367,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#34495e] border-b-4 border-[#2c3e50] hover:border-b-2 hover:translate-y-[2px] active:border-b-0 active:translate-y-[4px]',
     buttonText: 'text-white font-mono uppercase',
     accent: 'bg-[#e74c3c]',
-    animation: 'cog-rotate',
   },
   vintage: {
     name: 'vintage',
@@ -401,7 +375,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#8d6e63] hover:bg-[#795548] rounded-sm shadow-[4px_4px_0px_#5d4037]',
     buttonText: 'text-[#fdf5e6] font-serif',
     accent: 'bg-[#5d4037]',
-    animation: 'dust-specks',
   },
   aqua: {
     name: 'aqua',
@@ -410,7 +383,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#00acc1] hover:bg-[#0097a7] rounded-3xl shadow-inner',
     buttonText: 'text-white',
     accent: 'bg-[#006064]',
-    animation: 'water-ripple',
   },
   'midnight-purple': {
     name: 'midnight-purple',
@@ -419,7 +391,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#7a04eb] hover:bg-[#ff00ff] hover:text-white border border-[#ff00ff]/50 shadow-[0_0_15px_rgba(122,4,235,0.4)]',
     buttonText: 'text-white font-bold',
     accent: 'bg-[#ff00ff]',
-    animation: 'neon-pulse-purple',
   },
   'ocean-deep': {
     name: 'ocean-deep',
@@ -428,7 +399,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#002b5b] border border-[#00d4ff]/30 hover:border-[#00d4ff] hover:bg-[#003b7b]',
     buttonText: 'text-[#00d4ff]',
     accent: 'bg-[#00d4ff]',
-    animation: 'abyssal-glow',
   },
   'sunset-vibe': {
     name: 'sunset-vibe',
@@ -437,7 +407,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-white/20 backdrop-blur-md border border-white/40 hover:bg-white/30',
     buttonText: 'text-white font-black',
     accent: 'bg-yellow-400',
-    animation: 'horizon-glow',
   },
   'minimalist-light': {
     name: 'minimalist-light',
@@ -454,7 +423,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#ff006e] text-white hover:bg-[#ff006e]/80 shadow-[0_0_20px_rgba(255,0,110,0.5)]',
     buttonText: 'text-white font-black',
     accent: 'bg-[#3a86ff]',
-    animation: 'cyber-glitch',
   },
   'nature-green': {
     name: 'nature-green',
@@ -463,7 +431,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#2d5a27] text-white hover:bg-[#3d7a35] rounded-full',
     buttonText: 'text-white',
     accent: 'bg-[#8ab6d6]',
-    animation: 'breeze-sway',
   },
   'royal-gold': {
     name: 'royal-gold',
@@ -472,7 +439,6 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-[#d4af37] text-black hover:bg-[#f1c40f] border-2 border-[#d4af37]',
     buttonText: 'text-black font-serif font-bold',
     accent: 'bg-[#d4af37]',
-    animation: 'regal-shimmer',
   },
   'stealth-black': {
     name: 'stealth-black',
@@ -481,6 +447,5 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-zinc-900 border border-zinc-800 hover:bg-zinc-800',
     buttonText: 'text-zinc-400',
     accent: 'bg-white',
-    animation: 'shadow-drift',
   },
 };

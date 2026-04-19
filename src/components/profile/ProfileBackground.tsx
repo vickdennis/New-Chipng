@@ -11,7 +11,7 @@ export const ProfileBackground: React.FC<ProfileBackgroundProps> = ({ profile })
   return (
     <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
       {/* Base Theme Background */}
-      <div className={`absolute inset-0 ${theme.background} ${theme.animation || ''}`} />
+      <div className={`absolute inset-0 ${theme.background}`} />
       
       {/* Custom Image Background (Pro/Premium Feature) */}
       {profile.backgroundType === 'image' && profile.backgroundImage && (
