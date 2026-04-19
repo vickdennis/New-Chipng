@@ -375,7 +375,7 @@ const Dashboard: React.FC = () => {
       // but required by security rules. We fetch the current doc to be sure.
       const userRef = doc(db, 'users', user.uid);
       const currentDoc = await getDoc(userRef);
-      const currentData = currentDoc.data() as UserType;
+      const currentData = (currentDoc.exists() ? currentDoc.data() : {}) as UserType;
 
       // Merge with default values if missing (for legacy users)
       const updatePayload: any = { ...data };
@@ -717,11 +717,6 @@ const Dashboard: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-medium text-zinc-500">Cover Image</label>
-                    {!hasAccess('pro') && (
-                      <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
-                        <Crown className="w-2.5 h-2.5" /> PRO
-                      </span>
-                    )}
                   </div>
                   <div className="relative group h-32 w-full bg-zinc-100 dark:bg-zinc-800 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
                     {profile.coverImage ? (

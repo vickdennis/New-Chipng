@@ -128,7 +128,7 @@ service cloud.firestore {
              (!('role' in data) || data.role in ['user', 'admin']) &&
              (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
              (!('username' in data) || (data.username is string && data.username.size() >= 3 && data.username.size() <= 30)) &&
-             (!('theme' in data) || data.theme in ['minimal', 'neon', 'glassmorphism', 'dark', 'sunset', 'ocean', 'forest', 'royal', 'coffee', 'midnight', 'lavender', 'emerald', 'cyberpunk', 'retro', 'nordic', 'sakura', 'gold', 'brutalist', 'clay', 'matrix', 'vibrant', 'pastel', 'monochrome', 'deepsea', 'minimalist-dark', 'desert']) &&
+             (!('theme' in data) || data.theme in ['minimal', 'neon', 'glassmorphism', 'dark', 'sunset', 'ocean', 'forest', 'royal', 'coffee', 'midnight', 'lavender', 'emerald', 'cyberpunk', 'retro', 'nordic', 'sakura', 'gold', 'brutalist', 'clay', 'matrix', 'vibrant', 'pastel', 'monochrome', 'deepsea', 'minimalist-dark', 'desert', 'galaxy', 'candy', 'industrial', 'vintage', 'aqua', 'midnight-purple', 'ocean-deep', 'sunset-vibe', 'minimalist-light', 'cyber-pink', 'nature-green', 'royal-gold', 'stealth-black']) &&
              (!('buttonStyle' in data) || data.buttonStyle in ['rounded', 'pill', 'square']) &&
              (!('backgroundType' in data) || data.backgroundType in ['solid', 'gradient', 'image']);
     }
@@ -159,7 +159,7 @@ service cloud.firestore {
              data.collectionName is string &&
              data.data is map &&
              data.action in ['create', 'update', 'delete', 'rollback'] &&
-             data.timestamp is string &&
+             (data.timestamp is string || data.timestamp is timestamp) &&
              data.performedBy is string;
     }
 
@@ -208,7 +208,8 @@ service cloud.firestore {
     }
 
     match /users_backup/{backupId} {
-      allow read, write: if isAdmin() && isValidBackup(request.resource.data);
+      allow read: if isAdmin();
+      allow create: if (isAuthenticated() && request.resource.data.performedBy == request.auth.uid && isValidBackup(request.resource.data)) || isAdmin();
     }
 
     match /transactions/{transactionId} {
@@ -221,7 +222,8 @@ service cloud.firestore {
     }
 
     match /links_backup/{backupId} {
-      allow read, write: if isAdmin() && isValidBackup(request.resource.data);
+      allow read: if isAdmin();
+      allow create: if (isAuthenticated() && request.resource.data.performedBy == request.auth.uid && isValidBackup(request.resource.data)) || isAdmin();
     }
   }
 }

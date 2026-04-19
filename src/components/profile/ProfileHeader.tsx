@@ -30,10 +30,23 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile }) => {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      className={`flex flex-col items-center text-center w-full px-4 mb-8 ${fontFamily}`}
+      className={`flex flex-col items-center text-center w-full mb-8 relative ${fontFamily}`}
     >
+      {/* Cover Image */}
+      {profile.coverImage && (
+        <div className="absolute top-[-64px] left-[-24px] right-[-24px] h-48 md:h-64 z-0 overflow-hidden rounded-b-[3rem]">
+          <img 
+            src={profile.coverImage} 
+            alt="Cover" 
+            className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
+        </div>
+      )}
+
       {/* Avatar with Glow Effect */}
-      <div className="relative mb-6 group">
+      <div className={`relative mb-6 group ${profile.coverImage ? 'mt-32 md:mt-44' : ''}`}>
         <div className="absolute -inset-1 bg-gradient-to-r from-lime-400 to-emerald-500 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
         <div className="relative w-28 h-28 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-white inline-block shadow-2xl">
           {profile.photoURL ? (
