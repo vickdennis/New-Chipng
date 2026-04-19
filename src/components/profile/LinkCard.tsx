@@ -54,8 +54,9 @@ export const LinkCard: React.FC<LinkCardProps> = ({ link, profile, onClick, inde
         (isCard || isFeatured) ? "shadow-2xl shadow-black/20" : "",
         "transition-all duration-300 ease-out",
         btnShape,
-        theme.buttonText
+        !profile.textColor && theme.buttonText
       )}
+      style={profile.textColor ? { color: profile.textColor } : {}}
     >
       <div className={cn(
         "flex items-center gap-4 flex-1",
@@ -78,10 +79,14 @@ export const LinkCard: React.FC<LinkCardProps> = ({ link, profile, onClick, inde
         </div>
         
         {/* Title */}
-        <span className={cn(
-          "font-bold text-white tracking-tight truncate",
-          isFeatured ? "text-2xl md:text-3xl font-black italic" : "text-lg md:text-xl text-left pr-4"
-        )}>
+        <span 
+          className={cn(
+            "font-bold tracking-tight truncate",
+            !profile.textColor && "text-white",
+            isFeatured ? "text-2xl md:text-3xl font-black italic" : "text-lg md:text-xl text-left pr-4"
+          )}
+          style={profile.textColor ? { color: profile.textColor } : {}}
+        >
           {link.title}
         </span>
       </div>
@@ -89,7 +94,10 @@ export const LinkCard: React.FC<LinkCardProps> = ({ link, profile, onClick, inde
       {/* Right Icon - Hide in featured */}
       {!isFeatured && (
         <div className="flex-shrink-0 opacity-40 group-hover:opacity-100 group-hover:translate-x-1 transition-all">
-          <ChevronRight className="w-6 h-6 text-white" />
+          <ChevronRight 
+            className="w-6 h-6" 
+            style={profile.textColor ? { color: profile.textColor } : { color: 'white' }}
+          />
         </div>
       )}
 

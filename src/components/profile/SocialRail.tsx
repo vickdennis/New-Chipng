@@ -194,7 +194,8 @@ export const SocialRail: React.FC<SocialRailProps> = ({ profile }) => {
               rel="noopener noreferrer"
               whileHover={{ scale: 1.15, y: -2 }}
               whileTap={{ scale: 0.9 }}
-              className={`p-3 text-white/50 transition-colors duration-300 ${social.color} bg-white/5 hover:bg-white/10 rounded-full`}
+              className={`p-3 transition-colors duration-300 ${social.color} bg-white/5 hover:bg-white/10 rounded-full`}
+              style={profile.textColor ? { color: profile.textColor, opacity: 0.6 } : { color: 'rgba(255, 255, 255, 0.5)' }}
             >
               <social.icon />
             </motion.a>

@@ -20,7 +20,7 @@ import {
   Plus, Trash2, GripVertical, Eye, EyeOff, Image as ImageIcon,
   LogOut, ExternalLink, Copy, Check, Moon, Sun, Palette,
   Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash,
-  CreditCard, Calendar, LayoutGrid, Star, Square, AlertCircle
+  CreditCard, Calendar, LayoutGrid, Star, Square, AlertCircle, Lightbulb
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -39,6 +39,7 @@ import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
 import { prepareFlutterwaveConfig, getFlutterwavePublicKey } from '../utils/flutterwave';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { safeWrite, getBackupHistory, rollbackDocument, BackupData } from '../services/backupService';
+import { DashboardTour } from '../components/DashboardTour';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -209,9 +210,18 @@ const Dashboard: React.FC = () => {
     bio: '',
     contactEmail: '',
     phone: '',
-    address: ''
+    address: '',
+    textColor: ''
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+
+  useEffect(() => {
+    const hasSeenTour = localStorage.getItem('hasSeenTour');
+    if (!hasSeenTour) {
+      setShowTour(true);
+    }
+  }, []);
   const [links, setLinks] = useState<Link[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup'>('links');
@@ -265,7 +275,8 @@ const Dashboard: React.FC = () => {
           bio: data.bio || '',
           phone: data.phone || '',
           address: data.address || '',
-          contactEmail: data.contactEmail || ''
+          contactEmail: data.contactEmail || '',
+          textColor: data.textColor || ''
         });
       }
     }, (error) => {
@@ -591,6 +602,7 @@ const Dashboard: React.FC = () => {
           ].map((item) => (
             <button
               key={item.id}
+              id={`tour-${item.id}`}
               onClick={() => setActiveTab(item.id as any)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                 activeTab === item.id 
@@ -616,6 +628,14 @@ const Dashboard: React.FC = () => {
             <LogOut className="w-5 h-5" />
             Logout
           </button>
+          
+          <button 
+            onClick={() => setShowTour(true)}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all font-medium mt-2"
+          >
+            <Lightbulb className="w-5 h-5" />
+            Start Tour
+          </button>
         </div>
       </aside>
 
@@ -629,6 +649,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="flex items-center gap-3">
               <button 
+                id="tour-share"
                 onClick={copyLink}
                 className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
               >
@@ -678,7 +699,7 @@ const Dashboard: React.FC = () => {
           </div>
 
           {activeTab === 'links' && (
-            <div className="space-y-6">
+            <div id="tour-links" className="space-y-6">
               <button 
                 onClick={handleAddLink}
                 className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-lime-300 transition-all shadow-lg shadow-lime-400/20"
@@ -708,7 +729,7 @@ const Dashboard: React.FC = () => {
           )}
 
           {activeTab === 'appearance' && profile && (
-            <div className="space-y-12">
+            <div id="tour-appearance" className="space-y-12">
               {/* Profile Section */}
               <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
                 <h2 className="text-xl font-bold dark:text-white">Profile</h2>
@@ -820,6 +841,33 @@ const Dashboard: React.FC = () => {
                           className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
                           placeholder="Your location"
                         />
+                      </div>
+
+                      <div className="md:col-span-2 space-y-2">
+                        <label className="text-sm font-medium text-zinc-500">Custom Text Color</label>
+                        <div className="flex items-center gap-4">
+                          <input 
+                            type="color" 
+                            value={profileForm.textColor || '#000000'}
+                            onChange={(e) => setProfileForm({ ...profileForm, textColor: e.target.value })}
+                            className="w-12 h-12 rounded-lg cursor-pointer border-2 border-zinc-200 dark:border-zinc-700"
+                          />
+                          <input 
+                            type="text"
+                            value={profileForm.textColor || ''}
+                            onChange={(e) => setProfileForm({ ...profileForm, textColor: e.target.value })}
+                            className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                            placeholder="#HEX Color"
+                          />
+                          {profileForm.textColor && (
+                            <button 
+                              onClick={() => setProfileForm({ ...profileForm, textColor: '' })}
+                              className="text-xs text-rose-500 hover:underline"
+                            >
+                              Reset
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <button 
@@ -1333,7 +1381,7 @@ const Dashboard: React.FC = () => {
           )}
 
           {activeTab === 'analytics' && (
-            <div className="space-y-8">
+            <div id="tour-analytics" className="space-y-8">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800">
                   <div className="flex items-center justify-between mb-4">
@@ -1579,6 +1627,14 @@ const Dashboard: React.FC = () => {
         onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
         requiredPlan={upgradeModal.requiredPlan}
         featureName={upgradeModal.featureName}
+      />
+
+      <DashboardTour 
+        show={showTour} 
+        onFinish={() => {
+          setShowTour(false);
+          localStorage.setItem('hasSeenTour', 'true');
+        }} 
       />
     </div>
   );

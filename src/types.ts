@@ -52,6 +52,7 @@ export interface User {
   contactEmail?: string;
   profileLayout?: LayoutType;
   profileFont?: FontType;
+  textColor?: string;
   location?: {
     lat: number;
     lng: number;

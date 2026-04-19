@@ -25,12 +25,15 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile }) => {
 
   const fontFamily = getFontFamily(profile.profileFont);
 
+  const customTextColor = profile.textColor || '';
+
   return (
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
       className={`flex flex-col items-center text-center w-full mb-8 relative ${fontFamily}`}
+      style={customTextColor ? { color: customTextColor } : {}}
     >
       {/* Cover Image */}
       {profile.coverImage && (
@@ -68,7 +71,10 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile }) => {
       <div className="flex flex-col items-center gap-1">
         <div className="flex items-center gap-2">
           {profile.displayName && (
-            <h1 className="text-3xl md:text-4xl font-black text-white drop-shadow-sm">
+            <h1 
+              className={`text-3xl md:text-4xl font-black ${!customTextColor ? 'text-white drop-shadow-sm' : ''}`}
+              style={customTextColor ? { color: customTextColor } : {}}
+            >
               {profile.displayName}
             </h1>
           )}
@@ -77,7 +83,10 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile }) => {
           )}
         </div>
         
-        <h2 className="text-lg md:text-xl font-medium text-white/80">
+        <h2 
+          className={`text-lg md:text-xl font-medium ${!customTextColor ? 'text-white/80' : ''}`}
+          style={customTextColor ? { color: customTextColor, opacity: 0.8 } : {}}
+        >
           @{profile.username}
         </h2>
       </div>
@@ -88,7 +97,8 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile }) => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="mt-4 text-white/70 text-base md:text-lg max-w-sm leading-relaxed"
+          className={`mt-4 text-base md:text-lg max-w-sm leading-relaxed ${!customTextColor ? 'text-white/70' : ''}`}
+          style={customTextColor ? { color: customTextColor, opacity: 0.7 } : {}}
         >
           {profile.bio}
         </motion.p>
