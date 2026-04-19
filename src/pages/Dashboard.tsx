@@ -44,6 +44,8 @@ import { ProfileHeader } from '../components/profile/ProfileHeader';
 import { LinkCard as PublicLinkCard } from '../components/profile/LinkCard';
 import { SocialRail } from '../components/profile/SocialRail';
 import { ProfileBackground } from '../components/profile/ProfileBackground';
+import { AIDesigner } from '../components/AIDesigner';
+import { Sparkles, Wand2 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -228,7 +230,7 @@ const Dashboard: React.FC = () => {
   }, []);
   const [links, setLinks] = useState<Link[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup'>('links');
+  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup' | 'ai'>('links');
   const [backups, setBackups] = useState<BackupData[]>([]);
   const [isRollingBack, setIsRollingBack] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -595,6 +597,7 @@ const Dashboard: React.FC = () => {
 
         <nav className="flex-1 space-y-2">
           {[
+            { id: 'ai', icon: Sparkles, label: 'AI Designer', isNew: true },
             { id: 'links', icon: LinkIcon, label: 'Links' },
             { id: 'appearance', icon: Palette, label: 'Appearance' },
             { id: 'business', icon: Crown, label: 'Business' },
@@ -608,14 +611,19 @@ const Dashboard: React.FC = () => {
               key={item.id}
               id={`tour-nav-${item.id}`}
               onClick={() => setActiveTab(item.id as any)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
                 activeTab === item.id 
                   ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold' 
                   : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
               }`}
             >
-              <item.icon className="w-5 h-5" />
-              {item.label}
+              <div className="flex items-center gap-3">
+                <item.icon className={`w-5 h-5 ${item.id === 'ai' ? 'text-lime-500' : ''}`} />
+                {item.label}
+              </div>
+              {item.isNew && (
+                <span className="text-[10px] bg-lime-400 text-zinc-900 px-1.5 py-0.5 rounded-md font-black">NEW</span>
+              )}
             </button>
           ))}
         </nav>
@@ -702,6 +710,23 @@ const Dashboard: React.FC = () => {
                 : "Your profile is fully optimized! You're ready to share it with the world."}
             </p>
           </div>
+
+          {activeTab === 'ai' && (
+            <div className="space-y-6">
+              <section className="bg-gradient-to-br from-lime-400/10 to-emerald-400/10 p-8 rounded-[2.5rem] border border-lime-400/20">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 bg-lime-400 rounded-2xl flex items-center justify-center">
+                    <Sparkles className="w-6 h-6 text-zinc-950" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold dark:text-white">AI Designer</h2>
+                    <p className="text-sm text-zinc-500">I'll handle the design and setup while you relax.</p>
+                  </div>
+                </div>
+                <AIDesigner user={user} profile={profile} links={links} />
+              </section>
+            </div>
+          )}
 
           {activeTab === 'links' && (
             <div id="tour-content-links" className="space-y-6">
