@@ -303,24 +303,57 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
     setIsLoading(true);
 
     try {
-      const currentContext = `
-      Current Profile: ${JSON.stringify(profile)}
-      Current Links: ${JSON.stringify(links)}
-      `;
-
       const ai = getAI();
+      
+      // Construct conversation carefully to ensure alternating roles
+      // 1. Context as part of the first user message or system instruction
+      const systemContext = `${AI_DESIGNER_INSTRUCTIONS}\n\nCURRENT CONTEXT:\nProfile: ${JSON.stringify(profile)}\nLinks: ${JSON.stringify(links)}`;
+
+      // 2. Construct conversation history ensuring it starts with a 'user' message
+      // and strictly alternates roles.
+      let history = messages.map(m => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.content }]
+      }));
+
+      // Filter history to ensure strictly alternating roles
+      // If we find two consecutive messages with the same role, we skip the older one
+      const alternatingHistory: any[] = [];
+      for (const msg of history) {
+        if (alternatingHistory.length === 0) {
+          // First message must be user
+          if (msg.role === 'model') {
+            alternatingHistory.push({ role: 'user', parts: [{ text: 'Settings initialized.' }] });
+          }
+          alternatingHistory.push(msg);
+        } else {
+          const lastMsg = alternatingHistory[alternatingHistory.length - 1];
+          if (lastMsg.role !== msg.role) {
+            alternatingHistory.push(msg);
+          } else {
+            // Consecutive same role: overwrite last message with latest content to combine them
+            // or just replace it. For simplicity, we'll replace the last one's content if they are same role.
+            lastMsg.parts[0].text += `\n${msg.parts[0].text}`;
+          }
+        }
+      }
+
+      // Final check: the last message in alternatingHistory might be a 'user' message
+      // If so, we should combine it with the new userMessage or remove it
+      if (alternatingHistory.length > 0 && alternatingHistory[alternatingHistory.length - 1].role === 'user') {
+        const lastUserMsg = alternatingHistory.pop();
+        // Prepend previous user message content to current one
+        const combinedMessage = `${lastUserMsg.parts[0].text}\n${userMessage}`;
+        alternatingHistory.push({ role: 'user', parts: [{ text: combinedMessage }] });
+      } else {
+        alternatingHistory.push({ role: 'user', parts: [{ text: userMessage }] });
+      }
+
       const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-preview",
-        contents: [
-          { role: 'user', parts: [{ text: `CONTEXT: ${currentContext}` }] },
-          ...messages.map(m => ({
-            role: m.role === 'user' ? 'user' : 'model',
-            parts: [{ text: m.content }]
-          })),
-          { role: 'user', parts: [{ text: userMessage }] }
-        ],
+        model: "gemini-3-flash-preview",
+        contents: alternatingHistory,
         config: {
-          systemInstruction: AI_DESIGNER_INSTRUCTIONS,
+          systemInstruction: systemContext,
           tools: [{ functionDeclarations: toolDeclarations }]
         }
       });
