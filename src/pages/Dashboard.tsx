@@ -40,6 +40,10 @@ import { prepareFlutterwaveConfig, getFlutterwavePublicKey } from '../utils/flut
 import { VerificationBadge } from '../components/VerificationBadge';
 import { safeWrite, getBackupHistory, rollbackDocument, BackupData } from '../services/backupService';
 import { DashboardTour } from '../components/DashboardTour';
+import { ProfileHeader } from '../components/profile/ProfileHeader';
+import { LinkCard as PublicLinkCard } from '../components/profile/LinkCard';
+import { SocialRail } from '../components/profile/SocialRail';
+import { ProfileBackground } from '../components/profile/ProfileBackground';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -657,6 +661,7 @@ const Dashboard: React.FC = () => {
                 {profile?.username}
               </button>
               <a 
+                id="tour-preview"
                 href={`/${profile?.username}`}
                 target="_blank"
                 className="flex items-center gap-2 px-4 py-2 bg-lime-400 text-zinc-950 rounded-xl text-sm font-bold hover:bg-lime-300 transition-all"
@@ -1622,6 +1627,40 @@ const Dashboard: React.FC = () => {
         </div>
       </main>
 
+      {/* Profile Preview Panel - Desktop Only */}
+      <aside id="tour-profile-preview" className="hidden xl:block w-[450px] bg-zinc-100 dark:bg-zinc-900/50 border-l border-zinc-200 dark:border-zinc-800 sticky top-0 h-screen overflow-hidden p-8">
+        <div className="h-full bg-white dark:bg-zinc-950 rounded-[3rem] border-[12px] border-zinc-900 shadow-2xl relative overflow-hidden flex flex-col">
+          {profile && (
+            <>
+              <ProfileBackground profile={profile} />
+              <div className="relative z-10 p-6 flex-1 overflow-y-auto no-scrollbar">
+                <ProfileHeader profile={profile} />
+                <SocialRail profile={profile} />
+                <div className="space-y-4">
+                  {links.filter(l => l.active).map((link, i) => (
+                    <PublicLinkCard 
+                      key={link.id}
+                      link={link}
+                      profile={profile}
+                      index={i}
+                      onClick={() => {}}
+                    />
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+          {!profile && (
+            <div className="flex-1 flex items-center justify-center text-zinc-400">
+              <div className="text-center space-y-4">
+                <div className="animate-pulse bg-zinc-200 dark:bg-zinc-800 w-32 h-32 rounded-full mx-auto" />
+                <p>Loading preview...</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </aside>
+
       <UpgradeModal 
         isOpen={upgradeModal.isOpen} 
         onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
@@ -1635,6 +1674,11 @@ const Dashboard: React.FC = () => {
           setShowTour(false);
           localStorage.setItem('hasSeenTour', 'true');
         }} 
+        onStepChange={(targetId) => {
+          if (targetId === 'tour-links') setActiveTab('links');
+          if (targetId === 'tour-appearance') setActiveTab('appearance');
+          if (targetId === 'tour-analytics') setActiveTab('analytics');
+        }}
       />
     </div>
   );
