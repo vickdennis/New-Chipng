@@ -8,6 +8,7 @@ import {
 import { GoogleGenAI, Type, FunctionDeclaration, Modality } from "@google/genai";
 import { db } from '../firebase';
 import { doc, updateDoc, addDoc, collection, deleteDoc } from 'firebase/firestore';
+import { safeWrite } from '../services/backupService';
 import { User, Link as UserLink, THEMES } from '../types';
 import { toast } from 'sonner';
 
@@ -118,7 +119,7 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
 
       const ai = getAI();
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-tts-preview",
+        model: "gemini-3.1-flash-tts-preview",
         contents: [{ parts: [{ text }] }],
         config: {
           responseModalities: [Modality.AUDIO],
@@ -166,7 +167,7 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
     updateProfile: async (args: any) => {
       if (!user) return "Error: User not found";
       try {
-        await updateDoc(doc(db, 'users', user.uid), args);
+        await safeWrite('users', user.uid, args, 'update');
         toast.success('Profile updated by AI!');
         return "Profile updated successfully";
       } catch (e) {
@@ -177,14 +178,17 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
       if (!user) return "Error: User not found";
       try {
         const nextPos = links.length;
-        await addDoc(collection(db, 'links'), {
+        const linkData = {
           ...args,
           userId: user.uid,
           position: nextPos,
           active: true,
           clicks: 0,
           createdAt: new Date().toISOString()
-        });
+        };
+        // Creating a new doc to get an ID for safeWrite
+        const newRef = doc(collection(db, 'links'));
+        await safeWrite('links', newRef.id, linkData, 'create');
         toast.success(`Link "${args.title}" added!`);
         return `Link "${args.title}" added successfully`;
       } catch (e) {
@@ -195,7 +199,7 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
       if (!user) return "Error: User not found";
       if (!THEMES[args.theme as keyof typeof THEMES]) return "Error: Invalid theme name";
       try {
-        await updateDoc(doc(db, 'users', user.uid), { theme: args.theme });
+        await safeWrite('users', user.uid, { theme: args.theme }, 'update');
         toast.success(`Theme switched to ${args.theme}!`);
         return `Theme applied: ${args.theme}`;
       } catch (e) {
@@ -205,7 +209,7 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
     updateLink: async (args: { id: string } & Partial<UserLink>) => {
       try {
         const { id, ...data } = args;
-        await updateDoc(doc(db, 'links', id), data);
+        await safeWrite('links', id, data, 'update');
         toast.success('Link updated by AI!');
         return "Link updated successfully";
       } catch (e) {
@@ -214,7 +218,7 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
     },
     deleteLink: async (args: { id: string }) => {
       try {
-        await deleteDoc(doc(db, 'links', args.id));
+        await safeWrite('links', args.id, {}, 'delete');
         toast.success('Link removed by AI!');
         return "Link deleted successfully";
       } catch (e) {
@@ -306,7 +310,7 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
 
       const ai = getAI();
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.1-flash-preview",
         contents: [
           { role: 'user', parts: [{ text: `CONTEXT: ${currentContext}` }] },
           ...messages.map(m => ({
