@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, Send, Bot, User as UserIcon, Loader2, 
   CheckCircle2, Plus, Layout, Palette, Link as LinkIcon,
-  MessageSquare, Wand2, X, Mic, MicOff, Volume2, VolumeX
+  MessageSquare, Wand2, X
 } from 'lucide-react';
-import { GoogleGenAI, Type, FunctionDeclaration, Modality } from "@google/genai";
+import { GoogleGenAI, Type, FunctionDeclaration } from "@google/genai";
 import { db } from '../firebase';
 import { doc, updateDoc, addDoc, collection, deleteDoc } from 'firebase/firestore';
 import { safeWrite } from '../services/backupService';
@@ -49,12 +49,7 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
   
   const getAI = () => {
     const key = process.env.GEMINI_API_KEY;
@@ -69,99 +64,6 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
-
-  useEffect(() => {
-    // Initialize Speech Recognition
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = 'en-US';
-
-      recognitionRef.current.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInput(transcript);
-        setIsListening(false);
-        // Automatically send after voice input
-        setTimeout(() => handleSend(transcript), 500);
-      };
-
-      recognitionRef.current.onerror = (event: any) => {
-        console.error('Speech recognition error:', event.error);
-        setIsListening(false);
-        toast.error('Could not hear you. Please try again.');
-      };
-
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-    }
-
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
-  }, []);
-
-  const speakResponse = async (text: string) => {
-    if (isMuted) return;
-
-    try {
-      if (currentSourceRef.current) {
-        try {
-          currentSourceRef.current.stop();
-        } catch (e) {
-          // Ignore if already stopped
-        }
-      }
-
-      const ai = getAI();
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-tts-preview",
-        contents: [{ parts: [{ text }] }],
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' },
-            },
-          },
-        },
-      });
-
-      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (base64Audio) {
-        if (!audioContextRef.current) {
-          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-        }
-        const ctx = audioContextRef.current;
-        if (ctx.state === 'suspended') {
-          await ctx.resume();
-        }
-
-        const arrayBuffer = Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0)).buffer;
-        const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-        const source = ctx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(ctx.destination);
-        currentSourceRef.current = source;
-        source.start();
-      }
-    } catch (error) {
-      console.error('TTS Error:', error);
-    }
-  };
-
-  const toggleListening = () => {
-    if (isListening) {
-      recognitionRef.current?.stop();
-    } else {
-      setIsListening(true);
-      recognitionRef.current?.start();
-    }
-  };
 
   const functions: Record<string, Function> = {
     updateProfile: async (args: any) => {
@@ -374,7 +276,6 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
 
       if (finalResponse) {
         setMessages(prev => [...prev, { role: 'assistant', content: finalResponse }]);
-        speakResponse(finalResponse);
       }
     } catch (error) {
       console.error('AI Error:', error);
@@ -387,7 +288,7 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
   return (
     <div className="flex flex-col h-[70vh] bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 overflow-hidden relative">
       {/* Header */}
-      <div className="p-6 border-bottom border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex items-center justify-between">
+      <div className="p-6 border-bottom border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-lime-400 rounded-xl flex items-center justify-center shadow-lg shadow-lime-400/20">
             <Wand2 className="w-5 h-5 text-zinc-950" />
@@ -397,14 +298,6 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
             <p className="text-xs text-zinc-500">Fast, smart, and fully automated</p>
           </div>
         </div>
-        <button 
-          onClick={() => setIsMuted(!isMuted)}
-          className={`p-2 rounded-lg transition-colors ${
-            isMuted ? 'text-zinc-400' : 'text-lime-500 bg-lime-400/10'
-          }`}
-        >
-          {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
-        </button>
       </div>
 
       {/* Messages */}
@@ -467,16 +360,6 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
             placeholder="Tell me what to build... (e.g., 'Add my Instagram')"
             className="flex-1 bg-transparent border-none outline-none px-4 py-2 text-sm dark:text-white"
           />
-          <button 
-            onClick={toggleListening}
-            className={`p-3 rounded-xl transition-all ${
-              isListening 
-                ? 'bg-red-500 text-white animate-pulse' 
-                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
-            }`}
-          >
-            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-          </button>
           <button 
             onClick={() => handleSend()}
             disabled={!input.trim() || isLoading}
