@@ -24,9 +24,9 @@ if (fs.existsSync(configPath)) {
 
 const db = admin.firestore();
 
-const FLUTTERWAVE_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY;
-if (!FLUTTERWAVE_SECRET_KEY) {
-  console.error("❌ FLUTTERWAVE_SECRET_KEY is not set. Transactions will fail.");
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+if (!PAYSTACK_SECRET_KEY) {
+  console.error("❌ PAYSTACK_SECRET_KEY is not set. Transactions will fail.");
 }
 
 // Helper for backend safe write with backups
@@ -79,16 +79,16 @@ async function startServer() {
   app.use(cors());
   app.use(express.json());
 
-  // Flutterwave Webhook
-  app.post("/api/flutterwave-webhook", async (req, res) => {
-    // Note: In production you should verify the 'verif-hash' header
+  // Paystack Webhook
+  app.post("/api/paystack-webhook", async (req, res) => {
+    // Note: In production you should verify the signature header 'x-paystack-signature'
     const event = req.body;
-    console.log('Flutterwave Webhook received:', event["event.type"]);
+    console.log('Paystack Webhook received:', event.event);
 
-    if (event["event.type"] === "CHARGED") {
-      const { customer, tx_ref, amount, meta } = event.data;
-      const userId = meta?.userId;
-      const plan = meta?.plan;
+    if (event.event === "charge.success") {
+      const { customer, reference, amount, metadata } = event.data;
+      const userId = metadata?.userId;
+      const plan = metadata?.plan;
       
       console.log(`Webhook: Successful charge for ${userId}, Plan: ${plan}`);
       
@@ -101,7 +101,7 @@ async function startServer() {
           isPremium: true,
           subscriptionStatus: 'active',
           premiumUntil: premiumUntil.toISOString()
-        }, 'update', 'flutterwave-webhook');
+        }, 'update', 'paystack-webhook');
       }
     }
 
@@ -178,59 +178,60 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     res.json({ status: "ok" });
   });
 
-  app.post("/api/verify-flutterwave", async (req, res) => {
-    const { transaction_id, tx_ref, userId, plan, isVerification, isOrder, amount } = req.body;
-    console.log(`Verifying Flutterwave transaction: ${transaction_id} for user: ${userId}`);
+  app.post("/api/verify-paystack", async (req, res) => {
+    const { reference, userId, plan, isVerification, isOrder, amount } = req.body;
+    console.log(`Verifying Paystack transaction: ${reference} for user: ${userId}`);
     
     // 1. Double-check for duplicate transaction references
     try {
-      const existingTx = await db.collection('transactions').where('reference', '==', tx_ref).get();
+      const existingTx = await db.collection('transactions').where('reference', '==', reference).get();
       if (!existingTx.empty) {
-        console.warn(`Attempted duplicate processing for reference: ${tx_ref}`);
+        console.warn(`Attempted duplicate processing for reference: ${reference}`);
         return res.status(400).json({ status: 'failed', error: 'Transaction already processed' });
       }
 
-      let flwData: any;
+      let paystackData: any;
 
-      if (!FLUTTERWAVE_SECRET_KEY) {
-        throw new Error("Flutterwave Secret Key is missing. Cannot verify transaction.");
+      if (!PAYSTACK_SECRET_KEY) {
+        throw new Error("Paystack Secret Key is missing. Cannot verify transaction.");
       }
 
-      const response = await axios.get(`https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`, {
+      const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
         headers: {
-          Authorization: `Bearer ${FLUTTERWAVE_SECRET_KEY}`
+          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
         }
       });
-      flwData = response.data.data;
+      paystackData = response.data.data;
 
-      console.log(`Flutterwave verification status for ${transaction_id}:`, flwData.status);
+      console.log(`Paystack verification status for ${reference}:`, paystackData.status);
 
-      if (flwData.status === 'successful') {
+      if (paystackData.status === 'success') {
         // 2. Save transaction history BEFORE upgrading to ensure we have a record
         await db.collection('transactions').add({
           userId: userId || 'guest',
-          reference: tx_ref,
-          flw_id: transaction_id,
-          amount: amount || flwData.amount,
+          reference: reference,
+          paystack_id: paystackData.id,
+          amount: (paystackData.amount / 100), // Convert Kobo to Naira
           plan: isVerification ? 'verification' : (isOrder ? 'order' : (plan || 'pro')),
           status: 'success',
           createdAt: new Date().toISOString(),
           metadata: {
-            card_type: flwData.card?.type,
-            last4: flwData.card?.last_4digits,
-            issuer: flwData.card?.issuer
+            channel: paystackData.channel,
+            card_type: paystackData.authorization?.card_type,
+            last4: paystackData.authorization?.last4,
+            bank: paystackData.authorization?.bank
           }
         });
 
         if (isVerification) {
           if (!userId) throw new Error("User ID is required for verification");
-          await backendSafeWrite('users', userId, { isVerified: true }, 'update', 'flutterwave-verify');
+          await backendSafeWrite('users', userId, { isVerified: true }, 'update', 'paystack-verify');
         } else if (isOrder) {
           // Log the order
           await db.collection('orders').add({
             userId: userId || 'guest',
-            amount: amount,
-            reference: tx_ref,
+            amount: (paystackData.amount / 100),
+            reference: reference,
             status: 'paid',
             createdAt: new Date().toISOString()
           });
@@ -244,7 +245,7 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
             isPremium: true,
             subscriptionStatus: 'active',
             premiumUntil: premiumUntil.toISOString()
-          }, 'update', 'flutterwave-verify');
+          }, 'update', 'paystack-verify');
         }
         
         return res.json({ status: 'success' });

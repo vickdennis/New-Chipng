@@ -4,8 +4,8 @@ import { Check, ArrowRight, Star, Zap, ShieldCheck, Loader2 } from 'lucide-react
 import { auth } from '../firebase';
 import { toast } from 'sonner';
 import { PlanType } from '../types';
-import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
-import { prepareFlutterwaveConfig, getFlutterwavePublicKey } from '../utils/flutterwave';
+import { usePaystackPayment } from 'react-paystack';
+import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
 
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -76,36 +76,33 @@ const Pricing: React.FC = () => {
   };
 
   const config: any = React.useMemo(() => {
-    if (!selectedPlan || !auth.currentUser) return { public_key: getFlutterwavePublicKey() };
+    if (!selectedPlan || !auth.currentUser) return { publicKey: getPaystackPublicKey() };
     
     try {
-      return prepareFlutterwaveConfig({
+      return preparePaystackConfig({
         email: auth.currentUser.email,
         amountNaira: getAmount(selectedPlan),
-        title: `Chip NG - ${selectedPlan.toUpperCase()} Plan`,
-        description: `Upgrade to ${selectedPlan} plan`,
         metadata: {
           userId: auth.currentUser.uid,
           plan: selectedPlan
         }
       });
     } catch (e) {
-      return { public_key: getFlutterwavePublicKey() };
+      return { publicKey: getPaystackPublicKey() };
     }
   }, [selectedPlan, auth.currentUser]);
 
-  const handleFlutterPayment = useFlutterwave(config);
+  const initializePayment = usePaystackPayment(config);
 
   const onSuccess = async (response: any, planOverride: PlanType | null = null) => {
     const finalPlan = planOverride || selectedPlan;
     setLoading(finalPlan);
     try {
-      const verifyRes = await fetch('/api/verify-flutterwave', {
+      const verifyRes = await fetch('/api/verify-paystack', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          transaction_id: response.transaction_id,
-          tx_ref: response.tx_ref,
+          reference: response.reference,
           userId: auth.currentUser?.uid,
           plan: finalPlan
         }),
@@ -113,7 +110,7 @@ const Pricing: React.FC = () => {
       const data = await verifyRes.json();
       if (data.status === 'success') {
         toast.success(`Successfully upgraded to ${finalPlan?.toUpperCase()}!`);
-        navigate(`/payment-success?reference=${response.tx_ref}&plan=${finalPlan}`);
+        navigate(`/payment-success?reference=${response.reference}&plan=${finalPlan}`);
       } else {
         toast.error('Payment verification failed. Please contact support.');
       }
@@ -139,37 +136,23 @@ const Pricing: React.FC = () => {
       return;
     }
     
-    // Validate config exists before triggering
-    try {
-      prepareFlutterwaveConfig({
-        email: auth.currentUser.email,
-        amountNaira: getAmount(plan),
-        title: `Chip NG - ${plan.toUpperCase()} Plan`,
-        description: `Upgrade to ${plan} plan`,
-      });
-      setSelectedPlan(plan);
-    } catch (error) {
-      // Errors are handled inside prepareFlutterwaveConfig (toasts etc)
-    }
+    setSelectedPlan(plan);
   };
 
   React.useEffect(() => {
-    if (selectedPlan && config.public_key) {
+    if (selectedPlan && config.publicKey && config.publicKey.startsWith('pk_')) {
       try {
-        handleFlutterPayment({
-          callback: (response) => {
-            onSuccess(response);
-            closePaymentModal();
-          },
+        initializePayment({
+          onSuccess: (response: any) => onSuccess(response),
           onClose: () => onClose()
         });
       } catch (error) {
-        console.error("❌ Flutterwave Trigger Error:", error);
+        console.error("❌ Paystack Trigger Error:", error);
         toast.error("Failed to start payment. Please try again.");
         setSelectedPlan(null);
       }
     }
-  }, [selectedPlan, config, handleFlutterPayment]);
+  }, [selectedPlan, config, initializePayment]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-white transition-colors duration-300">

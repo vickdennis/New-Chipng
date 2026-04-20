@@ -35,9 +35,9 @@ import { auth } from '../firebase';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import UpgradeModal from '../components/UpgradeModal';
 import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2, BadgeCheck } from 'lucide-react';
-import { useFlutterwave, closePaymentModal } from 'flutterwave-react-v3';
-import { prepareFlutterwaveConfig, getFlutterwavePublicKey } from '../utils/flutterwave';
 import { VerificationBadge } from '../components/VerificationBadge';
+import { usePaystackPayment } from 'react-paystack';
+import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
 import { safeWrite, getBackupHistory, rollbackDocument, BackupData } from '../services/backupService';
 import { DashboardTour } from '../components/DashboardTour';
 import { ProfileHeader } from '../components/profile/ProfileHeader';
@@ -473,34 +473,31 @@ const Dashboard: React.FC = () => {
   };
   
   const verificationConfig = React.useMemo(() => {
-    if (!user) return { public_key: getFlutterwavePublicKey() };
+    if (!user) return { publicKey: getPaystackPublicKey() };
 
     try {
-      return prepareFlutterwaveConfig({
+      return preparePaystackConfig({
         email: user.email,
         amountNaira: 1000,
-        title: 'Chip NG - Profile Verification',
-        description: 'Get verified badge on your profile',
         metadata: {
           userId: user.uid,
           isVerification: true
         }
       });
     } catch (e) {
-      return { public_key: getFlutterwavePublicKey() } as any;
+      return { publicKey: getPaystackPublicKey() } as any;
     }
   }, [user]);
 
-  const handleFlutterVerification = useFlutterwave(verificationConfig);
+  const initializeVerification = usePaystackPayment(verificationConfig);
 
   const onVerificationSuccess = async (response: any) => {
     try {
-      const verifyRes = await fetch('/api/verify-flutterwave', {
+      const verifyRes = await fetch('/api/verify-paystack', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          transaction_id: response.transaction_id,
-          tx_ref: response.tx_ref,
+          reference: response.reference,
           userId: user?.uid,
           isVerification: true
         }),
@@ -509,7 +506,7 @@ const Dashboard: React.FC = () => {
       if (data.status === 'success') {
         await handleUpdateProfile({ isVerified: true });
         toast.success('Congratulations! You are now verified.');
-        navigate(`/payment-success?reference=${response.tx_ref}&plan=Verification`);
+        navigate(`/payment-success?reference=${response.reference}&plan=Verification`);
       } else {
         toast.error('Verification failed. Please contact support.');
       }
@@ -524,13 +521,14 @@ const Dashboard: React.FC = () => {
   };
 
   const triggerVerification = () => {
-    handleFlutterVerification({
-      callback: (response) => {
-        onVerificationSuccess(response);
-        closePaymentModal();
-      },
-      onClose: () => onVerificationClose()
-    });
+    if (verificationConfig.publicKey && verificationConfig.publicKey.startsWith('pk_')) {
+      initializeVerification({
+        onSuccess: (response: any) => onVerificationSuccess(response),
+        onClose: () => onVerificationClose()
+      });
+    } else {
+      toast.error("Paystack Public Key is missing or invalid.");
+    }
   };
 
   const hasAccess = (requiredPlan: PlanType) => {
