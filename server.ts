@@ -13,6 +13,8 @@ dotenv.config();
 
 // Initialize Firebase Admin
 const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+let db: admin.firestore.Firestore;
+
 if (fs.existsSync(configPath)) {
   const firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   if (!admin.apps?.length) {
@@ -20,9 +22,14 @@ if (fs.existsSync(configPath)) {
       projectId: firebaseConfig.projectId,
     });
   }
+  db = admin.firestore(firebaseConfig.firestoreDatabaseId);
+} else {
+  // Fallback for local development or if config is missing
+  if (!admin.apps?.length) {
+    admin.initializeApp();
+  }
+  db = admin.firestore();
 }
-
-const db = admin.firestore();
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 if (!PAYSTACK_SECRET_KEY) {
