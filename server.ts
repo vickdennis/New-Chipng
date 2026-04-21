@@ -22,7 +22,8 @@ if (fs.existsSync(configPath)) {
       projectId: firebaseConfig.projectId,
     });
   }
-  db = admin.firestore(firebaseConfig.firestoreDatabaseId);
+  const databaseId = firebaseConfig.firestoreDatabaseId || undefined;
+  db = admin.firestore(databaseId);
 } else {
   // Fallback for local development or if config is missing
   if (!admin.apps?.length) {
