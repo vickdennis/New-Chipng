@@ -81,7 +81,12 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
+  const PORT = 3000;
+  
+  // Ensure NODE_ENV is set correctly if not already
+  if (!process.env.NODE_ENV) {
+    process.env.NODE_ENV = 'production';
+  }
 
   app.use(cors());
   app.use(express.json());
