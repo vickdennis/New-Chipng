@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import dotenv from "dotenv";
 import cors from "cors";
 import admin from "firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
 import crypto from "crypto";
 import axios from "axios";
@@ -13,23 +14,20 @@ dotenv.config();
 
 // Initialize Firebase Admin
 const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-let db: admin.firestore.Firestore;
+let db: any;
 
 if (fs.existsSync(configPath)) {
   const firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  if (!admin.apps?.length) {
-    admin.initializeApp({
-      projectId: firebaseConfig.projectId,
-    });
-  }
+  const app = !admin.apps?.length ? admin.initializeApp({
+    projectId: firebaseConfig.projectId,
+  }) : admin.app();
+  
   const databaseId = firebaseConfig.firestoreDatabaseId || undefined;
-  db = admin.firestore(databaseId);
+  db = getFirestore(app, databaseId);
 } else {
   // Fallback for local development or if config is missing
-  if (!admin.apps?.length) {
-    admin.initializeApp();
-  }
-  db = admin.firestore();
+  const app = !admin.apps?.length ? admin.initializeApp() : admin.app();
+  db = getFirestore(app);
 }
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
