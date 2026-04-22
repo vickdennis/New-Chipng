@@ -1,6 +1,8 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
 
+import { BASE_URL } from '../constants';
+
 interface SEOProps {
   title?: string;
   description?: string;
@@ -18,7 +20,7 @@ const SEO: React.FC<SEOProps> = ({
   description,
   keywords = ['digital identity', 'bio link', 'networking', 'personal brand'],
   image = 'https://picsum.photos/seed/chipng/1200/630',
-  url = 'https://chipng.com',
+  url = BASE_URL,
   type = 'website',
   author = 'Chip NG Team',
   publishedTime,

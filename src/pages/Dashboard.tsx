@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import { Link, Transaction, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment } from '../types';
 import { auth } from '../firebase';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { DISPLAY_DOMAIN } from '../constants';
 import UpgradeModal from '../components/UpgradeModal';
 import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2, BadgeCheck } from 'lucide-react';
 import { VerificationBadge } from '../components/VerificationBadge';
@@ -462,7 +463,7 @@ const Dashboard: React.FC = () => {
 
   const copyLink = () => {
     if (!profile) return;
-    navigator.clipboard.writeText(`chipng.com/${profile.username}`);
+    navigator.clipboard.writeText(`${DISPLAY_DOMAIN}/${profile.username}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast.success('Link copied to clipboard');
@@ -810,7 +811,7 @@ const Dashboard: React.FC = () => {
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-zinc-500">Username</label>
                       <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">chipng.com/</span>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm whitespace-nowrap">{DISPLAY_DOMAIN}/</span>
                         <input 
                           type="text" 
                           value={profileForm.username}

@@ -13,6 +13,7 @@ import Logo from '../components/Logo';
 import { motion } from 'motion/react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { BASE_URL } from '../constants';
 
 const BlogList: React.FC = () => {
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -64,7 +65,7 @@ const BlogList: React.FC = () => {
       <SEO 
         title="Blog | Chip NG" 
         description="Insights, guides, and stories about digital identity, networking, and the future of personal branding."
-        url="https://chipng.com/blog"
+        url={`${BASE_URL}/blog`}
       />
 
       <Navbar />

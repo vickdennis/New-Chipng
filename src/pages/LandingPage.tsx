@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import BlogSection from '../components/BlogSection';
 import SEO from '../components/SEO';
+import { DISPLAY_DOMAIN } from '../constants';
 
 const LandingPage: React.FC = () => {
   const [username, setUsername] = React.useState('');
@@ -73,7 +74,7 @@ const LandingPage: React.FC = () => {
               <div className="absolute -inset-0.5 bg-gradient-to-r from-lime-400 to-emerald-400 rounded-2xl blur opacity-0 group-focus-within:opacity-20 transition duration-500"></div>
               
               <div className="relative flex items-center w-full h-16 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-6 transition-all duration-300 group-focus-within:border-lime-500/50 dark:group-focus-within:border-lime-400/50 group-focus-within:bg-white dark:group-focus-within:bg-zinc-900/80 backdrop-blur-sm">
-                <span className="text-zinc-500 font-medium select-none whitespace-nowrap text-lg">chipng.com/</span>
+                <span className="text-zinc-500 font-medium select-none whitespace-nowrap text-lg">{DISPLAY_DOMAIN}/</span>
                 <div className="relative flex-1 h-full flex items-center ml-1">
                   {!username && (
                     <motion.span

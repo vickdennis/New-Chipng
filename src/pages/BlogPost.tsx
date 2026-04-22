@@ -16,6 +16,7 @@ import ReactMarkdown from 'react-markdown';
 import { motion } from 'motion/react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { BASE_URL } from '../constants';
 
 const BlogPost: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -98,7 +99,7 @@ const BlogPost: React.FC = () => {
         description={post.seoDescription || post.excerpt}
         keywords={post.seoKeywords || post.tags}
         image={post.coverImage}
-        url={`https://chipng.com/blog/${post.slug}`}
+        url={`${BASE_URL}/blog/${post.slug}`}
         type="article"
         author={post.author}
         publishedTime={post.createdAt}

@@ -36,27 +36,34 @@ if (!PAYSTACK_SECRET_KEY) {
 }
 
 // Helper for backend safe write with backups
-async function backendSafeWrite(collectionName: string, documentId: string, data: any, action: 'update' | 'create', performedBy: string = 'system') {
+async function backendSafeWrite(collectionName: string, documentId: string, data: any, action: 'update' | 'create' | 'delete', performedBy: string = 'system') {
   try {
     const docRef = db.collection(collectionName).doc(documentId);
     const now = new Date().toISOString();
     
-    // Backup before modification
-    if (action === 'update') {
+    // Backup before modification (for update and delete)
+    if (action === 'update' || action === 'delete') {
       const docSnap = await docRef.get();
       if (docSnap.exists) {
         await db.collection(`${collectionName}_backup`).add({
           originalId: documentId,
           collectionName,
           data: docSnap.data(),
-          action: 'update',
+          action,
           timestamp: now,
           performedBy
         });
       }
     }
 
-    if (action === 'update') {
+    if (action === 'delete') {
+      // Soft Delete
+      await docRef.update({
+        isDeleted: true,
+        deletedAt: now,
+        updatedAt: now
+      });
+    } else if (action === 'update') {
       await docRef.update({
         ...data,
         updatedAt: now
