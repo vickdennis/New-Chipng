@@ -56,8 +56,9 @@ const AdminBlogEditor: React.FC = () => {
     setIsGenerating(true);
     try {
       const key = process.env.GEMINI_API_KEY;
-      if (!key) {
-        toast.error('AI configuration is incomplete. Please add your Gemini API Key in Settings.');
+      if (!key || key === 'undefined' || key === 'null') {
+        console.error('❌ AI Blog Writer Error: GEMINI_API_KEY is missing.');
+        toast.error('AI configuration is incomplete. Please go to Settings and add GEMINI_API_KEY.');
         setIsGenerating(false);
         return;
       }

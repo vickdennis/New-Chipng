@@ -56,14 +56,6 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
   
-  const getAI = () => {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) {
-      throw new Error('GEMINI_API_KEY is not defined in the environment.');
-    }
-    return new GoogleGenAI({ apiKey: key });
-  };
-
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -302,12 +294,15 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
     setIsLoading(true);
 
     try {
+      // 1. Validate API Key
       const key = process.env.GEMINI_API_KEY;
-      if (!key) {
-        console.error('❌ AI Designer Error: GEMINI_API_KEY is missing.');
-        toast.error('AI configuration is incomplete. Please add your Gemini API Key in Settings.');
+      if (!key || key === 'undefined' || key === 'null') {
+        console.error('❌ AI Designer Error: GEMINI_API_KEY is missing or invalid.');
+        toast.error('AI configuration is incomplete. Please go to Settings and add GEMINI_API_KEY.');
+        setIsLoading(false);
         return;
       }
+
       const ai = new GoogleGenAI({ apiKey: key });
       
       // 1. Context as part of the first user message or system instruction
