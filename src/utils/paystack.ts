@@ -44,7 +44,8 @@ export const preparePaystackConfig = (params: {
   if (!publicKey || !publicKey.startsWith('pk_')) {
     const error = "Invalid or missing Paystack Public Key. It must start with pk_";
     console.error("❌ Paystack Error:", error);
-    toast.error("Paystack configuration is incomplete. Please add your Public Key (VITE_PAYSTACK_PUBLIC_KEY) in Settings.");
+    // Removed automatic toast here to prevent recurring alerts on page load.
+    // Callers should handle the error or check the key before triggering initialization.
     throw new Error(error);
   }
 

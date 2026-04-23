@@ -528,7 +528,7 @@ const Dashboard: React.FC = () => {
         onClose: () => onVerificationClose()
       });
     } else {
-      toast.error("Paystack Public Key is missing or invalid.");
+      toast.error("Paystack configuration is incomplete. Please add your Public Key (VITE_PAYSTACK_PUBLIC_KEY) in Settings.");
     }
   };
 

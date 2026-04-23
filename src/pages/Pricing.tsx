@@ -135,6 +135,12 @@ const Pricing: React.FC = () => {
       navigate('/login');
       return;
     }
+
+    const publicKey = getPaystackPublicKey();
+    if (!publicKey || !publicKey.startsWith('pk_')) {
+      toast.error("Paystack configuration is incomplete. Please add your Public Key (VITE_PAYSTACK_PUBLIC_KEY) in Settings.");
+      return;
+    }
     
     setSelectedPlan(plan);
   };
