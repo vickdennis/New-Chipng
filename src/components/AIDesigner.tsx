@@ -297,61 +297,72 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
     if (!userMessage || isLoading) return;
 
     setInput('');
-    if (!overrideInput) {
-      setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-    }
+    // Always add the user message to the UI
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
 
     try {
-      const ai = getAI();
+      const key = process.env.GEMINI_API_KEY;
+      if (!key) {
+        console.error('❌ AI Designer Error: GEMINI_API_KEY is missing.');
+        toast.error('AI configuration is incomplete. Please check environment variables.');
+        return;
+      }
+      const ai = new GoogleGenAI({ apiKey: key });
       
-      // Construct conversation carefully to ensure alternating roles
       // 1. Context as part of the first user message or system instruction
-      const systemContext = `${AI_DESIGNER_INSTRUCTIONS}\n\nCURRENT CONTEXT:\nProfile: ${JSON.stringify(profile)}\nLinks: ${JSON.stringify(links)}`;
+      const systemContext = `${AI_DESIGNER_INSTRUCTIONS}\n\nCURRENT CONTEXT:\nProfile: ${JSON.stringify(profile || {})}\nLinks: ${JSON.stringify(links || [])}`;
 
-      // 2. Construct conversation history ensuring it starts with a 'user' message
-      // and strictly alternates roles.
-      let history = messages.map(m => ({
+      // 2. Construct conversation history ensuring it strictly alternates roles.
+      // Gemini requires user -> model -> user ...
+      // We start with the system context in the current request or as a systemInstruction.
+      
+      const history = messages.map(m => ({
         role: m.role === 'user' ? 'user' : 'model',
         parts: [{ text: m.content }]
       }));
 
-      // Filter history to ensure strictly alternating roles
-      // If we find two consecutive messages with the same role, we skip the older one
-      const alternatingHistory: any[] = [];
+      const contents: any[] = [];
+      
+      // Clean history logic:
+      // - Must start with 'user'
+      // - Must alternate
+      let lastRole: string | null = null;
       for (const msg of history) {
-        if (alternatingHistory.length === 0) {
-          // First message must be user
+        if (lastRole === null) {
           if (msg.role === 'model') {
-            alternatingHistory.push({ role: 'user', parts: [{ text: 'Settings initialized.' }] });
+            // Prepend a dummy user message if history starts with model
+            contents.push({ role: 'user', parts: [{ text: 'Settings initialized.' }] });
           }
-          alternatingHistory.push(msg);
+          contents.push(msg);
+          lastRole = msg.role;
+        } else if (lastRole !== msg.role) {
+          contents.push(msg);
+          lastRole = msg.role;
         } else {
-          const lastMsg = alternatingHistory[alternatingHistory.length - 1];
-          if (lastMsg.role !== msg.role) {
-            alternatingHistory.push(msg);
-          } else {
-            // Consecutive same role: overwrite last message with latest content to combine them
-            // or just replace it. For simplicity, we'll replace the last one's content if they are same role.
-            lastMsg.parts[0].text += `\n${msg.parts[0].text}`;
-          }
+          // Merge consecutive same-role messages
+          const lastMsg = contents[contents.length - 1];
+          lastMsg.parts[0].text += `\n${msg.parts[0].text}`;
         }
       }
 
-      // Final check: the last message in alternatingHistory might be a 'user' message
-      // If so, we should combine it with the new userMessage or remove it
-      if (alternatingHistory.length > 0 && alternatingHistory[alternatingHistory.length - 1].role === 'user') {
-        const lastUserMsg = alternatingHistory.pop();
-        // Prepend previous user message content to current one
-        const combinedMessage = `${lastUserMsg.parts[0].text}\n${userMessage}`;
-        alternatingHistory.push({ role: 'user', parts: [{ text: combinedMessage }] });
+      // Add the final user message to the sequence
+      if (lastRole === 'user') {
+        const lastMsg = contents[contents.length - 1];
+        lastMsg.parts[0].text += `\n${userMessage}`;
       } else {
-        alternatingHistory.push({ role: 'user', parts: [{ text: userMessage }] });
+        contents.push({ role: 'user', parts: [{ text: userMessage }] });
       }
+
+      console.log('🚀 AI Designer Sending Request:', { 
+        historyLength: contents.length,
+        hasSystemInstruction: !!systemContext,
+        hasTools: !!toolDeclarations.length
+      });
 
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
-        contents: alternatingHistory,
+        contents: contents,
         config: {
           systemInstruction: systemContext,
           tools: [{ functionDeclarations: toolDeclarations }]
@@ -359,26 +370,42 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
       });
 
       const functionCalls = response.functionCalls;
-      let finalResponse = response.text;
+      let finalResponse = response.text || "";
 
-      if (functionCalls) {
+      if (functionCalls && functionCalls.length > 0) {
+        console.log('🛠️ AI Designer executing function calls:', functionCalls.length);
+        const results = [];
         for (const call of functionCalls) {
           const func = functions[call.name];
           if (func) {
             const result = await func(call.args);
-            // After action, we could optionally generate a textual follow-up
-            finalResponse = `I've updated your profile! ${result}. What else can I help you with?`;
+            results.push(result);
           }
+        }
+        
+        // If the model didn't provide a textual response, generate one based on the actions
+        if (!finalResponse) {
+          finalResponse = `I've processed your request! ${results.join('. ')}. Is there anything else I can do for your profile?`;
         }
       }
 
       if (finalResponse) {
         setMessages(prev => [...prev, { role: 'assistant', content: finalResponse }]);
         speakResponse(finalResponse);
+      } else {
+        // Fallback for empty responses
+        const fallback = "I've heard your request! How else can I help customize your profile today?";
+        setMessages(prev => [...prev, { role: 'assistant', content: fallback }]);
       }
     } catch (error) {
-      console.error('AI Error:', error);
-      toast.error('AI Designer having trouble responding.');
+      console.error('❌ AI Designer Error:', error);
+      // More informative error for the user
+      const errorMsg = error instanceof Error ? error.message : 'Unknown AI encounter';
+      if (errorMsg.includes('Safety') || errorMsg.includes('blocked')) {
+        toast.error('The request was blocked by safety filters. Please try rephrasing.');
+      } else {
+        toast.error('The AI Designer is having trouble responding right now. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

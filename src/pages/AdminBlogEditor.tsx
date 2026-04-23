@@ -78,7 +78,13 @@ const AdminBlogEditor: React.FC = () => {
       const text = response.text;
       
       if (text) {
-        const data = JSON.parse(text);
+        // More robust JSON parsing in case AI includes markdown code blocks
+        let cleanText = text.trim();
+        if (cleanText.startsWith('```')) {
+          cleanText = cleanText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+        }
+        
+        const data = JSON.parse(cleanText);
         setFormData(prev => ({
           ...prev,
           title: data.title || prev.title,
@@ -91,7 +97,7 @@ const AdminBlogEditor: React.FC = () => {
         }));
         toast.success('Blog post generated successfully!');
       } else {
-        throw new Error('Failed to parse AI response');
+        throw new Error('Empty response from AI');
       }
     } catch (error) {
       console.error('AI Generation error:', error);
