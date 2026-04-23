@@ -55,7 +55,13 @@ const AdminBlogEditor: React.FC = () => {
 
     setIsGenerating(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+      const key = process.env.GEMINI_API_KEY;
+      if (!key) {
+        toast.error('AI configuration is incomplete. Please add your Gemini API Key in Settings.');
+        setIsGenerating(false);
+        return;
+      }
+      const ai = new GoogleGenAI({ apiKey: key });
 
       const prompt = `Write a professional blog post about "${aiPrompt}". 
       Return the response in JSON format with the following keys:

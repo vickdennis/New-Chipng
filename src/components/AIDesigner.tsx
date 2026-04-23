@@ -305,7 +305,7 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
       const key = process.env.GEMINI_API_KEY;
       if (!key) {
         console.error('❌ AI Designer Error: GEMINI_API_KEY is missing.');
-        toast.error('AI configuration is incomplete. Please check environment variables.');
+        toast.error('AI configuration is incomplete. Please add your Gemini API Key in Settings.');
         return;
       }
       const ai = new GoogleGenAI({ apiKey: key });
