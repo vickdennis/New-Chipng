@@ -37,6 +37,7 @@ const SEO: React.FC<SEOProps> = ({
       <title>{siteTitle}</title>
       <meta name="description" content={finalDescription} />
       <meta name="keywords" content={keywords.join(', ')} />
+      <meta name="robots" content="index, follow" />
       <link rel="canonical" href={url} />
 
       {/* Open Graph / Facebook */}

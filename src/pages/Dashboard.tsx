@@ -40,7 +40,6 @@ import { VerificationBadge } from '../components/VerificationBadge';
 import { usePaystackPayment } from 'react-paystack';
 import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
 import { safeWrite, getBackupHistory, rollbackDocument, BackupData } from '../services/backupService';
-import { DashboardTour } from '../components/DashboardTour';
 import { ProfileHeader } from '../components/profile/ProfileHeader';
 import { LinkCard as PublicLinkCard } from '../components/profile/LinkCard';
 import { SocialRail } from '../components/profile/SocialRail';
@@ -221,14 +220,7 @@ const Dashboard: React.FC = () => {
     textColor: ''
   });
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [showTour, setShowTour] = useState(false);
 
-  useEffect(() => {
-    const hasSeenTour = localStorage.getItem('hasSeenTour');
-    if (!hasSeenTour) {
-      setShowTour(true);
-    }
-  }, []);
   const [links, setLinks] = useState<Link[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup' | 'ai'>('links');
@@ -638,14 +630,6 @@ const Dashboard: React.FC = () => {
           >
             <LogOut className="w-5 h-5" />
             Logout
-          </button>
-          
-          <button 
-            onClick={() => setShowTour(true)}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-all font-medium mt-2"
-          >
-            <Lightbulb className="w-5 h-5" />
-            Start Tour
           </button>
         </div>
       </aside>
@@ -1690,19 +1674,6 @@ const Dashboard: React.FC = () => {
         onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
         requiredPlan={upgradeModal.requiredPlan}
         featureName={upgradeModal.featureName}
-      />
-
-      <DashboardTour 
-        show={showTour} 
-        onFinish={() => {
-          setShowTour(false);
-          localStorage.setItem('hasSeenTour', 'true');
-        }} 
-        onStepChange={(targetId) => {
-          if (targetId === 'tour-content-links') setActiveTab('links');
-          if (targetId === 'tour-content-appearance') setActiveTab('appearance');
-          if (targetId === 'tour-content-analytics') setActiveTab('analytics');
-        }}
       />
     </div>
   );
