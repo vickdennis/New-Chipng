@@ -40,10 +40,6 @@ import { VerificationBadge } from '../components/VerificationBadge';
 import { usePaystackPayment } from 'react-paystack';
 import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
 import { safeWrite, getBackupHistory, rollbackDocument, BackupData } from '../services/backupService';
-import { ProfileHeader } from '../components/profile/ProfileHeader';
-import { LinkCard as PublicLinkCard } from '../components/profile/LinkCard';
-import { SocialRail } from '../components/profile/SocialRail';
-import { ProfileBackground } from '../components/profile/ProfileBackground';
 import { AIDesigner } from '../components/AIDesigner';
 import { Sparkles, Wand2 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
@@ -282,17 +278,23 @@ const Dashboard: React.FC = () => {
       handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
     });
 
-    const q = query(collection(db, 'links'), where('userId', '==', user.uid), orderBy('position', 'asc'));
+    const q = query(collection(db, 'links'), where('userId', '==', user.uid));
     const unsubLinks = onSnapshot(q, (snapshot) => {
-      setLinks(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Link)));
+      const sortedLinks = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Link))
+        .sort((a, b) => (a.position || 0) - (b.position || 0));
+      setLinks(sortedLinks);
       setLoading(false);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'links');
     });
 
-    const qTx = query(collection(db, 'transactions'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const qTx = query(collection(db, 'transactions'), where('userId', '==', user.uid));
     const unsubTx = onSnapshot(qTx, (snapshot) => {
-      setTransactions(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction)));
+      const sortedTx = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Transaction))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setTransactions(sortedTx);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'transactions');
     });
@@ -1635,39 +1637,6 @@ const Dashboard: React.FC = () => {
         </div>
       </main>
 
-      {/* Profile Preview Panel - Desktop Only */}
-      <aside id="tour-profile-preview" className="hidden xl:block w-[450px] bg-zinc-100 dark:bg-zinc-900/50 border-l border-zinc-200 dark:border-zinc-800 sticky top-0 h-screen overflow-hidden p-8">
-        <div className="h-full bg-white dark:bg-zinc-950 rounded-[3rem] border-[12px] border-zinc-900 shadow-2xl relative overflow-hidden flex flex-col">
-          {profile && (
-            <>
-              <ProfileBackground profile={profile} />
-              <div className="relative z-10 p-6 flex-1 overflow-y-auto no-scrollbar">
-                <ProfileHeader profile={profile} />
-                <SocialRail profile={profile} />
-                <div className="space-y-4">
-                  {links.filter(l => l.active).map((link, i) => (
-                    <PublicLinkCard 
-                      key={link.id}
-                      link={link}
-                      profile={profile}
-                      index={i}
-                      onClick={() => {}}
-                    />
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-          {!profile && (
-            <div className="flex-1 flex items-center justify-center text-zinc-400">
-              <div className="text-center space-y-4">
-                <div className="animate-pulse bg-zinc-200 dark:bg-zinc-800 w-32 h-32 rounded-full mx-auto" />
-                <p>Loading preview...</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </aside>
 
       <UpgradeModal 
         isOpen={upgradeModal.isOpen} 

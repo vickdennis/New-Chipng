@@ -75,12 +75,13 @@ const PublicProfile: React.FC = () => {
 
         const q = query(
           collection(db, 'links'), 
-          where('userId', '==', userId), 
-          where('active', '==', true),
+          where('userId', '==', userId),
           orderBy('position', 'asc')
         );
         unsubLinks = onSnapshot(q, (snapshot) => {
-          const allLinks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Link));
+          const allLinks = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as Link))
+            .filter(link => link.active); // Filter active in memory to avoid composite index requirement
           
           const now = new Date();
           const filteredLinks = allLinks.filter(link => {

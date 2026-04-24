@@ -56,6 +56,14 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
   
+  const getAI = () => {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key || key === 'undefined' || key === 'null') {
+      throw new Error('GEMINI_API_KEY is not defined in the environment.');
+    }
+    return new GoogleGenAI({ apiKey: key });
+  };
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;

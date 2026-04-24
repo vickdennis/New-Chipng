@@ -16,18 +16,37 @@ dotenv.config();
 const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
 let db: any;
 
-if (fs.existsSync(configPath)) {
-  const firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  const app = !admin.apps?.length ? admin.initializeApp({
-    projectId: firebaseConfig.projectId,
-  }) : admin.app();
-  
-  const databaseId = firebaseConfig.firestoreDatabaseId || undefined;
-  db = getFirestore(app, databaseId);
-} else {
-  // Fallback for local development or if config is missing
-  const app = !admin.apps?.length ? admin.initializeApp() : admin.app();
-  db = getFirestore(app);
+try {
+  const firebaseConfig = fs.existsSync(configPath) 
+    ? JSON.parse(fs.readFileSync(configPath, 'utf8'))
+    : null;
+
+  if (firebaseConfig && firebaseConfig.projectId) {
+    // Explicitly use the projectId from config
+    const adminApp = !admin.apps?.length 
+      ? admin.initializeApp({ projectId: firebaseConfig.projectId }) 
+      : admin.app();
+    
+    const databaseId = firebaseConfig.firestoreDatabaseId || undefined;
+    db = getFirestore(adminApp, databaseId);
+    console.log(`✅ Firebase Admin initialized with projectId: ${firebaseConfig.projectId}. Database: ${databaseId || '(default)'}`);
+  } else {
+    // Fallback to default credentials if no config exists
+    const adminApp = !admin.apps?.length ? admin.initializeApp() : admin.app();
+    db = getFirestore(adminApp);
+    console.log(`✅ Firebase Admin initialized with default credentials.`);
+  }
+} catch (error: any) {
+  console.error("❌ Firebase Admin initialization failed:", error.message);
+  // Last resort fallback
+  try {
+    if (!admin.apps?.length) {
+      admin.initializeApp();
+    }
+    db = getFirestore();
+  } catch (finalError: any) {
+    console.error("❌ Fatal Firebase initialization failure:", finalError.message);
+  }
 }
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
@@ -281,17 +300,27 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     // This could be called by a scheduled task
     const now = new Date().toISOString();
     try {
-      const expiredSnapshot = await db.collection('users')
+      // Query premium users (single field query doesn't need composite index)
+      const premiumSnapshot = await db.collection('users')
         .where('isPremium', '==', true)
-        .where('premiumUntil', '<', now)
         .get();
 
-      if (expiredSnapshot.empty) {
+      if (premiumSnapshot.empty) {
+        return res.json({ status: 'success', count: 0 });
+      }
+
+      // Filter expired in memory to avoid composite index requirement
+      const expiredDocs = premiumSnapshot.docs.filter((doc: any) => {
+        const data = doc.data();
+        return data.premiumUntil && data.premiumUntil < now;
+      });
+
+      if (expiredDocs.length === 0) {
         return res.json({ status: 'success', count: 0 });
       }
 
       const batch = db.batch();
-      expiredSnapshot.forEach(doc => {
+      expiredDocs.forEach((doc: any) => {
         batch.update(doc.ref, {
           isPremium: false,
           subscriptionStatus: 'inactive',
@@ -300,8 +329,8 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       });
       
       await batch.commit();
-      console.log(`Processed ${expiredSnapshot.size} expired subscriptions`);
-      res.json({ status: 'success', count: expiredSnapshot.size });
+      console.log(`Processed ${expiredDocs.length} expired subscriptions`);
+      res.json({ status: 'success', count: expiredDocs.length });
     } catch (error: any) {
       console.error('Subscription expiry check failed:', error);
       res.status(500).json({ error: error.message });
