@@ -168,9 +168,9 @@ END:VCARD`;
       </motion.header>
 
       {/* Main Scrollable Content */}
-      <main className="relative w-full max-w-[390px] mx-auto min-h-screen">
+      <main className="relative w-full max-w-md mx-auto min-h-screen bg-white">
         {/* Cover Image Area */}
-        <div className="relative h-[250px] w-full overflow-hidden bg-zinc-100">
+        <div className="relative h-[250px] w-full overflow-hidden bg-zinc-100 sm:rounded-b-[2.5rem]">
           <motion.div 
             style={{ opacity: coverOpacity }}
             className="w-full h-full relative"
@@ -188,7 +188,7 @@ END:VCARD`;
             {/* Blending Gradient at the bottom to match background */}
             <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/20" />
             
-            <div className="absolute bottom-8 left-0 right-0 flex flex-col items-center px-6">
+            <div className="absolute bottom-10 left-0 right-0 flex flex-col items-center px-6">
                <div className="flex items-center gap-1.5 mb-1 justify-center">
                  <h1 className="text-[32px] font-black text-black leading-tight drop-shadow-[0_2px_10px_rgba(255,255,255,0.8)]">
                    {profile.displayName || profile.username}
@@ -204,30 +204,36 @@ END:VCARD`;
           </motion.div>
         </div>
 
-        <div className="px-6 py-6 space-y-6">
+        <div className="px-6 py-6 space-y-8">
           {/* Bio if exists */}
           {profile.bio && (
-            <p className="text-zinc-500 text-[15px] leading-relaxed text-center px-4">
+            <p className="text-zinc-500 text-[15px] leading-relaxed text-center px-6">
               {profile.bio}
             </p>
           )}
 
-          {/* Social Platforms Rail - Centered */}
+          {/* Social Platforms Row - Display Platform Names */}
           {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
-            <div className="flex flex-wrap items-center justify-center gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {Object.entries(profile.socialLinks).map(([id, url]) => {
                 const Icon = BrandIcons[id as keyof typeof BrandIcons];
-                if (!Icon && id === 'threads') {
-                  return (
-                    <a key={id} href={url} target="_blank" rel="noopener noreferrer" className="p-3 bg-zinc-50 rounded-2xl hover:bg-zinc-100 transition-colors">
-                      <AtSign className="w-6 h-6 text-zinc-900" />
-                    </a>
-                  );
-                }
-                if (!Icon) return null;
+                const platformName = id === 'x' ? 'X' : id.charAt(0).toUpperCase() + id.slice(1);
+                
                 return (
-                  <a key={id} href={url} target="_blank" rel="noopener noreferrer" className="p-3 bg-zinc-50 rounded-2xl hover:bg-zinc-100 transition-colors">
-                    <Icon className="w-6 h-6 text-zinc-900" />
+                  <a 
+                    key={id} 
+                    href={url} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="flex items-center gap-3 p-3 bg-zinc-50 rounded-2xl hover:bg-zinc-100 transition-all border border-zinc-100 active:scale-95"
+                  >
+                    <div 
+                      className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm"
+                      style={{ color: profile.brandColor || '#18181b' }}
+                    >
+                      {Icon ? <Icon className="w-5 h-5 transition-colors" /> : <AtSign className="w-5 h-5" />}
+                    </div>
+                    <span className="text-[13px] font-black text-zinc-900">{platformName}</span>
                   </a>
                 );
               })}
@@ -258,13 +264,15 @@ END:VCARD`;
             <div className="flex bg-zinc-100 p-1.5 rounded-2xl">
               <button 
                 onClick={() => setActiveTab('shouts')}
-                className={`flex-1 py-3 rounded-xl text-[14px] font-black transition-all ${activeTab === 'shouts' ? 'bg-white shadow-sm text-black' : 'text-zinc-500'}`}
+                className={`flex-1 py-3 rounded-xl text-[14px] font-black transition-all ${activeTab === 'shouts' ? 'bg-white shadow-sm' : 'text-zinc-500'}`}
+                style={{ color: activeTab === 'shouts' ? (profile.brandColor || '#000000') : undefined }}
               >
                 Shouts
               </button>
               <button 
                 onClick={() => setActiveTab('media')}
-                className={`flex-1 py-3 rounded-xl text-[14px] font-black transition-all ${activeTab === 'media' ? 'bg-white shadow-sm text-black' : 'text-zinc-500'}`}
+                className={`flex-1 py-3 rounded-xl text-[14px] font-black transition-all ${activeTab === 'media' ? 'bg-white shadow-sm' : 'text-zinc-500'}`}
+                style={{ color: activeTab === 'media' ? (profile.brandColor || '#000000') : undefined }}
               >
                 Media
               </button>

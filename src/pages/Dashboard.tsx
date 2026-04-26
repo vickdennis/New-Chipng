@@ -415,9 +415,23 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const getFavicon = (url: string) => {
+    try {
+      const domain = new URL(url).hostname;
+      return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+    } catch (e) {
+      return null;
+    }
+  };
+
   const handleUpdateLink = async (id: string, data: Partial<Link>) => {
     try {
-      await safeWrite('links', id, data, 'update');
+      const updateData = { ...data };
+      if (data.url && data.url.startsWith('http')) {
+        const icon = getFavicon(data.url);
+        if (icon) updateData.icon = icon;
+      }
+      await safeWrite('links', id, updateData, 'update');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `links/${id}`);
     }
@@ -643,14 +657,11 @@ const Dashboard: React.FC = () => {
   const handleSelectPlatform = async (platformId: string, urlPrefix: string) => {
     if (!profile) return;
     
-    // Check if platform already exists
+    // Allow updating existing platforms
     const currentSocials = profile.socialLinks || {};
-    if (currentSocials[platformId as keyof typeof currentSocials]) {
-      toast.error(`${platformId} is already added`);
-      return;
-    }
+    const existingValue = currentSocials[platformId as keyof typeof currentSocials];
 
-    const value = window.prompt(`Enter your ${platformId} username (e.g. @username)`, '');
+    const value = window.prompt(`Enter your ${platformId} username (e.g. @username)`, existingValue ? existingValue.split('/').pop() : '');
     if (value === null) return;
 
     // Clean @ if provided
@@ -893,6 +904,52 @@ const Dashboard: React.FC = () => {
                     </span>
                   </button>
 
+                  <div className="mt-2 space-y-1">
+                    {profile?.socialLinks && Object.entries(profile.socialLinks).map(([id, url]) => {
+                      const platform = PLATFORMS.socials.find(p => p.id === id) || 
+                                       PLATFORMS.music.find(p => p.id === id) || 
+                                       PLATFORMS.payment.find(p => p.id === id);
+                      if (!platform) return null;
+                      
+                      return (
+                        <div key={id} className="w-full flex items-center justify-between py-3 border-b border-zinc-50 group px-2 -mx-2 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400">
+                               {platform.id === 'instagram' && <BrandIcons.instagram className="w-4 h-4" />}
+                               {platform.id === 'twitter' && <BrandIcons.twitter className="w-4 h-4" />}
+                               {platform.id === 'x' && <BrandIcons.twitter className="w-4 h-4" />}
+                               {platform.id === 'youtube' && <BrandIcons.youtube className="w-4 h-4" />}
+                               {platform.id === 'tiktok' && <BrandIcons.tiktok className="w-4 h-4" />}
+                            </div>
+                            <div>
+                              <p className="text-[13px] font-bold">{platform.label}</p>
+                              <p className="text-[11px] text-zinc-400 truncate max-w-[150px]">@{url.split('/').pop()}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => handleSelectPlatform(platform.id, platform.urlPrefix)}
+                              className="text-[12px] font-bold text-blue-500 bg-blue-50 px-2.5 py-1.5 rounded-xl"
+                            >
+                              Edit
+                            </button>
+                            <button 
+                              onClick={async () => {
+                                if (!window.confirm(`Remove ${platform.label}?`)) return;
+                                const newLinks = { ...profile.socialLinks };
+                                delete newLinks[id as keyof typeof newLinks];
+                                await handleUpdateProfile({ socialLinks: newLinks });
+                              }}
+                              className="text-[12px] font-bold text-red-500 bg-red-50 px-2.5 py-1.5 rounded-xl"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
                   <div className="py-4 border-b border-[#F3F4F6]">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[15px] font-medium">Bio</span>
@@ -959,12 +1016,21 @@ const Dashboard: React.FC = () => {
                                 <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', links[0].id)} accept="image/*" />
                               </label>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <input 
-                                className="font-bold text-[16px] bg-transparent outline-none flex-1" 
-                                value={links[0].title} 
-                                onChange={(e) => handleUpdateLink(links[0].id, { title: e.target.value })}
-                              />
+                            <div className="flex items-start justify-between">
+                              <div className="flex flex-col gap-1 flex-1">
+                                <input 
+                                  className="font-bold text-[16px] bg-transparent outline-none w-full" 
+                                  value={links[0].title} 
+                                  placeholder="Title"
+                                  onChange={(e) => handleUpdateLink(links[0].id, { title: e.target.value })}
+                                />
+                                <input 
+                                  className="text-[12px] text-zinc-400 bg-transparent outline-none w-full" 
+                                  value={links[0].url} 
+                                  placeholder="https://..."
+                                  onChange={(e) => handleUpdateLink(links[0].id, { url: e.target.value })}
+                                />
+                              </div>
                               <div className="flex items-center gap-2">
                                 <Eye className={`w-5 h-5 cursor-pointer ${links[0].active ? 'text-[#A3E635]' : 'text-[#D1D5DB]'}`} onClick={() => handleUpdateLink(links[0].id, { active: !links[0].active })} />
                                 <Trash2 className="w-5 h-5 text-red-400 cursor-pointer" onClick={() => handleDeleteLink(links[0].id)} />
@@ -1017,11 +1083,20 @@ const Dashboard: React.FC = () => {
                                 <div className="w-10 h-10 rounded-lg bg-[#F9FAFB] flex items-center justify-center overflow-hidden flex-shrink-0">
                                   {link.icon ? <img src={link.icon} alt="" className="w-full h-full object-cover" /> : <LinkIcon className="w-5 h-5 text-[#D1D5DB]" />}
                                 </div>
+                              <div className="flex-1 space-y-0.5">
                                 <input 
-                                  className="font-medium text-[14px] bg-transparent outline-none flex-1" 
+                                  className="font-bold text-[14px] bg-transparent outline-none w-full" 
                                   value={link.title}
+                                  placeholder="Link Title"
                                   onChange={(e) => handleUpdateLink(link.id, { title: e.target.value })}
                                 />
+                                <input 
+                                  className="text-[11px] text-zinc-400 bg-transparent outline-none w-full" 
+                                  value={link.url}
+                                  placeholder="https://..."
+                                  onChange={(e) => handleUpdateLink(link.id, { url: e.target.value })}
+                                />
+                              </div>
                                 <Trash2 className="w-4 h-4 text-red-300 opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity" onClick={() => handleDeleteLink(link.id)} />
                               </div>
                             ))}
