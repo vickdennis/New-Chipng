@@ -107,7 +107,11 @@ const Login: React.FC = () => {
       toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (error: any) {
-      toast.error(error.message || 'Failed to login with Google');
+      if (error.code === 'auth/unauthorized-domain') {
+        toast.error('This domain is not authorized in Firebase Console. Please add chipng.com to your Firebase Auth Allowed Domains.');
+      } else {
+        toast.error(error.message || 'Failed to login with Google');
+      }
     } finally {
       setLoading(false);
     }
