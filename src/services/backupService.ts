@@ -57,24 +57,70 @@ export const createBackup = async (collectionName: string, documentId: string, a
 /**
  * Safe write wrapper that performs a backup before writing
  */
-export const safeWrite = async (collectionName: string, documentId: string, data: any, action: 'update' | 'create' | 'delete') => {
+export const safeWrite = async (collectionName: string, documentId: string | null, data: any, action: 'update' | 'create' | 'delete') => {
   try {
-    // 1. Create Backup
-    await createBackup(collectionName, documentId, action);
+    // 1. Create Backup (if document exists)
+    if (documentId) {
+      await createBackup(collectionName, documentId, action);
+    }
 
     // 2. Perform Write
+    if (action === 'create') {
+      const colRef = collection(db, collectionName);
+      const newDocRef = doc(colRef);
+      await setDoc(newDocRef, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), isDeleted: false });
+      
+      // Create an initial snapshot for the new document
+      await createBackup(collectionName, newDocRef.id, 'create');
+      
+      return newDocRef.id;
+    }
+
+    if (!documentId) throw new Error('documentId is required for update or delete');
     const docRef = doc(db, collectionName, documentId);
     
     if (action === 'delete') {
       // Soft Delete
-      await updateDoc(docRef, { isDeleted: true, deletedAt: serverTimestamp() });
+      await updateDoc(docRef, { 
+        isDeleted: true, 
+        deletedAt: serverTimestamp(),
+        updatedAt: serverTimestamp() 
+      });
     } else {
-      await setDoc(docRef, data, { merge: true });
+      await setDoc(docRef, { ...data, updatedAt: serverTimestamp() }, { merge: true });
     }
 
     return true;
   } catch (error) {
     console.error(`Safe write failed for ${collectionName}/${documentId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Rollback a document to a specific backup version
+ */
+export const rollbackToVersion = async (collectionName: string, documentId: string, backupId: string) => {
+  try {
+    const backupRef = doc(db, `${collectionName}_backup`, backupId);
+    const backupSnap = await getDoc(backupRef);
+    
+    if (!backupSnap.exists()) {
+      throw new Error(`Backup ${backupId} not found`);
+    }
+
+    const backupData = backupSnap.data() as BackupData;
+
+    // Create a special rollback backup before restoring
+    await createBackup(collectionName, documentId, 'rollback');
+    
+    // Restore the data
+    const docRef = doc(db, collectionName, documentId);
+    await setDoc(docRef, { ...backupData.data, isDeleted: false, updatedAt: serverTimestamp() }, { merge: false });
+
+    return true;
+  } catch (error) {
+    console.error(`Rollback version failed for ${collectionName}/${documentId}:`, error);
     throw error;
   }
 };

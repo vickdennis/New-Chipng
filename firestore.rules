@@ -209,7 +209,7 @@ service cloud.firestore {
 
     match /users_backup/{backupId} {
       allow read: if isAdmin();
-      allow create: if (isAuthenticated() && request.resource.data.performedBy == request.auth.uid && isValidBackup(request.resource.data)) || isAdmin();
+      allow create: if (isAuthenticated() && isValidBackup(request.resource.data)) || isAdmin();
     }
 
     match /transactions/{transactionId} {
@@ -218,12 +218,13 @@ service cloud.firestore {
     }
 
     match /blogs_backup/{backupId} {
-      allow read, write: if isAdmin() && isValidBackup(request.resource.data);
+      allow read: if isAdmin();
+      allow create: if (isAuthenticated() && isValidBackup(request.resource.data)) || isAdmin();
     }
 
     match /links_backup/{backupId} {
       allow read: if isAdmin();
-      allow create: if (isAuthenticated() && request.resource.data.performedBy == request.auth.uid && isValidBackup(request.resource.data)) || isAdmin();
+      allow create: if (isAuthenticated() && isValidBackup(request.resource.data)) || isAdmin();
     }
   }
 }

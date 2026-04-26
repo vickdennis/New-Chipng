@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Link, THEMES, User } from '../../types';
 import { ChevronRight, ExternalLink } from 'lucide-react';
+import { IconRenderer } from '../IconPicker';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -26,6 +27,15 @@ export const LinkCard: React.FC<LinkCardProps> = ({ link, profile, onClick, inde
       return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
     } catch (e) {
       return null;
+    }
+  };
+
+  const isUrl = (str: string) => {
+    try {
+      new URL(str);
+      return true;
+    } catch (e) {
+      return false;
     }
   };
 
@@ -62,20 +72,31 @@ export const LinkCard: React.FC<LinkCardProps> = ({ link, profile, onClick, inde
         "flex items-center gap-4 flex-1",
         isFeatured ? "flex-col w-full" : ""
       )}>
-        {/* Favicon Container */}
+        {/* Icon Container */}
         <div className={cn(
           "rounded-xl bg-black/20 flex items-center justify-center overflow-hidden flex-shrink-0 group-hover:scale-110 transition-transform",
           isFeatured ? "w-16 h-16 md:w-20 md:h-20" : "w-10 h-10"
         )}>
-          <img 
-            src={link.icon || getFavicon(link.url) || ''} 
-            alt="" 
-            className={isFeatured ? "w-10 h-10 md:w-12 md:h-12" : "w-6 h-6 object-contain"}
-            onError={(e) => {
-              (e.currentTarget as HTMLImageElement).style.display = 'none';
-            }}
-            referrerPolicy="no-referrer"
-          />
+          {link.icon && !isUrl(link.icon) ? (
+            <IconRenderer 
+              name={link.icon} 
+              size={isFeatured ? 40 : 24} 
+              className={cn(
+                "transition-colors",
+                !profile.textColor ? "text-white" : ""
+              )} 
+            />
+          ) : (
+            <img 
+              src={link.icon || getFavicon(link.url) || ''} 
+              alt="" 
+              className={isFeatured ? "w-10 h-10 md:w-12 md:h-12" : "w-6 h-6 object-contain"}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).style.display = 'none';
+              }}
+              referrerPolicy="no-referrer"
+            />
+          )}
         </div>
         
         {/* Title */}

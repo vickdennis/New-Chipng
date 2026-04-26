@@ -41,6 +41,7 @@ import { usePaystackPayment } from 'react-paystack';
 import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
 import { safeWrite, getBackupHistory, rollbackDocument, BackupData } from '../services/backupService';
 import { AIDesigner } from '../components/AIDesigner';
+import { BrandIcons } from '../components/icons/BrandIcons';
 import { Sparkles, Wand2 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -313,14 +314,14 @@ const Dashboard: React.FC = () => {
   const handleAddLink = async () => {
     if (!user) return;
     try {
-      await addDoc(collection(db, 'links'), {
+      await safeWrite('links', null, {
         userId: user.uid,
         title: 'New Link',
         url: 'https://',
         active: true,
         position: links.length,
         clicks: 0
-      });
+      }, 'create');
       toast.success('Link added');
     } catch (error) {
       console.error('Error adding link:', error);
@@ -330,7 +331,7 @@ const Dashboard: React.FC = () => {
 
   const handleUpdateLink = async (id: string, data: Partial<Link>) => {
     try {
-      await updateDoc(doc(db, 'links', id), data);
+      await safeWrite('links', id, data, 'update');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `links/${id}`);
     }
@@ -338,8 +339,8 @@ const Dashboard: React.FC = () => {
 
   const handleDeleteLink = async (id: string) => {
     try {
-      await deleteDoc(doc(db, 'links', id));
-      toast.success('Link deleted');
+      await safeWrite('links', id, null, 'delete');
+      toast.success('Link soft deleted');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `links/${id}`);
     }
@@ -983,7 +984,7 @@ const Dashboard: React.FC = () => {
                     { id: 'mastodon', icon: Hash, label: 'Mastodon', color: '#6364FF' },
                     { id: 'github', icon: Github, label: 'GitHub', color: '#181717' },
                     { id: 'twitch', icon: Twitch, label: 'Twitch', color: '#9146FF' },
-                    { id: 'snapchat', icon: Ghost, label: 'Snapchat', color: '#FFFC00' },
+                    { id: 'snapchat', icon: () => <BrandIcons.snapchat className="w-5 h-5" />, label: 'Snapchat', color: '#FFFC00' },
                     { id: 'medium', icon: MessageSquare, label: 'Medium', color: '#00ab6c' },
                     { id: 'behance', icon: ImageIcon, label: 'Behance', color: '#1769ff' },
                     { id: 'dribbble', icon: Disc, label: 'Dribbble', color: '#ea4c89' },
