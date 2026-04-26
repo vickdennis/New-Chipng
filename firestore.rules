@@ -107,7 +107,7 @@ service cloud.firestore {
         request.auth.token.email == "vickthorden@gmail.com" ||
         request.auth.uid == "z7BMhoSH7DaqzsAGF9EvqMAVv9f1" ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin')
       );
     }
 
@@ -207,24 +207,24 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin() && isValidProduct(request.resource.data);
     }
 
-    match /users_backup/{backupId} {
-      allow read: if isAdmin();
-      allow create: if (isAuthenticated() && isValidBackup(request.resource.data)) || isAdmin();
-    }
-
     match /transactions/{transactionId} {
-      allow read: if isAuthenticated() && (isOwner(resource.data.userId) || isAdmin());
+      allow read: if (isAuthenticated() && (resource == null || resource.data.get('userId', '') == request.auth.uid)) || isAdmin();
       allow create, update, delete: if false; // Only via backend
     }
 
-    match /blogs_backup/{backupId} {
-      allow read: if isAdmin();
-      allow create: if (isAuthenticated() && isValidBackup(request.resource.data)) || isAdmin();
-    }
+    // ===============================================================
+    // Backup & Rollback Collections
+    // ===============================================================
 
-    match /links_backup/{backupId} {
-      allow read: if isAdmin();
-      allow create: if (isAuthenticated() && isValidBackup(request.resource.data)) || isAdmin();
+    match /{collectionName}_backup/{backupId} {
+      // Only admins can read or list backups
+      allow read, list: if isAdmin();
+      
+      // Creating backups (allowed for any authenticated user mutation)
+      allow create: if isAuthenticated();
+      
+      // Backups are immutable
+      allow update, delete: if false;
     }
   }
 }

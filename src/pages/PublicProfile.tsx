@@ -5,37 +5,35 @@ import {
   collection, query, where, orderBy, onSnapshot, 
   doc, updateDoc, increment 
 } from 'firebase/firestore';
-import { motion, AnimatePresence } from 'motion/react';
-import { QRCodeSVG } from 'qrcode.react';
+import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 import { 
   Share2, QrCode, X, Check, 
   Link as LinkIcon, AlertCircle,
-  Youtube, Music2, UserPlus,
-  Instagram, Twitter, Linkedin, Facebook, MessageCircle,
-  MapPin, Mail, Ghost, MessageSquare,
-  Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash, Github, Twitch
+  Mail, MessageSquare, ChevronLeft,
+  Image as ImageIcon,
+  Plus
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { toast } from 'sonner';
-import { User, Link, THEMES } from '../types';
+import { User, Link as LinkType } from '../types';
 import { Helmet } from 'react-helmet-async';
-import { isAfter, isBefore } from 'date-fns';
-
-// New Components
-import { ProfileBackground } from '../components/profile/ProfileBackground';
-import { ProfileHeader } from '../components/profile/ProfileHeader';
-import { LinkCard } from '../components/profile/LinkCard';
-import { ExtraSections } from '../components/profile/ExtraSections';
-import { SocialRail } from '../components/profile/SocialRail';
 
 const PublicProfile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
   const [profile, setProfile] = useState<User | null>(null);
-  const [links, setLinks] = useState<Link[]>([]);
+  const [links, setLinks] = useState<LinkType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showQR, setShowQR] = useState(false);
+  const [activeTab, setActiveTab] = useState<'shouts' | 'media'>('shouts');
+  const [showContactForm, setShowContactForm] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Scroll animations
+  const { scrollY } = useScroll();
+  const coverOpacity = useTransform(scrollY, [0, 200], [1, 0]);
+  const headerOpacity = useTransform(scrollY, [150, 200], [0, 1]);
+  const avatarScale = useTransform(scrollY, [0, 200], [1, 0.8]);
+  const avatarY = useTransform(scrollY, [0, 200], [0, 0]); // Keep it centered relative to container
 
   useEffect(() => {
     if (!username) return;
@@ -59,9 +57,7 @@ const PublicProfile: React.FC = () => {
         // Track profile view
         updateDoc(profileRef, {
           totalClicks: increment(1)
-        }).catch(err => {
-          console.error('Failed to track profile view:', err);
-        });
+        }).catch(err => console.error('Failed to track view:', err));
 
         unsubProfile = onSnapshot(profileRef, (doc) => {
           if (doc.exists()) {
@@ -69,8 +65,6 @@ const PublicProfile: React.FC = () => {
           } else {
             setError('Profile no longer exists');
           }
-        }, (error) => {
-          handleFirestoreError(error, OperationType.GET, profileRef.path);
         });
 
         const q = query(
@@ -80,23 +74,10 @@ const PublicProfile: React.FC = () => {
         );
         unsubLinks = onSnapshot(q, (snapshot) => {
           const allLinks = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as Link))
-            .filter(link => link.active); // Filter active in memory to avoid composite index requirement
-          
-          const now = new Date();
-          const filteredLinks = allLinks.filter(link => {
-            if (!link.scheduledStart && !link.scheduledEnd) return true;
-            const start = link.scheduledStart ? new Date(link.scheduledStart) : null;
-            const end = link.scheduledEnd ? new Date(link.scheduledEnd) : null;
-            if (start && isBefore(now, start)) return false;
-            if (end && isAfter(now, end)) return false;
-            return true;
-          });
-
-          setLinks(filteredLinks);
+            .map(doc => ({ id: doc.id, ...doc.data() } as LinkType))
+            .filter(link => link.active);
+          setLinks(allLinks);
           setLoading(false);
-        }, (error) => {
-          handleFirestoreError(error, OperationType.LIST, 'links');
         });
       } catch (err) {
         console.error(err);
@@ -106,65 +87,24 @@ const PublicProfile: React.FC = () => {
     };
 
     fetchProfile();
-
     return () => {
       unsubProfile();
       unsubLinks();
     };
   }, [username]);
 
-  const handleLinkClick = async (linkId: string, url: string) => {
-    try {
-      updateDoc(doc(db, 'links', linkId), {
-        clicks: increment(1)
-      }).catch(err => console.error('Failed to track click:', err));
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (err) {
-      console.error(err);
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
-  };
-
   const copyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    toast.success('Link copied to clipboard');
-  };
-
-  const saveContact = () => {
-    if (!profile) return;
-    const vcardLines = [
-      'BEGIN:VCARD',
-      'VERSION:3.0',
-      `FN:${profile.displayName || profile.username}`,
-      `N:;${profile.displayName || profile.username};;;`,
-      profile.email ? `EMAIL;TYPE=INTERNET:${profile.email}` : '',
-      profile.bio ? `NOTE:${profile.bio}` : '',
-      `URL:${window.location.href}`,
-    ];
-    if (profile.socialLinks?.whatsapp) {
-      const phone = profile.socialLinks.whatsapp.replace(/\D/g, '');
-      if (phone) vcardLines.push(`TEL;TYPE=CELL:${phone}`);
-    }
-    vcardLines.push('END:VCARD');
-    const vcard = vcardLines.join('\n');
-    const blob = new Blob([vcard], { type: 'text/vcard' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${profile.username || 'contact'}.vcf`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Contact file downloaded');
+    toast.success('Link copied');
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950">
+    <div className="min-h-screen flex items-center justify-center bg-white">
       <motion.div 
         animate={{ scale: [1, 1.2, 1], opacity: [0.3, 1, 0.3] }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+        transition={{ duration: 1.5, repeat: Infinity }}
       >
         <Logo size="lg" variant="icon-only" />
       </motion.div>
@@ -172,171 +112,285 @@ const PublicProfile: React.FC = () => {
   );
 
   if (error || !profile) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-white p-6">
-      <AlertCircle className="w-16 h-16 text-zinc-800 mb-6" />
-      <h1 className="text-4xl font-black mb-4">{error || 'Profile Not Found'}</h1>
-      <p className="text-zinc-500 mb-8 text-center max-w-md">
-        The profile you are looking for doesn't exist or has been removed.
-      </p>
-      <RouterLink to="/" className="bg-lime-400 text-black px-8 py-3 rounded-full font-black uppercase tracking-tighter hover:scale-105 transition-transform">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white text-black p-6">
+      <AlertCircle className="w-16 h-16 text-zinc-100 mb-6" />
+      <h1 className="text-2xl font-black mb-2">Profile Not Found</h1>
+      <p className="text-zinc-500 mb-8 text-center max-w-sm">The user @{username} doesn't exist on Chip NG yet.</p>
+      <RouterLink to="/" className="bg-[#A3E635] text-white px-8 py-3 rounded-xl font-bold transition-transform hover:scale-105">
         Back Home
       </RouterLink>
     </div>
   );
 
-  const theme = THEMES[profile.theme];
-
-
   return (
-    <div className={`min-h-screen relative overflow-x-hidden ${theme.text} selection:bg-lime-400 selection:text-black`}>
+    <div className="min-h-screen bg-white text-black selection:bg-[#A3E635] selection:text-white font-sans">
       <Helmet>
-        <title>{profile.displayName || profile.username} | Premium Mini Profile</title>
-        <meta name="description" content={profile.bio || `Explore ${profile.displayName}'s exclusive content and links.`} />
-        <meta property="og:title" content={`${profile.displayName || profile.username} | Link Hub`} />
-        {profile.photoURL && <meta property="og:image" content={profile.photoURL} />}
+        <title>{profile.displayName || profile.username} (@{profile.username}) | Chip NG</title>
       </Helmet>
 
-      {/* Background System */}
-      <ProfileBackground profile={profile} />
-
-      <div className="relative z-50 w-full max-w-[480px] mx-auto pt-16 pb-32 px-6 flex flex-col items-center min-h-screen">
-        {/* Profile Header */}
-        <ProfileHeader profile={profile} />
-
-        {/* Global Social Links Horizontal Rail */}
-        <SocialRail profile={profile} />
-
-        {/* Dynamic Links Layout */}
-        <div className={`w-full ${
-          profile.profileLayout === 'grid' 
-            ? 'grid grid-cols-2 gap-4' 
-            : profile.profileLayout === 'cards'
-            ? 'space-y-6'
-            : 'space-y-4'
-        }`}>
-          {links.map((link, i) => {
-            const isFeatured = profile.profileLayout === 'featured' && i === 0;
-            return (
-              <div key={link.id} className={isFeatured ? 'col-span-full' : ''}>
-                <LinkCard 
-                  link={link}
-                  profile={profile}
-                  index={i}
-                  onClick={handleLinkClick}
-                  variant={isFeatured ? 'featured' : profile.profileLayout === 'cards' ? 'card' : 'standard'}
-                />
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Extra Sections (Map, Bookings) */}
-        <ExtraSections profile={profile} />
-
-        {/* Footer / Branding */}
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          className="mt-auto pt-20 flex flex-col items-center gap-4"
-        >
-          <RouterLink 
-            to="/" 
-            className="group flex flex-col items-center gap-2 opacity-30 hover:opacity-100 transition-all duration-500"
-          >
-            <Logo size="sm" variant="icon-only" className="grayscale group-hover:grayscale-0 transition-all opacity-50 group-hover:opacity-100" />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">
-              Created with Chip NG
-            </span>
-          </RouterLink>
-        </motion.div>
-      </div>
-
-      {/* Floating Modern Action Bar */}
-      <motion.div 
-        initial={{ y: 100 }}
-        animate={{ y: 0 }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100]"
+      {/* Sticky Header */}
+      <motion.header 
+        style={{ opacity: headerOpacity }}
+        className="fixed top-0 left-0 right-0 z-[100] bg-white border-b border-zinc-100 px-6 h-16 flex items-center justify-between pointer-events-auto"
       >
-        <div className="flex items-center gap-1.5 p-2 bg-black/40 backdrop-blur-3xl border border-white/10 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-           <button 
-            onClick={() => setShowQR(true)}
-            className="p-3.5 bg-white/5 hover:bg-white/10 text-white rounded-full transition-all hover:-translate-y-1 active:scale-95"
-            title="Scan QR"
-          >
-            <QrCode className="w-5 h-5 shadow-sm" />
-          </button>
-          
-          <button 
-            onClick={saveContact}
-            className="flex items-center gap-2 px-6 h-12 bg-lime-400 hover:bg-lime-300 text-black rounded-full font-black text-xs uppercase tracking-widest transition-all hover:shadow-[0_0_20px_rgba(163,230,53,0.4)] active:scale-95"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Save Contact</span>
-          </button>
+        <RouterLink to="/" className="p-2 -ml-2">
+          <ChevronLeft className="w-6 h-6" />
+        </RouterLink>
+        <h1 className="text-[18px] font-bold tracking-tight absolute left-1/2 -translate-x-1/2">
+          {profile.displayName || profile.username}
+        </h1>
+        <button className="p-2 -mr-2" onClick={copyLink}>
+          {copied ? <Check className="w-5 h-5 text-[#A3E635]" /> : <Share2 className="w-5 h-5" />}
+        </button>
+      </motion.header>
 
-          <button 
-            onClick={copyLink}
-            className="p-3.5 bg-white/5 hover:bg-white/10 text-white rounded-full transition-all hover:-translate-y-1 active:scale-95"
-            title="Share Profile"
+      {/* Main Scrollable Content */}
+      <main className="relative w-full max-w-[390px] mx-auto min-h-screen">
+        {/* Cover Image Area */}
+        <div className="relative h-[220px] w-full overflow-hidden bg-zinc-100">
+          <motion.div 
+            style={{ opacity: coverOpacity }}
+            className="w-full h-full relative"
           >
-            {copied ? <Check className="w-5 h-5 text-lime-400" /> : <Share2 className="w-5 h-5" />}
+            {profile.coverImage ? (
+              <img 
+                src={profile.coverImage} 
+                alt="" 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-zinc-200 to-zinc-300" />
+            )}
+            {/* Identity Overlay on Cover */}
+            <div className="absolute inset-0 bg-black/20" />
+            <div className="absolute inset-x-0 bottom-12 px-6 flex flex-col items-center pointer-events-none">
+              <h1 className="text-[22px] font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
+                {profile.displayName || profile.username}
+              </h1>
+              <p className="text-white/70 text-[14px] font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                @{profile.username}
+              </p>
+              <p className="text-white/80 text-[12px] mt-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] line-clamp-1">
+                {profile.bio || 'Your short bio here'}
+              </p>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Profile Info & Avatar */}
+        <div className="px-6 relative -mt-[48px] flex flex-col items-center">
+          <motion.div 
+            style={{ scale: avatarScale, y: avatarY }}
+            className="w-[96px] h-[96px] rounded-full border-[3px] border-white shadow-lg bg-zinc-100 overflow-hidden z-10"
+          >
+            {profile.photoURL ? (
+              <img 
+                src={profile.photoURL} 
+                alt={profile.username} 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-zinc-300 font-bold text-2xl uppercase">
+                {profile.username.substring(0, 2)}
+              </div>
+            )}
+          </motion.div>
+
+          {/* Compact Info Section */}
+          <div className="mt-4 w-full flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2 text-zinc-900 font-medium">
+              <Mail className="w-4 h-4 text-[#A3E635]" />
+              <span className="text-[14px]">{profile.contactEmail || profile.email || 'your@email.com'}</span>
+            </div>
+
+            <button 
+              onClick={() => setShowContactForm(true)}
+              className="w-full h-11 bg-[#A3E635] text-white rounded-xl font-bold text-[15px] shadow-lg shadow-lime-100/50 active:scale-[0.98] transition-all"
+            >
+              Connect with me
+            </button>
+          </div>
+        </div>
+
+        {/* Tabs Row */}
+        <div className="mt-8 border-b border-zinc-100 flex items-center">
+          <button 
+            onClick={() => setActiveTab('shouts')}
+            className={`flex-1 flex flex-col items-center py-3 relative transition-colors ${activeTab === 'shouts' ? 'text-black' : 'text-[#6B7280]'}`}
+          >
+            <span className="text-[14px] font-bold">Shouts</span>
+            {activeTab === 'shouts' && (
+              <motion.div layoutId="tab-indicator" className="absolute bottom-0 inset-x-0 h-[2px] bg-[#A3E635]" />
+            )}
+          </button>
+          <button 
+            onClick={() => setActiveTab('media')}
+            className={`flex-1 flex flex-col items-center py-3 relative transition-colors ${activeTab === 'media' ? 'text-black' : 'text-[#6B7280]'}`}
+          >
+            <span className="text-[14px] font-bold">Media</span>
+            {activeTab === 'media' && (
+              <motion.div layoutId="tab-indicator" className="absolute bottom-0 inset-x-0 h-[2px] bg-[#A3E635]" />
+            )}
           </button>
         </div>
-      </motion.div>
 
-      {/* QR Code Modal */}
-      <AnimatePresence>
-        {showQR && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 sm:p-0">
-             <motion.div 
-               initial={{ opacity: 0 }}
-               animate={{ opacity: 1 }}
-               exit={{ opacity: 0 }}
-               onClick={() => setShowQR(false)}
-               className="absolute inset-0 bg-black/90 backdrop-blur-xl"
-             />
-             
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-zinc-900 overflow-hidden border border-white/10 rounded-[2.5rem] max-w-sm w-full flex flex-col items-center gap-8 p-10 shadow-3xl"
-            >
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-lime-400 to-emerald-500" />
-              
-              <button 
-                onClick={() => setShowQR(false)}
-                className="absolute top-6 right-6 p-2 text-white/40 hover:text-white transition-colors"
+        {/* Main Content Area */}
+        <div className="mt-4 pb-32">
+          <AnimatePresence mode="wait">
+            {activeTab === 'shouts' ? (
+              <motion.div 
+                key="shouts"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="px-6 py-12 flex flex-col items-center text-center gap-2"
               >
-                <X className="w-6 h-6" />
-              </button>
-              
-              <div className="text-center">
-                <div className="relative inline-block mb-2">
-                  <div className="absolute -inset-1 bg-lime-400/20 blur-lg rounded-full" />
-                  <h3 className="relative text-2xl font-black text-white italic tracking-tight">Scan Profile</h3>
+                <div className="w-16 h-16 bg-zinc-50 rounded-full flex items-center justify-center mb-2">
+                  <MessageSquare className="w-8 h-8 text-[#D1D5DB]" />
                 </div>
-                <p className="text-white/40 text-sm font-medium">@{profile.username} on Chip NG</p>
-              </div>
-
-              <div className="relative group p-4 bg-white rounded-3xl overflow-hidden">
-                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                <QRCodeSVG 
-                  value={window.location.href} 
-                  size={200}
-                  level="H"
-                  includeMargin={true}
-                />
-              </div>
-
-              <button 
-                onClick={copyLink}
-                className="w-full h-14 bg-white text-black rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-zinc-200 transition-all flex items-center justify-center gap-2"
+                <h3 className="text-[16px] font-bold">No Shouts yet!</h3>
+                <p className="text-[14px] text-[#6B7280]">
+                  Shouts posted by {profile.displayName || profile.username} will appear here
+                </p>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="media"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="px-6 py-12 flex flex-col items-center text-center gap-2"
               >
-                <LinkIcon className="w-4 h-4" />
-                Copy Profile URL
-              </button>
+                <div className="w-16 h-16 bg-zinc-50 rounded-full flex items-center justify-center mb-2">
+                  <ImageIcon className="w-8 h-8 text-[#D1D5DB]" />
+                </div>
+                <h3 className="text-[16px] font-bold">No Media yet!</h3>
+                <p className="text-[14px] text-[#6B7280]">
+                  Photos and videos will appear here once shared
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="h-4 bg-[#F3F4F6] w-full" />
+
+          {/* Featured Links / Merch */}
+          <div className="px-6 py-8 space-y-4">
+            {links.map((link) => (
+              <a 
+                key={link.id} 
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block p-4 bg-white border border-[#E5E7EB] rounded-2xl shadow-sm hover:border-[#A3E635] transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  {link.icon ? (
+                    <img src={link.icon} alt="" className="w-10 h-10 rounded-xl object-cover" />
+                  ) : (
+                    <div className="w-10 h-10 bg-zinc-50 rounded-xl flex items-center justify-center text-zinc-400">
+                      <LinkIcon className="w-5 h-5 transition-colors group-hover:text-[#A3E635]" />
+                    </div>
+                  )}
+                  <span className="flex-1 text-[14px] font-bold group-hover:text-[#A3E635] transition-colors">{link.title}</span>
+                  <ChevronLeft className="w-4 h-4 text-zinc-300 rotate-180" />
+                </div>
+              </a>
+            ))}
+
+            <RouterLink 
+              to="/"
+              className="block p-4 bg-white border border-[#E5E7EB] rounded-2xl shadow-sm group hover:border-[#A3E635] transition-all"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-[#F0FFE6] rounded-xl flex items-center justify-center">
+                  <Logo size="xs" variant="icon-only" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[14px] font-bold">Create Your Profile On chipng.com</p>
+                  <p className="text-[12px] text-[#6B7280]">Join today and start making money</p>
+                </div>
+              </div>
+            </RouterLink>
+
+            <RouterLink 
+              to="/"
+              className="block p-4 bg-white border border-[#E5E7EB] rounded-2xl shadow-sm group hover:border-[#A3E635] transition-all"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-lime-50 rounded-xl flex items-center justify-center text-[#A3E635] font-black text-xs">
+                  me
+                </div>
+                <div className="flex-1">
+                  <p className="text-[14px] font-bold group-hover:text-[#A3E635]">chipng.com – Join today and start making money</p>
+                </div>
+              </div>
+            </RouterLink>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <footer className="py-12 flex flex-col items-center gap-2">
+            <Logo size="xs" variant="icon-only" className="grayscale opacity-50" />
+            <span className="text-[12px] font-medium text-[#6B7280]">Powered by chipng.com</span>
+        </footer>
+      </main>
+
+      {/* QR Floating Button */}
+      <button 
+        className="fixed bottom-6 right-6 w-14 h-14 bg-black text-white rounded-full flex items-center justify-center shadow-2xl z-50 active:scale-95 transition-transform"
+        onClick={() => toast.info("QR Code coming soon")}
+      >
+        <QrCode className="w-6 h-6" />
+      </button>
+
+      {/* Contact Form Modal */}
+      <AnimatePresence>
+        {showContactForm && (
+          <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowContactForm(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              className="relative w-full max-w-lg bg-white rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 pb-12 shadow-2xl overflow-hidden"
+            >
+              <div className="w-12 h-1.5 bg-zinc-100 rounded-full mx-auto mb-8 sm:hidden" />
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-black">Contact {profile.displayName || profile.username}</h2>
+                  <p className="text-[#6B7280] text-sm mt-1">Send a direct message or inquiry.</p>
+                </div>
+                <button onClick={() => setShowContactForm(false)} className="p-2 bg-zinc-50 rounded-full">
+                  <X className="w-5 h-5 text-zinc-400" />
+                </button>
+              </div>
+
+              <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); toast.success("Message sent!"); setShowContactForm(false); }}>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Your Name</label>
+                  <input type="text" required className="w-full h-12 bg-zinc-50 border-none rounded-xl px-4 focus:ring-2 focus:ring-[#A3E635] transition-all" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Your Email</label>
+                  <input type="email" required className="w-full h-12 bg-zinc-50 border-none rounded-xl px-4 focus:ring-2 focus:ring-[#A3E635] transition-all" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Message</label>
+                  <textarea required rows={4} className="w-full bg-zinc-50 border-none rounded-xl p-4 focus:ring-2 focus:ring-[#A3E635] transition-all resize-none" />
+                </div>
+                <button className="w-full h-14 bg-[#A3E635] text-white rounded-2xl font-black uppercase tracking-widest text-sm mt-4 shadow-lg shadow-lime-100">
+                  Send Message
+                </button>
+              </form>
             </motion.div>
           </div>
         )}

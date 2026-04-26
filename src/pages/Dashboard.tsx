@@ -20,7 +20,7 @@ import {
   Plus, Trash2, GripVertical, Eye, EyeOff, Image as ImageIcon,
   LogOut, ExternalLink, Copy, Check, Moon, Sun, Palette,
   Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash,
-  CreditCard, Calendar, LayoutGrid, Star, Square, AlertCircle, Lightbulb
+  CreditCard, Calendar, LayoutGrid, Star, Square, AlertCircle, Lightbulb, Camera
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -39,10 +39,11 @@ import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, G
 import { VerificationBadge } from '../components/VerificationBadge';
 import { usePaystackPayment } from 'react-paystack';
 import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
-import { safeWrite, getBackupHistory, rollbackDocument, BackupData } from '../services/backupService';
+import { safeWrite, getBackupHistory, rollbackDocument, rollbackToVersion, BackupData } from '../services/backupService';
 import { AIDesigner } from '../components/AIDesigner';
 import { BrandIcons } from '../components/icons/BrandIcons';
 import { Sparkles, Wand2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -50,13 +51,15 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, isUploading }: { 
+const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, isUploading, isAdmin, onViewHistory }: { 
   link: Link; 
   onUpdate: (id: string, data: Partial<Link>) => void;
   onDelete: (id: string) => void;
   isPremium: boolean;
   onUploadIcon: (e: React.ChangeEvent<HTMLInputElement>, linkId: string) => void;
   isUploading: boolean;
+  isAdmin: boolean;
+  onViewHistory: (collection: string, id: string) => void;
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: link.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
@@ -115,6 +118,15 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
               >
                 <Settings className="w-4 h-4" />
               </button>
+              {isAdmin && (
+                <button 
+                  onClick={() => onViewHistory('links', link.id)}
+                  className="p-2 rounded-lg text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                  title="View History"
+                >
+                  <History className="w-4 h-4" />
+                </button>
+              )}
               <button 
                 onClick={() => onUpdate(link.id, { active: !link.active })}
                 className={`transition-colors ${link.active ? 'text-lime-500' : 'text-zinc-400'}`}
@@ -230,33 +242,40 @@ const Dashboard: React.FC = () => {
     requiredPlan: 'pro',
     featureName: ''
   });
+  const [historyModal, setHistoryModal] = useState<{ collection: string; id: string } | null>(null);
   const navigate = useNavigate();
+
+  const fetchHistory = async (collection: string, id: string) => {
+    const history = await getBackupHistory(collection, id);
+    setBackups(history);
+    setHistoryModal({ collection, id });
+  };
+
+  const handleRollback = async (backupId: string) => {
+    if (!historyModal) return;
+    if (!window.confirm("Are you sure you want to restore this version? This will overwrite the current data.")) return;
+
+    setIsRollingBack(true);
+    try {
+      await rollbackToVersion(historyModal.collection, historyModal.id, backupId);
+      toast.success("Document restored successfully");
+      setHistoryModal(null);
+      // Reload relevant data
+      if (historyModal.collection === 'users') {
+        const docSnap = await getDoc(doc(db, 'users', historyModal.id));
+        if (docSnap.exists()) setProfile(docSnap.data() as UserType);
+      }
+    } catch (error) {
+      toast.error("Failed to restore document");
+    } finally {
+      setIsRollingBack(false);
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
-
-  useEffect(() => {
-    if (activeTab === 'backup' && user) {
-      getBackupHistory('users', user.uid).then(setBackups);
-    }
-  }, [activeTab, user]);
-
-  const handleRollback = async (backupId: string) => {
-    if (!user || !window.confirm('Are you sure you want to restore this version? Current data will be backed up.')) return;
-    setIsRollingBack(true);
-    try {
-      await rollbackDocument('users', user.uid);
-      toast.success('Successfully restored to previous version!');
-      const newHistory = await getBackupHistory('users', user.uid);
-      setBackups(newHistory);
-    } catch (err) {
-      toast.error('Rollback failed. Please try again.');
-    } finally {
-      setIsRollingBack(false);
-    }
-  };
 
   useEffect(() => {
     if (!user) return;
@@ -582,1069 +601,580 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col md:flex-row">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 p-6 flex flex-col">
-        <RouterLink to="/" className="mb-12">
-          <Logo size="sm" className="!flex-row !gap-3 !justify-start" />
+    <div className="min-h-screen bg-[#F3F4F6] md:flex md:items-center md:justify-center md:p-8 font-sans">
+      {/* Sidebar for Desktop - Minimal */}
+      <aside className="hidden md:flex flex-col w-64 h-[844px] bg-white rounded-l-[3rem] p-8 border-r border-[#F3F4F6] shadow-xl">
+        <RouterLink to="/" className="mb-10">
+          <Logo size="sm" className="!justify-start" />
         </RouterLink>
-
-        <nav className="flex-1 space-y-2">
+        <nav className="flex-1 space-y-1">
           {[
-            { id: 'ai', icon: Sparkles, label: 'AI Designer', isNew: true },
-            { id: 'links', icon: LinkIcon, label: 'Links' },
-            { id: 'appearance', icon: Palette, label: 'Appearance' },
+            { id: 'links', icon: LinkIcon, label: 'Edit Profile' },
+            { id: 'analytics', icon: BarChart2, label: 'Analytics' },
             { id: 'business', icon: Crown, label: 'Business' },
             { id: 'verification', icon: BadgeCheck, label: 'Verification' },
             { id: 'billing', icon: CreditCard, label: 'Billing' },
-            { id: 'backup', icon: Clock, label: 'Backup' },
-            { id: 'analytics', icon: BarChart2, label: 'Analytics' },
             { id: 'settings', icon: Settings, label: 'Settings' }
           ].map((item) => (
             <button
               key={item.id}
-              id={`tour-nav-${item.id}`}
               onClick={() => setActiveTab(item.id as any)}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                 activeTab === item.id 
-                  ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold' 
-                  : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
+                  ? 'bg-[#A3E635] text-white font-bold shadow-lg shadow-lime-200' 
+                  : 'text-[#6B7280] hover:bg-[#F9FAFB]'
               }`}
             >
-              <div className="flex items-center gap-3">
-                <item.icon className={`w-5 h-5 ${item.id === 'ai' ? 'text-lime-500' : ''}`} />
-                {item.label}
-              </div>
-              {item.isNew && (
-                <span className="text-[10px] bg-lime-400 text-zinc-900 px-1.5 py-0.5 rounded-md font-black">NEW</span>
-              )}
+              <item.icon className="w-5 h-5" />
+              {item.label}
             </button>
           ))}
         </nav>
-
-        <div className="mt-auto space-y-4">
-          <div className="px-4 py-2 flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Theme</span>
-            <ThemeToggle />
-          </div>
-          <button 
-            onClick={() => auth.signOut()}
-            className="w-full flex items-center gap-3 px-4 py-3 text-zinc-500 hover:text-red-500 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            Logout
-          </button>
-        </div>
+        <button onClick={() => auth.signOut()} className="flex items-center gap-3 px-4 py-3 text-[#6B7280] hover:text-red-500">
+          <LogOut className="w-5 h-5" />
+          Logout
+        </button>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6 md:p-12 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
-          <header className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-zinc-900 dark:text-white capitalize">{activeTab}</h1>
-              <p className="text-zinc-500">Manage your profile and links</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button 
-                id="tour-share"
-                onClick={copyLink}
-                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
-              >
-                {copied ? <Check className="w-4 h-4 text-lime-500" /> : <Copy className="w-4 h-4" />}
-                {profile?.username}
-              </button>
-              <a 
-                id="tour-preview"
-                href={`/${profile?.username}`}
-                target="_blank"
-                className="flex items-center gap-2 px-4 py-2 bg-lime-400 text-zinc-950 rounded-xl text-sm font-bold hover:bg-lime-300 transition-all"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Preview
-              </a>
-            </div>
-          </header>
-
-          {/* Progress Bar */}
-          <div className="mb-12 bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border-2 border-lime-400/20 shadow-xl shadow-lime-400/5">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-lime-400/10 rounded-xl">
-                  <TrendingUp className="w-6 h-6 text-lime-500" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg dark:text-white">Profile Completion</h3>
-                  <p className="text-xs text-zinc-500">Boost your profile visibility</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-2xl font-black text-lime-500">{calculateCompletion()}%</span>
-              </div>
-            </div>
-            <div className="w-full h-4 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-lime-400 to-lime-500 transition-all duration-1000 ease-out relative"
-                style={{ width: `${calculateCompletion()}%` }}
-              >
-                <div className="absolute inset-0 bg-white/20 animate-pulse" />
-              </div>
-            </div>
-            <p className="mt-6 text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              {calculateCompletion() < 100 
-                ? "Complete your profile to build more trust with your audience! Add social links, a bio, and a profile photo." 
-                : "Your profile is fully optimized! You're ready to share it with the world."}
-            </p>
+      {/* Main Mobile-Style Container */}
+      <div className="w-full max-w-[390px] h-screen md:h-[844px] bg-white overflow-hidden relative md:shadow-2xl md:rounded-r-[3rem] md:rounded-l-none flex flex-col border-x md:border-l-0 border-[#F3F4F6]">
+        {/* Status Bar */}
+        <div className="h-10 flex items-center justify-between px-8 text-[12px] font-bold bg-white z-20">
+          <span>{format(new Date(), 'HH:mm')}</span>
+          <div className="flex gap-1.5 items-center">
+            <div className="w-3.5 h-3.5 rounded-full border border-black" />
+            <div className="w-4 h-2 rounded-sm border border-black" />
+            <div className="w-5 h-2.5 rounded-sm bg-black" />
           </div>
+        </div>
 
-          {activeTab === 'ai' && (
-            <div className="space-y-6">
-              <section className="bg-gradient-to-br from-lime-400/10 to-emerald-400/10 p-8 rounded-[2.5rem] border border-lime-400/20">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 bg-lime-400 rounded-2xl flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 text-zinc-950" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold dark:text-white">AI Designer</h2>
-                    <p className="text-sm text-zinc-500">I'll handle the design and setup while you relax.</p>
-                  </div>
-                </div>
-                <AIDesigner user={user} profile={profile} links={links} />
-              </section>
-            </div>
-          )}
+        {/* Tab Headers */}
+        <div className="flex items-center justify-between px-6 h-14 bg-white sticky top-10 z-10 border-b border-[#F3F4F6]">
+          <button className="text-black font-medium text-[15px]" onClick={() => navigate('/')}>Home</button>
+          <h1 className="font-semibold text-[16px] capitalize">{activeTab === 'links' ? 'Edit Profile' : activeTab}</h1>
+          <button className="text-[#A3E635] font-bold text-[16px]" onClick={copyLink}>Copy</button>
+        </div>
 
-          {activeTab === 'links' && (
-            <div id="tour-content-links" className="space-y-6">
-              <button 
-                onClick={handleAddLink}
-                className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-lime-300 transition-all shadow-lg shadow-lime-400/20"
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto no-scrollbar pb-24">
+          <AnimatePresence mode="wait">
+            {activeTab === 'links' && (
+              <motion.div 
+                key="links"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="px-6 flex flex-col items-center"
               >
-                <Plus className="w-5 h-5" />
-                Add New Link
-              </button>
-
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={links.map(l => l.id)} strategy={verticalListSortingStrategy}>
-                  <div className="space-y-4">
-                    {links.map((link) => (
-                      <SortableLinkItem 
-                        key={link.id} 
-                        link={link} 
-                        onUpdate={handleUpdateLink}
-                        onDelete={handleDeleteLink}
-                        isPremium={!!user?.isPremium}
-                        onUploadIcon={(e, id) => handleFileUpload(e, 'link-icon', id)}
-                        isUploading={isUploading}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            </div>
-          )}
-
-          {activeTab === 'appearance' && profile && (
-            <div id="tour-content-appearance" className="space-y-12">
-              {/* Profile Section */}
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
-                <h2 className="text-xl font-bold dark:text-white">Profile</h2>
-                
-                {/* Cover Image */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-zinc-500">Cover Image</label>
-                  </div>
-                  <div className="relative group h-32 w-full bg-zinc-100 dark:bg-zinc-800 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                    {profile.coverImage ? (
-                      <img src={profile.coverImage} alt="Cover" className="w-full h-full object-cover" />
+                {/* Profile Pic Section */}
+                <div className="mt-8 mb-6 relative group">
+                  <div className="w-[100px] h-[100px] rounded-full bg-[#F3F4F6] flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
+                    {profile?.photoURL ? (
+                      <img src={profile.photoURL} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-zinc-400">
-                        <ImageIcon className="w-8 h-8" />
-                      </div>
+                      <Camera className="w-8 h-8 text-[#6B7280]" />
                     )}
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                      {isUploading ? (
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
-                      ) : (
-                        <ImageIcon className="w-6 h-6" />
-                      )}
-                      <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'cover')} accept="image/*" disabled={isUploading} />
-                    </label>
+                  </div>
+                  <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                    <Plus className="w-6 h-6 text-white" />
+                    <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'profile')} accept="image/*" />
+                  </label>
+                  <div className="absolute -bottom-1 -right-1 bg-[#A3E635] text-white text-[10px] font-bold px-2 py-1.5 rounded-[12px] border-2 border-white">
+                    +25%
                   </div>
                 </div>
 
-                <div className="flex items-center gap-8">
-                  <div className="relative group">
-                    <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 border-zinc-50 dark:border-zinc-950 shadow-xl">
-                      {profile.photoURL ? (
-                        <img src={profile.photoURL} alt="Profile" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-zinc-400">
-                          <User className="w-10 h-10" />
-                        </div>
-                      )}
-                    </div>
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                      {isUploading ? (
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
-                      ) : (
-                        <ImageIcon className="w-6 h-6" />
-                      )}
-                      <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'profile')} accept="image/*" disabled={isUploading} />
-                    </label>
+                {/* Profile Strength */}
+                <div className="w-full mb-8">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[14px] text-[#6B7280] font-medium">Profile Strength • {calculateCompletion()}%</p>
+                    {calculateCompletion() < 100 && <Star className="w-4 h-4 text-[#A3E635]" />}
                   </div>
-                  <div className="flex-1 space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-500">Username</label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm whitespace-nowrap">{DISPLAY_DOMAIN}/</span>
-                        <input 
-                          type="text" 
-                          value={profileForm.username}
-                          onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
-                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl pl-[5.5rem] pr-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                          placeholder="username"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-500">Display Name</label>
-                      <input 
-                        type="text" 
-                        value={profileForm.displayName}
-                        onChange={(e) => setProfileForm({ ...profileForm, displayName: e.target.value })}
-                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                        placeholder="Your Name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-500">Bio</label>
-                      <textarea 
-                        value={profileForm.bio}
-                        onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white h-24 resize-none"
-                        placeholder="Tell your story..."
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-zinc-500">Phone Number</label>
-                        <input 
-                          type="tel" 
-                          value={profileForm.phone}
-                          onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                          placeholder="+234..."
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-zinc-500">Contact Email</label>
-                        <input 
-                          type="email" 
-                          value={profileForm.contactEmail}
-                          onChange={(e) => setProfileForm({ ...profileForm, contactEmail: e.target.value })}
-                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                          placeholder="contact@example.com"
-                        />
-                      </div>
-                      <div className="md:col-span-2 space-y-2">
-                        <label className="text-sm font-medium text-zinc-500">Address</label>
-                        <input 
-                          type="text" 
-                          value={profileForm.address}
-                          onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
-                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                          placeholder="Your location"
-                        />
-                      </div>
+                  <div className="w-full h-1 bg-[#F3F4F6] rounded-full overflow-hidden">
+                    <div className="h-full bg-[#A3E635] transition-all duration-500" style={{ width: `${calculateCompletion()}%` }} />
+                  </div>
+                </div>
 
-                      <div className="md:col-span-2 space-y-2">
-                        <label className="text-sm font-medium text-zinc-500">Custom Text Color</label>
-                        <div className="flex items-center gap-4">
-                          <input 
-                            type="color" 
-                            value={profileForm.textColor || '#000000'}
-                            onChange={(e) => setProfileForm({ ...profileForm, textColor: e.target.value })}
-                            className="w-12 h-12 rounded-lg cursor-pointer border-2 border-zinc-200 dark:border-zinc-700"
-                          />
-                          <input 
-                            type="text"
-                            value={profileForm.textColor || ''}
-                            onChange={(e) => setProfileForm({ ...profileForm, textColor: e.target.value })}
-                            className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                            placeholder="#HEX Color"
-                          />
-                          {profileForm.textColor && (
+                {/* Edit Sections List */}
+                <div className="w-full space-y-0.5 mb-10">
+                  <button 
+                    onClick={() => setActiveTab('appearance')}
+                    className="w-full flex items-center justify-between py-4 border-b border-[#F3F4F6] group hover:bg-zinc-50 transition-colors px-2 -mx-2 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-lime-50 flex items-center justify-center text-[#A3E635]">
+                        <Plus className="w-5 h-5" />
+                      </div>
+                      <span className="text-[15px] font-medium">Add Platforms</span>
+                    </div>
+                    <span className="text-[#6B7280] group-hover:text-black font-bold text-[13px] transition-colors">{profile?.socialLinks ? 'Update' : '+20%'}</span>
+                  </button>
+
+                  <div className="py-4 border-b border-[#F3F4F6]">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[15px] font-medium">Bio</span>
+                      <button 
+                         onClick={() => {
+                           const bio = window.prompt("Edit Bio", profile?.bio || "");
+                           if (bio !== null) handleUpdateProfile({ bio });
+                         }}
+                         className="text-[#A3E635] font-bold text-[13px]"
+                      >
+                        {profile?.bio ? 'Edit' : '+15%'}
+                      </button>
+                    </div>
+                    <p className="text-[#6B7280] text-[14px] truncate max-w-full">
+                      {profile?.bio || 'Add bio to your profile'}
+                    </p>
+                  </div>
+
+                  <div className="py-4 border-b border-[#F3F4F6]">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[15px] font-medium">Email Contact Form</span>
+                      <button 
+                        onClick={() => handleUpdateProfile({ emailContactEnabled: !profile?.emailContactEnabled })}
+                        className={`w-12 h-6 rounded-full relative transition-colors ${profile?.emailContactEnabled ? 'bg-[#A3E635]' : 'bg-[#E5E7EB]'}`}
+                      >
+                        <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-all ${profile?.emailContactEnabled ? 'right-0.5' : 'left-0.5'}`} />
+                      </button>
+                    </div>
+                    <p className="text-[#6B7280] text-[11px] leading-snug">Visitors can share their email with you through a contact form on your profile.</p>
+                  </div>
+                </div>
+
+                {/* Featured Links Grid */}
+                <div className="w-full text-left">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="font-bold text-[18px]">Featured Links</h3>
+                    <Plus className="w-6 h-6 text-[#A3E635] cursor-pointer" onClick={handleAddLink} />
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {links.length === 0 ? (
+                      <button 
+                        onClick={handleAddLink}
+                        className="w-full p-6 border-2 border-dashed border-[#D1D5DB] rounded-[16px] flex flex-col items-center gap-2 group hover:border-[#A3E635] transition-colors"
+                      >
+                        <Plus className="w-8 h-8 text-[#A3E635]" />
+                        <span className="text-[14px] font-bold text-zinc-900">Add Big Thumbnail Link</span>
+                      </button>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Big Link (First one) */}
+                        {links[0] && (
+                          <div className="bg-white border-2 border-[#F3F4F6] rounded-[20px] p-4 flex flex-col gap-3 group relative shadow-sm hover:shadow-md transition-shadow">
+                            <div className="aspect-video bg-[#F9FAFB] rounded-[16px] overflow-hidden relative">
+                              {links[0].icon ? (
+                                <img src={links[0].icon} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-[#D1D5DB]">
+                                  <ImageIcon className="w-12 h-12" />
+                                </div>
+                              )}
+                              <label className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 cursor-pointer">
+                                <Camera className="w-6 h-6 text-white" />
+                                <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', links[0].id)} accept="image/*" />
+                              </label>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <input 
+                                className="font-bold text-[16px] bg-transparent outline-none flex-1" 
+                                value={links[0].title} 
+                                onChange={(e) => handleUpdateLink(links[0].id, { title: e.target.value })}
+                              />
+                              <div className="flex items-center gap-2">
+                                <Eye className={`w-5 h-5 cursor-pointer ${links[0].active ? 'text-[#A3E635]' : 'text-[#D1D5DB]'}`} onClick={() => handleUpdateLink(links[0].id, { active: !links[0].active })} />
+                                <Trash2 className="w-5 h-5 text-red-400 cursor-pointer" onClick={() => handleDeleteLink(links[0].id)} />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Smaller Links Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                          {links.slice(1, 3).map((link) => (
+                            <div key={link.id} className="bg-white border-2 border-[#F3F4F6] rounded-[20px] p-3 flex flex-col gap-2 group relative shadow-sm hover:shadow-md transition-shadow">
+                              <div className="aspect-square bg-[#F9FAFB] rounded-[12px] overflow-hidden relative">
+                                {link.icon ? (
+                                  <img src={link.icon} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-[#D1D5DB]">
+                                    <ImageIcon className="w-8 h-8" />
+                                  </div>
+                                )}
+                                <label className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 cursor-pointer">
+                                  <Plus className="w-5 h-5 text-white" />
+                                  <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', link.id)} accept="image/*" />
+                                </label>
+                              </div>
+                              <input 
+                                className="font-bold text-[13px] bg-transparent outline-none truncate" 
+                                value={link.title}
+                                onChange={(e) => handleUpdateLink(link.id, { title: e.target.value })}
+                              />
+                            </div>
+                          ))}
+                          {links.length < 3 && (
                             <button 
-                              onClick={() => setProfileForm({ ...profileForm, textColor: '' })}
-                              className="text-xs text-rose-500 hover:underline"
+                              onClick={handleAddLink}
+                              className="aspect-square border-2 border-dashed border-[#D1D5DB] rounded-[20px] flex flex-col items-center justify-center gap-2 hover:border-[#A3E635] transition-colors"
                             >
-                              Reset
+                              <Plus className="w-6 h-6 text-[#A3E635]" />
+                              <span className="text-[12px] font-bold">Small Link</span>
                             </button>
                           )}
                         </div>
+
+                        {/* Standard Links List (remaining) */}
+                        {links.length > 3 && (
+                          <div className="space-y-3 pt-4 border-t border-[#F3F4F6]">
+                            <h4 className="text-[14px] font-bold text-[#6B7280]">Other Links</h4>
+                            {links.slice(3).map(link => (
+                              <div key={link.id} className="flex items-center gap-3 p-3 bg-white border border-[#F3F4F6] rounded-xl group">
+                                <div className="w-10 h-10 rounded-lg bg-[#F9FAFB] flex items-center justify-center overflow-hidden flex-shrink-0">
+                                  {link.icon ? <img src={link.icon} alt="" className="w-full h-full object-cover" /> : <LinkIcon className="w-5 h-5 text-[#D1D5DB]" />}
+                                </div>
+                                <input 
+                                  className="font-medium text-[14px] bg-transparent outline-none flex-1" 
+                                  value={link.title}
+                                  onChange={(e) => handleUpdateLink(link.id, { title: e.target.value })}
+                                />
+                                <Trash2 className="w-4 h-4 text-red-300 opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity" onClick={() => handleDeleteLink(link.id)} />
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <button 
-                      onClick={() => handleUpdateProfile(profileForm)}
-                      disabled={isSavingProfile}
-                      className="w-full py-2 bg-lime-400 text-zinc-950 rounded-xl font-bold hover:bg-lime-300 transition-all disabled:opacity-50"
-                    >
-                      {isSavingProfile ? 'Saving...' : 'Save Profile'}
-                    </button>
+                    )}
                   </div>
                 </div>
-              </section>
 
-              {/* Background Section */}
-              <section className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Background</h2>
-                  {!hasAccess('pro') && (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                      <Crown className="w-3 h-3" /> PRO
-                    </span>
-                  )}
+                <div className="w-full py-10">
+                   <button className="w-full py-4 text-[#A3E635] font-bold border-2 border-[#A3E635] rounded-2xl hover:bg-lime-50 transition-colors" onClick={() => setActiveTab('appearance')}>
+                     Manage Custom Content
+                   </button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <label className="text-sm font-medium text-zinc-500">Background Type</label>
-                    <div className="flex gap-2">
-                      {['solid', 'gradient', 'image'].map((type) => (
-                        <button
+              </motion.div>
+            )}
+
+            {activeTab === 'analytics' && (
+              <motion.div 
+                key="analytics"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-6 space-y-6"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white p-4 rounded-[24px] border border-[#F3F4F6] shadow-sm">
+                    <p className="text-[#6B7280] text-[12px] font-medium mb-1">Views</p>
+                    <p className="text-[24px] font-bold">1,284</p>
+                    <p className="text-[10px] text-green-500 font-bold">+12% vs last week</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-[24px] border border-[#F3F4F6] shadow-sm">
+                    <p className="text-[#6B7280] text-[12px] font-medium mb-1">Clicks</p>
+                    <p className="text-[24px] font-bold">482</p>
+                    <p className="text-[10px] text-green-500 font-bold">+5% vs last week</p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-[24px] border border-[#F3F4F6] shadow-sm h-[300px]">
+                  <h3 className="font-bold mb-6">Traffic Over Time</h3>
+                  <ResponsiveContainer width="100%" height="80%">
+                    <AreaChart data={mockAnalyticsData}>
+                      <defs>
+                        <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#A3E635" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#A3E635" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <Area type="monotone" dataKey="views" stroke="#A3E635" fillOpacity={1} fill="url(#colorViews)" />
+                      <Tooltip />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'appearance' && (
+              <motion.div 
+                key="appearance"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-6 space-y-10"
+              >
+                <div className="space-y-4">
+                   <h3 className="text-[22px] font-bold">Themes</h3>
+                   <div className="grid grid-cols-2 gap-4">
+                      {['minimal', 'modern', 'brutalist', 'gradient'].map(t => (
+                        <button 
+                          key={t}
+                          onClick={() => handleUpdateProfile({ theme: t as ThemeType })}
+                          className={`aspect-video rounded-2xl border-2 transition-all p-3 flex flex-col gap-2 ${profile?.theme === t ? 'border-[#A3E635] bg-lime-50' : 'border-[#F3F4F6]'}`}
+                        >
+                          <div className="w-full h-2 bg-zinc-200 rounded" />
+                          <div className="w-2/3 h-2 bg-zinc-100 rounded" />
+                          <span className="mt-auto text-[12px] font-bold capitalize">{t}</span>
+                        </button>
+                      ))}
+                   </div>
+                </div>
+
+                <div className="space-y-4">
+                   <h3 className="text-[22px] font-bold">Background</h3>
+                   <div className="flex gap-4">
+                      {['solid', 'gradient', 'image'].map(type => (
+                        <button 
                           key={type}
-                          onClick={() => {
-                            if (type === 'image' && !checkFeatureAccess('pro', 'Custom Background')) return;
-                            handleUpdateProfile({ backgroundType: type as any });
-                          }}
-                          className={`flex-1 py-2 px-4 rounded-xl border transition-all capitalize text-sm font-bold ${
-                            profile.backgroundType === type 
-                              ? 'border-lime-400 bg-lime-400/5 text-lime-600' 
-                              : 'border-zinc-200 dark:border-zinc-800 text-zinc-500'
-                          }`}
+                          onClick={() => handleUpdateProfile({ backgroundType: type as any })}
+                          className={`flex-1 py-3 rounded-xl border-2 font-bold text-[14px] capitalize ${profile?.backgroundType === type ? 'border-[#A3E635] text-[#A3E635]' : 'border-[#F3F4F6] text-[#6B7280]'}`}
                         >
                           {type}
                         </button>
                       ))}
-                    </div>
-                  </div>
-                  {profile.backgroundType === 'image' && (
-                    <div className="space-y-4">
-                      <label className="text-sm font-medium text-zinc-500">Custom Image</label>
-                      <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                          {profile.backgroundImage ? (
-                            <img src={profile.backgroundImage} alt="Background" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-zinc-400">
-                              <ImageIcon className="w-6 h-6" />
-                            </div>
-                          )}
-                        </div>
-                        <label className="flex-1 py-2 px-4 bg-lime-400 text-zinc-950 rounded-xl text-center font-bold cursor-pointer hover:bg-lime-300 transition-all flex items-center justify-center gap-2">
-                          {isUploading ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
-                              Uploading...
-                            </>
-                          ) : (
-                            'Upload Image'
-                          )}
-                          <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'background')} accept="image/*" disabled={isUploading} />
+                   </div>
+                   {profile?.backgroundType === 'image' && (
+                     <div className="mt-4">
+                        <label className="block w-full py-4 border-2 border-dashed border-[#D1D5DB] rounded-2xl text-center cursor-pointer hover:border-[#A3E635]">
+                          <span className="font-bold text-[14px] text-[#6B7280]">Upload Custom Background</span>
+                          <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'background')} accept="image/*" />
                         </label>
-                      </div>
-                    </div>
-                  )}
+                     </div>
+                   )}
                 </div>
-              </section>
+              </motion.div>
+            )}
 
-              {/* Social Icons Section */}
-              <section className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Social Icons</h2>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {[
-                    { id: 'instagram', icon: Instagram, label: 'Instagram', color: '#E4405F' },
-                    { id: 'twitter', icon: Twitter, label: 'Twitter', color: '#1DA1F2' },
-                    { id: 'linkedin', icon: Linkedin, label: 'LinkedIn', color: '#0077B5' },
-                    { id: 'youtube', icon: Youtube, label: 'YouTube', color: '#FF0000' },
-                    { id: 'facebook', icon: Facebook, label: 'Facebook', color: '#1877F2' },
-                    { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp', color: '#25D366' },
-                    { id: 'tiktok', icon: Music2, label: 'TikTok', color: '#000000' },
-                    { id: 'reddit', icon: MessageSquare, label: 'Reddit', color: '#FF4500' },
-                    { id: 'discord', icon: Disc, label: 'Discord', color: '#5865F2' },
-                    { id: 'telegram', icon: Send, label: 'Telegram', color: '#26A5E4' },
-                    { id: 'pinterest', icon: Pin, label: 'Pinterest', color: '#BD081C' },
-                    { id: 'spotify', icon: Music, label: 'Spotify', color: '#1DB954' },
-                    { id: 'applemusic', icon: Apple, label: 'Apple Music', color: '#FA243C' },
-                    { id: 'soundcloud', icon: Cloud, label: 'SoundCloud', color: '#FF3300' },
-                    { id: 'threads', icon: AtSign, label: 'Threads', color: '#000000' },
-                    { id: 'mastodon', icon: Hash, label: 'Mastodon', color: '#6364FF' },
-                    { id: 'github', icon: Github, label: 'GitHub', color: '#181717' },
-                    { id: 'twitch', icon: Twitch, label: 'Twitch', color: '#9146FF' },
-                    { id: 'snapchat', icon: () => <BrandIcons.snapchat className="w-5 h-5" />, label: 'Snapchat', color: '#FFFC00' },
-                    { id: 'medium', icon: MessageSquare, label: 'Medium', color: '#00ab6c' },
-                    { id: 'behance', icon: ImageIcon, label: 'Behance', color: '#1769ff' },
-                    { id: 'dribbble', icon: Disc, label: 'Dribbble', color: '#ea4c89' },
-                    { id: 'patreon', icon: Star, label: 'Patreon', color: '#f96854' },
-                    { id: 'substack', icon: Send, label: 'Substack', color: '#FF6719' },
-                    { id: 'buymeacoffee', icon: Music, label: 'Buy Me Coffee', color: '#FFDD00' },
-                    { id: 'mail', icon: Mail, label: 'Email', color: '#D44638' }
-                  ].map((social) => (
-                    <div key={social.id} className="space-y-2">
-                      <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                        <social.icon className="w-3 h-3" style={{ color: social.color }} /> {social.label}
-                      </label>
-                      <input 
-                        type="text" 
-                        value={profile.socialLinks?.[social.id as keyof typeof profile.socialLinks] || ''}
-                        onChange={(e) => {
-                          const newSocialLinks = { ...(profile.socialLinks || {}), [social.id]: e.target.value };
-                          handleUpdateProfile({ socialLinks: newSocialLinks });
-                        }}
-                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white text-sm"
-                        placeholder={`${social.label} URL or username`}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              {/* Layouts Section */}
-              <section className="space-y-6">
-                <h2 className="text-xl font-bold dark:text-white">Profile Layout</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[
-                    { id: 'list', label: 'Classic List', icon: LinkIcon },
-                    { id: 'grid', label: 'Grid', icon: LayoutGrid },
-                    { id: 'cards', label: 'Big Cards', icon: Square },
-                    { id: 'featured', label: 'Featured First', icon: Star }
-                  ].map((layout) => (
-                    <button
-                      key={layout.id}
-                      onClick={() => handleUpdateProfile({ profileLayout: layout.id as any })}
-                      className={`p-4 rounded-2xl border-2 transition-all text-center space-y-3 ${
-                        (profile.profileLayout || 'list') === layout.id 
-                          ? 'border-lime-400 bg-lime-400/5' 
-                          : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
-                      }`}
-                    >
-                      <div className="flex justify-center text-zinc-400">
-                        <layout.icon className="w-6 h-6" />
-                      </div>
-                      <span className="text-sm font-bold dark:text-white">{layout.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {/* Fonts Section */}
-              <section className="space-y-6">
-                <h2 className="text-xl font-bold dark:text-white">Text Fonts</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[
-                    { id: 'sans', label: 'Sans-Serif', family: 'font-sans' },
-                    { id: 'serif', label: 'Elegant Serif', family: 'font-serif' },
-                    { id: 'mono', label: 'Mono Code', family: 'font-mono' },
-                    { id: 'display', label: 'Modern Display', family: 'font-display' },
-                    { id: 'modern', label: 'Modern Sans', family: 'font-sans tracking-tight' },
-                    { id: 'elegant', label: 'Cursive Elegant', family: 'font-serif italic' },
-                    { id: 'bold', label: 'Ultra Bold', family: 'font-display font-black uppercase' }
-                  ].map((font) => (
-                    <button
-                      key={font.id}
-                      onClick={() => handleUpdateProfile({ profileFont: font.id as any })}
-                      className={`p-4 rounded-2xl border-2 transition-all text-center space-y-2 ${
-                        (profile.profileFont || 'sans') === font.id 
-                          ? 'border-lime-400 bg-lime-400/5' 
-                          : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
-                      }`}
-                    >
-                      <span className={`text-xl block ${font.family}`}>Abc</span>
-                      <span className="text-xs font-bold text-zinc-500">{font.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {/* Themes Section */}
-              <section className="space-y-6">
-                <h2 className="text-xl font-bold dark:text-white">Themes</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                  {(Object.keys(THEMES) as ThemeType[]).map((themeKey) => (
-                    <button
-                      key={themeKey}
-                      onClick={() => handleUpdateProfile({ theme: themeKey })}
-                      className={`p-4 rounded-2xl border-2 transition-all text-center space-y-3 ${
-                        profile.theme === themeKey 
-                          ? 'border-lime-400 bg-lime-400/5' 
-                          : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
-                      }`}
-                    >
-                      <div className={`w-full aspect-square rounded-xl ${THEMES[themeKey].background} border border-zinc-200 dark:border-zinc-800`} />
-                      <span className="text-sm font-bold dark:text-white capitalize">{themeKey}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {/* Button Styles */}
-              <section className="space-y-6">
-                <h2 className="text-xl font-bold dark:text-white">Button Style</h2>
-                <div className="grid grid-cols-3 gap-4">
-                  {(['rounded', 'pill', 'square'] as ButtonStyle[]).map((style) => (
-                    <button
-                      key={style}
-                      onClick={() => handleUpdateProfile({ buttonStyle: style })}
-                      className={`p-6 rounded-2xl border-2 transition-all ${
-                        profile.buttonStyle === style 
-                          ? 'border-lime-400 bg-lime-400/5' 
-                          : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
-                      }`}
-                    >
-                      <div className={`w-full h-10 bg-zinc-200 dark:bg-zinc-800 ${
-                        style === 'rounded' ? 'rounded-xl' : style === 'pill' ? 'rounded-full' : 'rounded-none'
-                      }`} />
-                      <span className="block mt-4 text-sm font-bold dark:text-white capitalize">{style}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            </div>
-          )}
-
-          {activeTab === 'business' && profile && (
-            <div className="space-y-12">
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Location & Map</h2>
-                  {!hasAccess('business') && (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                      <Crown className="w-3 h-3" /> BUSINESS
-                    </span>
-                  )}
-                </div>
-                <div className={`space-y-6 ${!hasAccess('business') ? 'opacity-50 pointer-events-none' : ''}`}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-500">Latitude</label>
-                      <input 
-                        type="number" 
-                        step="any"
-                        value={profile.location?.lat || ''}
-                        onChange={(e) => handleUpdateProfile({ location: { ...profile.location!, lat: parseFloat(e.target.value) || 0, lng: profile.location?.lng || 0 } })}
-                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                        placeholder="6.5244"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-500">Longitude</label>
-                      <input 
-                        type="number" 
-                        step="any"
-                        value={profile.location?.lng || ''}
-                        onChange={(e) => handleUpdateProfile({ location: { ...profile.location!, lng: parseFloat(e.target.value) || 0, lat: profile.location?.lat || 0 } })}
-                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                        placeholder="3.3792"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-500">Address (Optional)</label>
-                    <input 
-                      type="text" 
-                      value={profile.location?.address || ''}
-                      onChange={(e) => handleUpdateProfile({ location: { ...profile.location!, address: e.target.value, lat: profile.location?.lat || 0, lng: profile.location?.lng || 0 } })}
-                      className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                      placeholder="123 Business Way, Lagos"
-                    />
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Appointments</h2>
-                  {!hasAccess('business') && (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                      <Crown className="w-3 h-3" /> BUSINESS
-                    </span>
-                  )}
-                </div>
-                <div className={`space-y-6 ${!hasAccess('business') ? 'opacity-50 pointer-events-none' : ''}`}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-zinc-500">Enable Appointments</span>
-                    <button 
-                      onClick={() => handleUpdateProfile({ appointmentsEnabled: !profile.appointmentsEnabled })}
-                      className={`w-12 h-6 rounded-full transition-all relative ${profile.appointmentsEnabled ? 'bg-lime-400' : 'bg-zinc-300 dark:bg-zinc-700'}`}
-                    >
-                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${profile.appointmentsEnabled ? 'left-7' : 'left-1'}`} />
-                    </button>
-                  </div>
-
-                  {profile.appointmentsEnabled && (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-bold dark:text-white">Booking Slots</h3>
-                        <button 
-                          onClick={() => {
-                            const newAppt: Appointment = {
-                              id: Math.random().toString(36).substr(2, 9),
-                              title: 'Consultation',
-                              dateTime: new Date().toISOString(),
-                              contactLink: ''
-                            };
-                            handleUpdateProfile({ appointments: [...(profile.appointments || []), newAppt] });
-                          }}
-                          className="flex items-center gap-2 text-sm font-bold text-lime-500 hover:text-lime-600"
-                        >
-                          <Plus className="w-4 h-4" /> Add Slot
-                        </button>
-                      </div>
-
-                      <div className="space-y-4">
-                        {(profile.appointments || []).map((appt, idx) => (
-                          <div key={appt.id} className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700 space-y-4">
-                            <div className="flex items-center justify-between">
-                              <input 
-                                type="text" 
-                                value={appt.title}
-                                onChange={(e) => {
-                                  const newAppts = [...(profile.appointments || [])];
-                                  newAppts[idx].title = e.target.value;
-                                  handleUpdateProfile({ appointments: newAppts });
-                                }}
-                                className="bg-transparent font-bold dark:text-white outline-none"
-                                placeholder="Slot Title"
-                              />
-                              <button 
-                                onClick={() => {
-                                  const newAppts = profile.appointments?.filter(a => a.id !== appt.id);
-                                  handleUpdateProfile({ appointments: newAppts });
-                                }}
-                                className="text-zinc-400 hover:text-red-500"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                <span className="text-[10px] text-zinc-500 uppercase font-bold">Date & Time</span>
-                                <input 
-                                  type="datetime-local" 
-                                  value={appt.dateTime.slice(0, 16)}
-                                  onChange={(e) => {
-                                    const newAppts = [...(profile.appointments || [])];
-                                    newAppts[idx].dateTime = new Date(e.target.value).toISOString();
-                                    handleUpdateProfile({ appointments: newAppts });
-                                  }}
-                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 text-xs outline-none"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <span className="text-[10px] text-zinc-500 uppercase font-bold">Contact Link (WhatsApp/Email)</span>
-                                <input 
-                                  type="text" 
-                                  value={appt.contactLink}
-                                  onChange={(e) => {
-                                    const newAppts = [...(profile.appointments || [])];
-                                    newAppts[idx].contactLink = e.target.value;
-                                    handleUpdateProfile({ appointments: newAppts });
-                                  }}
-                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 text-xs outline-none"
-                                  placeholder="https://wa.me/..."
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </section>
-            </div>
-          )}
-
-          {activeTab === 'verification' && profile && (
-            <div className="space-y-8">
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Get Verified</h2>
-                  {profile.isVerified && (
-                    <span className="px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full text-xs font-bold flex items-center gap-1">
-                      <BadgeCheck className="w-3 h-3" /> VERIFIED
-                    </span>
-                  )}
+            {activeTab === 'backup' && (
+              <motion.div 
+                key="backup"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-8 space-y-8"
+              >
+                <div className="space-y-2">
+                  <h2 className="text-[28px] font-black tracking-tighter dark:text-white">Revision History</h2>
+                  <p className="text-[#6B7280] text-[14px] font-medium leading-tight">Manage system-wide backups and restore previous versions of your data.</p>
                 </div>
 
-                <div className="p-8 bg-zinc-50 dark:bg-zinc-800 rounded-[2rem] border border-zinc-100 dark:border-zinc-700 text-center space-y-6">
-                  <div className="w-20 h-20 bg-[#1D9BF0] rounded-full flex items-center justify-center mx-auto shadow-xl shadow-blue-500/20">
-                    <VerificationBadge size={40} />
-                  </div>
-                  <div className="max-w-md mx-auto space-y-2">
-                    <h3 className="text-2xl font-bold dark:text-white">Twitter-style Verification</h3>
-                    <p className="text-zinc-500">Stand out from the crowd with a blue verification badge on your profile. Build trust and credibility with your audience.</p>
-                  </div>
-                  
-                  <div className="py-6 border-y border-zinc-200 dark:border-zinc-700">
-                    <div className="text-4xl font-black dark:text-white">₦1,000<span className="text-lg font-normal text-zinc-500">/month</span></div>
-                  </div>
-
-                  {!profile.isVerified ? (
-                    <button
-                      onClick={triggerVerification}
-                      className="w-full py-4 bg-[#1D9BF0] text-white rounded-2xl font-bold hover:bg-[#1A8CD8] transition-all shadow-lg shadow-blue-500/20"
-                    >
-                      Get Verified Now
-                    </button>
-                  ) : (
-                    <div className="p-4 bg-blue-500/5 rounded-xl border border-blue-500/20 text-blue-500 font-bold">
-                      You are already verified!
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {[
-                    { title: 'Trust', desc: 'Build instant trust with your audience' },
-                    { title: 'Credibility', desc: 'Show that you are the real deal' },
-                    { title: 'Visibility', desc: 'Stand out in search results' }
-                  ].map((benefit, i) => (
-                    <div key={i} className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700">
-                      <h4 className="font-bold dark:text-white mb-1">{benefit.title}</h4>
-                      <p className="text-xs text-zinc-500">{benefit.desc}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </div>
-          )}
-
-          {activeTab === 'billing' && (
-            <div className="space-y-8">
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-none">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-lime-400/10 rounded-xl text-lime-500">
-                      <CreditCard className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold dark:text-white">Current Plan</h2>
-                      <p className="text-sm text-zinc-500">Manage your subscription and billing history</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <div className="text-sm font-bold uppercase tracking-wider text-zinc-400">{profile?.plan}</div>
-                      <div className={`text-xs font-bold ${profile?.subscriptionStatus === 'active' ? 'text-lime-500' : 'text-zinc-500'}`}>
-                        {profile?.subscriptionStatus === 'active' ? 'Active' : 'Inactive'}
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => navigate('/pricing')}
-                      className="px-6 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 rounded-xl text-sm font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all"
-                    >
-                      {profile?.plan === 'business' ? 'Manage' : 'Upgrade'}
-                    </button>
-                  </div>
-                </div>
-
-                {profile?.isPremium && profile.premiumUntil && (
-                  <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Calendar className="w-4 h-4 text-zinc-400" />
-                      <span className="text-sm text-zinc-500 italic">Expires on</span>
-                    </div>
-                    <div className="font-bold text-zinc-900 dark:text-white">
-                      {format(new Date(profile.premiumUntil), 'MMMM dd, yyyy')}
-                    </div>
-                  </div>
-                )}
-              </section>
-
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-none">
-                <h3 className="text-lg font-bold dark:text-white mb-6">Transaction History</h3>
                 <div className="space-y-4">
-                  {transactions.length > 0 ? (
-                    transactions.map((tx) => (
-                      <div key={tx.id} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl group border border-zinc-100 dark:border-zinc-800">
-                        <div className="flex items-center gap-4">
-                          <div className={`p-2 rounded-xl ${tx.status === 'success' ? 'bg-lime-400/10 text-lime-500' : 'bg-red-400/10 text-red-500'}`}>
-                            <CreditCard className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <div className="font-bold text-zinc-900 dark:text-white capitalize">{tx.plan} Plan</div>
-                            <div className="text-xs text-zinc-500">{format(new Date(tx.createdAt), 'MMM dd, yyyy • HH:mm')}</div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-bold text-zinc-900 dark:text-white">₦{tx.amount?.toLocaleString()}</div>
-                          <div className="text-[10px] font-mono text-zinc-400 leading-none">{tx.reference}</div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-12 text-zinc-400 bg-zinc-50 dark:bg-zinc-800/30 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800">
-                      No transactions found
-                    </div>
-                  )}
-                </div>
-              </section>
-            </div>
-          )}
-
-          {activeTab === 'analytics' && (
-            <div id="tour-content-analytics" className="space-y-8">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-zinc-500 text-sm font-medium">Total Profile Views</span>
-                    <TrendingUp className="w-4 h-4 text-lime-500" />
-                  </div>
-                  <div className="text-4xl font-bold text-zinc-900 dark:text-white">
-                    {profile?.totalClicks || 0}
-                  </div>
-                </div>
-                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-zinc-500 text-sm font-medium">Total Link Clicks</span>
-                    <BarChart2 className="w-4 h-4 text-blue-500" />
-                  </div>
-                  <div className="text-4xl font-bold text-zinc-900 dark:text-white">
-                    {links.reduce((acc, l) => acc + (l.clicks || 0), 0)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Charts */}
-              <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800">
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-xl font-bold dark:text-white">Performance Over Time</h2>
-                  {!user?.isPremium && (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                      <Crown className="w-3 h-3" /> PRO FEATURE
-                    </span>
-                  )}
-                </div>
-                
-                <div className={`h-[300px] w-full ${!user?.isPremium ? 'blur-md pointer-events-none select-none opacity-50' : ''}`}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={mockAnalyticsData}>
-                      <defs>
-                        <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#a3e635" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#a3e635" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '12px', color: '#fff' }}
-                        itemStyle={{ color: '#a3e635' }}
-                      />
-                      <Area type="monotone" dataKey="views" stroke="#a3e635" fillOpacity={1} fill="url(#colorViews)" strokeWidth={3} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {!user?.isPremium && (
-                  <div className="mt-8 text-center">
-                    <p className="text-zinc-500 mb-4">Upgrade to Premium to unlock detailed analytics and charts.</p>
-                    <button 
-                      onClick={handleUpgrade}
-                      className="px-8 py-3 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:scale-105 transition-all"
-                    >
-                      Upgrade Now
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800">
-                <h2 className="text-xl font-bold dark:text-white mb-6">Link Performance</h2>
-                <div className="space-y-4">
-                  {links.map((link) => (
-                    <div key={link.id} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl">
+                  <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-700 rounded-xl flex items-center justify-center">
-                          {link.type === 'youtube' ? <Youtube className="w-5 h-5 text-red-500" /> : 
-                           link.type === 'tiktok' ? <Music2 className="w-5 h-5 text-pink-500" /> : 
-                           <LinkIcon className="w-5 h-5 text-zinc-400" />}
+                        <div className="w-10 h-10 bg-lime-50 dark:bg-lime-900/20 rounded-xl flex items-center justify-center">
+                          <User className="w-5 h-5 text-lime-600" />
                         </div>
                         <div>
-                          <div className="font-bold dark:text-white">{link.title}</div>
-                          <div className="text-sm text-zinc-500 truncate max-w-[200px]">{link.url}</div>
+                          <h3 className="font-bold text-sm dark:text-white">Profile Control</h3>
+                          <p className="text-xs text-zinc-500">Restore your personal profile settings.</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-xl font-bold dark:text-white">{link.clicks || 0}</div>
-                        <div className="text-xs text-zinc-500">clicks</div>
-                      </div>
+                      <button 
+                        onClick={() => profile && fetchHistory('users', profile.uid)}
+                        className="px-4 py-2 bg-[#A3E635] text-white text-xs font-bold rounded-lg shadow-lg shadow-lime-200"
+                      >
+                        View History
+                      </button>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'backup' && (
-            <div className="space-y-8">
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Profile Versions</h2>
-                  <div className="flex items-center gap-2 text-xs font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">
-                    <Clock className="w-3 h-3" /> AUTO-BACKUP ACTIVE
                   </div>
-                </div>
-                
-                <p className="text-sm text-zinc-500">
-                  Every time you update your profile, we save a backup. You can restore your profile to any previous version here. 
-                  Note: Restoring will overwrite your current profile data.
-                </p>
 
-                <div className="space-y-4">
-                  {backups.length === 0 ? (
-                    <div className="p-12 text-center text-zinc-500 italic bg-zinc-50 dark:bg-zinc-800/50 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800">
-                      No backups found yet. Start editing your profile to create history.
-                    </div>
-                  ) : (
-                    backups.map((backup, idx) => (
-                      <div key={backup.id} className="flex items-center justify-between p-6 bg-zinc-50 dark:bg-zinc-800 rounded-3xl border border-zinc-100 dark:border-zinc-700 hover:border-lime-400/50 transition-all group">
-                        <div className="flex items-center gap-4">
-                          <div className={cn(
-                            "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
-                            backup.action === 'rollback' ? 'bg-amber-400/10 text-amber-500' : 
-                            backup.action === 'create' ? 'bg-lime-400/10 text-lime-500' : 
-                            'bg-blue-400/10 text-blue-500'
-                          )}>
-                            <Clock className="w-6 h-6" />
+                  <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm space-y-4 overflow-hidden">
+                    <h3 className="font-bold text-sm dark:text-white mb-2">Tracked Content Links</h3>
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                      {links.length === 0 ? (
+                        <p className="text-xs text-zinc-400 py-4 text-center italic">No links added yet to track history.</p>
+                      ) : links.map(link => (
+                        <div key={link.id} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700 hover:border-zinc-300 transition-colors">
+                          <div className="flex items-center gap-3">
+                             <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+                               {link.icon ? <img src={link.icon} alt="" className="w-full h-full object-cover" /> : <LinkIcon className="w-4 h-4 text-zinc-400" />}
+                             </div>
+                             <span className="text-xs font-bold dark:text-white truncate max-w-[120px]">{link.title || 'Untitled Link'}</span>
                           </div>
-                          <div>
-                            <div className="font-bold dark:text-white flex items-center gap-2">
-                              {backup.action === 'rollback' ? 'Restored Version' : 
-                               backup.action === 'create' ? 'Initial Creation' : 
-                               `Version ${backups.length - idx}`}
-                              {idx === 0 && <span className="text-[10px] bg-lime-400 text-zinc-950 px-2 py-0.5 rounded-full">LATEST</span>}
-                            </div>
-                            <div className="text-sm text-zinc-500">
-                              {backup.timestamp?.toDate ? format(backup.timestamp.toDate(), 'PPP p') : 'Just now'}
-                            </div>
-                          </div>
+                          <button 
+                            onClick={() => fetchHistory('links', link.id)}
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                          >
+                            <History className="w-4 h-4" />
+                          </button>
                         </div>
-                        
-                        <button 
-                          onClick={() => handleRollback(backup.id!)}
-                          disabled={isRollingBack || idx === 0}
-                          className={cn(
-                            "px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all",
-                            idx === 0 
-                              ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed" 
-                              : "bg-white dark:bg-zinc-700 text-zinc-950 dark:text-white border border-zinc-200 dark:border-zinc-600 hover:bg-lime-400 hover:text-zinc-950 hover:border-lime-400 shadow-sm"
-                          )}
-                        >
-                          {isRollingBack ? 'Restoring...' : 'Restore'}
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </section>
-
-              <div className="p-8 bg-amber-50 dark:bg-amber-900/10 rounded-[2.5rem] border border-amber-100 dark:border-amber-900/20">
-                <h3 className="text-amber-700 dark:text-amber-500 font-bold mb-2 flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5" /> Data Recovery Note
-                </h3>
-                <p className="text-sm text-amber-600 dark:text-amber-600/80">
-                  Links and transactions are currently backed up internally but cannot be restored individually through this UI yet. 
-                  Currently, only the main Profile document (Name, Bio, Theme, etc.) supports one-click visual restoration.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'settings' && (
-            <div className="space-y-8">
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Premium Subscription</h2>
-                  {user?.isPremium && (
-                    <span className="px-3 py-1 bg-lime-400/10 text-lime-500 rounded-full text-xs font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> ACTIVE
-                    </span>
-                  )}
-                </div>
-                
-                {!user?.isPremium ? (
-                  <div className="p-6 bg-zinc-50 dark:bg-zinc-800 rounded-3xl border border-zinc-100 dark:border-zinc-700">
-                    <div className="flex items-start gap-4 mb-6">
-                      <div className="w-12 h-12 bg-lime-400 rounded-2xl flex items-center justify-center shrink-0">
-                        <Crown className="text-zinc-950 w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold dark:text-white">Upgrade to Chip NG Pro</h3>
-                        <p className="text-sm text-zinc-500">Unlock verified badge, link scheduling, advanced analytics, and more.</p>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={handleUpgrade}
-                      className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:scale-[1.02] transition-all"
-                    >
-                      Upgrade for ₦10,000/mo
-                    </button>
-                  </div>
-                ) : (
-                  <div className="p-6 bg-zinc-50 dark:bg-zinc-800 rounded-3xl border border-zinc-100 dark:border-zinc-700">
-                    <p className="text-sm text-zinc-500 mb-4">You are currently on the Pro plan. Your subscription is active until {user.premiumUntil ? format(new Date(user.premiumUntil), 'PPP') : 'N/A'}.</p>
-                    <button className="text-sm font-bold text-zinc-400 hover:text-zinc-600 transition-colors">
-                      Manage Subscription
-                    </button>
-                  </div>
-                )}
-              </section>
-
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-6">
-                <h2 className="text-xl font-bold dark:text-white">Account Settings</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl">
-                    <div>
-                      <div className="font-bold dark:text-white">Email</div>
-                      <div className="text-sm text-zinc-500">{user?.email}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl">
-                    <div>
-                      <div className="font-bold dark:text-white">Member Since</div>
-                      <div className="text-sm text-zinc-500">
-                        {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </div>
-              </section>
 
-              <section className="bg-red-50 dark:bg-red-900/10 p-8 rounded-[2.5rem] border border-red-100 dark:border-red-900/20 space-y-6">
-                <h2 className="text-xl font-bold text-red-600">Danger Zone</h2>
-                <p className="text-red-600/70 text-sm">Once you delete your account, there is no going back. Please be certain.</p>
-                <button className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all">
-                  Delete Account
-                </button>
-              </section>
-            </div>
-          )}
+                <div className="p-6 bg-blue-50/50 dark:bg-blue-900/10 rounded-[2.5rem] border border-blue-100/50 dark:border-blue-800/50 flex items-start gap-4">
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-2xl flex items-center justify-center flex-shrink-0">
+                    <RotateCcw className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-blue-900 dark:text-blue-200">Safety First</h4>
+                    <p className="text-xs text-blue-700/80 dark:text-blue-400/80 leading-relaxed mt-1 font-medium italic">
+                      "Data is immortal, but mistakes should be reversible." Every significant change is automatically versioned.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      </main>
 
+        {/* Bottom Navigation */}
+        <div className="h-20 bg-white border-t border-[#F3F4F6] px-6 flex items-center justify-between sticky bottom-0 z-20">
+          {[
+            { id: 'links', icon: LinkIcon, label: 'Edit' },
+            { id: 'analytics', icon: BarChart2, label: 'Stats' },
+            { id: 'appearance', icon: Palette, label: 'Style' },
+            { id: 'settings', icon: Settings, label: 'Setup' },
+            ...(profile?.role === 'admin' ? [{ id: 'backup', icon: History, label: 'History' }] : [])
+          ].map(item => (
+            <button 
+              key={item.id}
+              onClick={() => setActiveTab(item.id as any)}
+              className={`flex flex-col items-center gap-1 transition-colors ${activeTab === item.id ? 'text-[#A3E635]' : 'text-[#979797]'}`}
+            >
+              <item.icon className="w-6 h-6" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
+            </button>
+          ))}
+          <a 
+            href={`/${profile?.username}`}
+            target="_blank"
+            className="flex flex-col items-center gap-1 text-[#979797]"
+          >
+            <Eye className="w-6 h-6" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Preview</span>
+          </a>
+        </div>
+      </div>
+
+      {/* Preview Pane for Desktop only */}
+      <div className="hidden lg:flex flex-col ml-12 w-64 items-center justify-center gap-6">
+          <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-[#F3F4F6] text-center space-y-4">
+            <h4 className="font-bold">Live Preview</h4>
+            <p className="text-[12px] text-[#6B7280]">Open your public link to see changes in real-time.</p>
+            <a 
+              href={`/${profile?.username}`}
+              target="_blank"
+              className="block w-full py-3 bg-[#F9FAFB] text-black rounded-xl font-bold text-[14px] border border-[#F3F4F6] hover:bg-zinc-100 transition-colors"
+            >
+              chipng.com/{profile?.username}
+            </a>
+          </div>
+      </div>
 
       <UpgradeModal 
         isOpen={upgradeModal.isOpen} 
         onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
         requiredPlan={upgradeModal.requiredPlan}
         featureName={upgradeModal.featureName}
+        onUpgrade={handleUpgrade}
       />
+
+      {/* Backup History Modal */}
+      <AnimatePresence>
+        {historyModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl border border-zinc-100 dark:border-zinc-800"
+            >
+              <div className="p-8 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-black dark:text-white flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
+                      <History className="w-6 h-6 text-blue-500" />
+                    </div>
+                    Version History
+                  </h2>
+                  <p className="text-[13px] text-zinc-500 mt-1 font-medium">Restore from a previous backup of this {historyModal.collection}.</p>
+                </div>
+                <button 
+                  onClick={() => setHistoryModal(null)}
+                  className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
+                >
+                  <Plus className="w-6 h-6 rotate-45 text-zinc-400" />
+                </button>
+              </div>
+
+              <div className="max-h-[50vh] overflow-y-auto p-4 custom-scrollbar">
+                {backups.length === 0 ? (
+                  <div className="p-16 text-center">
+                    <div className="w-20 h-20 bg-zinc-50 dark:bg-zinc-800/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <RotateCcw className="w-10 h-10 text-zinc-200 dark:text-zinc-700" />
+                    </div>
+                    <p className="text-zinc-400 font-bold tracking-tight text-lg">No backups found</p>
+                    <p className="text-zinc-500 text-sm mt-2">Changes are automatically backed up before edits.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {backups.map((backup) => (
+                      <div 
+                        key={backup.id}
+                        className="p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 hover:border-blue-200 dark:hover:border-blue-900/50 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 flex items-center justify-between group transition-all"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={cn(
+                            "w-12 h-12 rounded-2xl flex items-center justify-center",
+                            backup.action === 'create' ? "bg-green-50 text-green-600 shadow-sm shadow-green-100" :
+                            backup.action === 'update' ? "bg-blue-50 text-blue-600 shadow-sm shadow-blue-100" :
+                            backup.action === 'delete' ? "bg-red-50 text-red-600 shadow-sm shadow-red-100" :
+                            "bg-purple-50 text-purple-600 shadow-sm shadow-purple-100"
+                          )}>
+                            {backup.action === 'create' ? <Plus className="w-6 h-6" /> :
+                             backup.action === 'update' ? <Settings className="w-6 h-6" /> :
+                             backup.action === 'delete' ? <Trash2 className="w-6 h-6" /> :
+                             <RotateCcw className="w-6 h-6" />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-[15px] font-black dark:text-white capitalize">
+                                {backup.action === 'rollback' ? 'System Restore' : `${backup.action} Action`}
+                              </p>
+                              {backup.performedBy === 'system' && (
+                                <span className="text-[9px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded-md font-black uppercase tracking-tighter">System</span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-zinc-400 font-bold uppercase tracking-wider mt-0.5 flex items-center gap-1.5">
+                              <Clock className="w-3 h-3" />
+                              {backup.timestamp?.toDate ? format(backup.timestamp.toDate(), 'MMM d, h:mm a') : 'Just now'}
+                            </p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => backup.id && handleRollback(backup.id)}
+                          disabled={isRollingBack}
+                          className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-black text-[13px] font-black rounded-2xl opacity-0 group-hover:opacity-100 disabled:opacity-50 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-zinc-200 dark:shadow-none"
+                        >
+                          Restore Version
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 bg-zinc-50 dark:bg-zinc-800/20 border-t border-zinc-100 dark:border-zinc-800">
+                <div className="flex items-start gap-4">
+                  <div className="w-8 h-8 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <AlertCircle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-[13px] font-black text-amber-900 dark:text-amber-400">Critical Warning</h4>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium mt-0.5">
+                      Restoring will overwrite current data. A safety snapshot will be created before this action is finalized.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

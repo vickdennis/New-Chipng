@@ -51,6 +51,7 @@ export interface User {
   phone?: string;
   address?: string;
   contactEmail?: string;
+  emailContactEnabled?: boolean;
   profileLayout?: LayoutType;
   profileFont?: FontType;
   textColor?: string;

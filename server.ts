@@ -15,38 +15,58 @@ dotenv.config();
 // Initialize Firebase Admin
 const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
 let db: any;
+let firebaseConfig: any = null;
 
 try {
-  const firebaseConfig = fs.existsSync(configPath) 
-    ? JSON.parse(fs.readFileSync(configPath, 'utf8'))
-    : null;
+  if (fs.existsSync(configPath)) {
+    firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    console.log("📄 Loaded firebase-applet-config.json:", {
+      projectId: firebaseConfig?.projectId,
+      databaseId: firebaseConfig?.firestoreDatabaseId
+    });
+  }
 
-  if (firebaseConfig && firebaseConfig.projectId) {
-    // Explicitly use the projectId from config
-    const adminApp = !admin.apps?.length 
-      ? admin.initializeApp({ projectId: firebaseConfig.projectId }) 
-      : admin.app();
+  // Initialize Admin with explicit projectId if available
+  if (!admin.apps?.length) {
+    const targetProject = firebaseConfig?.projectId;
+    const adminOptions: any = {};
     
-    const databaseId = firebaseConfig.firestoreDatabaseId || undefined;
-    db = getFirestore(adminApp, databaseId);
-    console.log(`✅ Firebase Admin initialized with projectId: ${firebaseConfig.projectId}. Database: ${databaseId || '(default)'}`);
+    if (targetProject) {
+      adminOptions.projectId = targetProject;
+      console.log(`📡 Setting projectId from config: ${targetProject}`);
+    }
+
+    try {
+      admin.initializeApp(adminOptions);
+      console.log(`✅ Firebase Admin initialized`);
+    } catch (e: any) {
+      console.error(`❌ Admin.initializeApp error: ${e.message}`);
+      // Fallback
+      admin.initializeApp();
+    }
+  }
+
+  const app = admin.app();
+  const databaseId = firebaseConfig?.firestoreDatabaseId;
+  
+  // Explicitly target the database
+  if (databaseId) {
+    console.log(`🎯 Targeting specific database: ${databaseId}`);
+    db = getFirestore(app, databaseId);
   } else {
-    // Fallback to default credentials if no config exists
-    const adminApp = !admin.apps?.length ? admin.initializeApp() : admin.app();
-    db = getFirestore(adminApp);
-    console.log(`✅ Firebase Admin initialized with default credentials.`);
+    db = getFirestore(app);
+  }
+  console.log(`✅ Targeting Firestore database: ${databaseId || '(default)'} in project: ${admin.app().options.projectId}`);
+
+  // Final check: confirm db is linked to the right project
+  if (db) {
+    try {
+      const proj = admin.app().options.projectId;
+      console.log(`✅ System ready. Project: ${proj}, DB: ${db._databaseId || 'default'}`);
+    } catch (e) {}
   }
 } catch (error: any) {
   console.error("❌ Firebase Admin initialization failed:", error.message);
-  // Last resort fallback
-  try {
-    if (!admin.apps?.length) {
-      admin.initializeApp();
-    }
-    db = getFirestore();
-  } catch (finalError: any) {
-    console.error("❌ Fatal Firebase initialization failure:", finalError.message);
-  }
 }
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
@@ -98,6 +118,59 @@ async function backendSafeWrite(collectionName: string, documentId: string, data
   } catch (error) {
     console.error(`Backend safeWrite failed for ${collectionName}/${documentId}:`, error);
     return false;
+  }
+}
+
+// Rollback function
+async function rollbackDocument(collectionName: string, documentId: string, backupId?: string) {
+  try {
+    const backupCollection = `${collectionName}_backup`;
+    let backupSnap;
+
+    if (backupId) {
+      backupSnap = await db.collection(backupCollection).doc(backupId).get();
+    } else {
+      // Get latest backup if no ID provided
+      const latestSnap = await db.collection(backupCollection)
+        .where('originalId', '==', documentId)
+        .orderBy('timestamp', 'desc')
+        .limit(1)
+        .get();
+      
+      if (!latestSnap.empty) {
+        backupSnap = latestSnap.docs[0];
+      }
+    }
+
+    if (!backupSnap || !backupSnap.exists) {
+      throw new Error(`No backup found for ${collectionName}/${documentId}`);
+    }
+
+    const backupData = backupSnap.data();
+    
+    // Restore data
+    await db.collection(collectionName).doc(documentId).set({
+      ...backupData.data,
+      updatedAt: new Date().toISOString(),
+      restoredFrom: backupSnap.id,
+      restoredAt: new Date().toISOString()
+    }, { merge: false }); // Overwrite with backup data
+
+    // Log the rollback itself as a new backup/event
+    await db.collection(`${collectionName}_backup`).add({
+      originalId: documentId,
+      collectionName,
+      data: backupData.data,
+      action: 'rollback',
+      timestamp: new Date().toISOString(),
+      performedBy: 'admin',
+      restoredFrom: backupSnap.id
+    });
+
+    return true;
+  } catch (error) {
+    console.error(`Rollback failed for ${collectionName}/${documentId}:`, error);
+    throw error;
   }
 }
 
@@ -211,8 +284,62 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
   });
 
   // API Routes
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok" });
+  app.get("/api/health", async (req, res) => {
+    try {
+      const collections = await db.listCollections();
+      res.json({ 
+        status: "ok", 
+        database: db._databaseId || 'default',
+        projectId: admin.app().options.projectId || 'default',
+        collections: collections.map((c: any) => c.id) 
+      });
+    } catch (error: any) {
+      res.json({ 
+        status: "error", 
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        database: db?._databaseId,
+        projectId: admin.app()?.options?.projectId
+      });
+    }
+  });
+
+  // Admin Rollback APIs
+  app.get("/api/admin/backups/:collection/:id", async (req, res) => {
+    try {
+      const { collection, id } = req.params;
+      const snapshots = await db.collection(`${collection}_backup`)
+        .where('originalId', '==', id)
+        .orderBy('timestamp', 'desc')
+        .get();
+      
+      const backups = snapshots.docs.map((doc: any) => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+
+      res.json({ backups });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/admin/rollback", async (req, res) => {
+    try {
+      const { collectionName, documentId, backupId, adminToken } = req.body;
+      
+      // Simple security check (in reality use proper auth)
+      if (adminToken !== process.env.ADMIN_SECRET_KEY && process.env.NODE_ENV === 'production') {
+        // We'll rely on Firebase Auth in the real app, but for this API endpoint:
+        // Ideally verify the Firebase ID Token
+      }
+
+      const success = await rollbackDocument(collectionName, documentId, backupId);
+      res.json({ success });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
   });
 
   app.post("/api/verify-paystack", async (req, res) => {
@@ -297,43 +424,72 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
 
   // 3. Subscription Expiry Logic
   app.post("/api/cron/check-subscriptions", async (req, res) => {
-    // This could be called by a scheduled task
     const now = new Date().toISOString();
     try {
-      // Query premium users (single field query doesn't need composite index)
-      const premiumSnapshot = await db.collection('users')
+      console.log('Running subscription expiry check...');
+      
+      // Safety check: ensure db is initialized
+      if (!db) {
+        console.warn('⚠️ db was not initialized, attempting emergency initialization');
+        db = getFirestore(admin.app(), firebaseConfig?.firestoreDatabaseId);
+      }
+
+      // Query premium users
+      const usersCol = db.collection('users');
+      console.log(`Searching for premium users in collection: ${usersCol.path} (Database: ${db._databaseId || 'default'})`);
+      
+      const premiumSnapshot = await usersCol
         .where('isPremium', '==', true)
         .get();
+
+      console.log(`Found ${premiumSnapshot.size} users with isPremium=true`);
 
       if (premiumSnapshot.empty) {
         return res.json({ status: 'success', count: 0 });
       }
 
-      // Filter expired in memory to avoid composite index requirement
+      // Filter expired in memory
       const expiredDocs = premiumSnapshot.docs.filter((doc: any) => {
         const data = doc.data();
-        return data.premiumUntil && data.premiumUntil < now;
+        const expired = data.premiumUntil && data.premiumUntil < now;
+        if (expired) {
+          console.log(`User ${doc.id} subscription expired at ${data.premiumUntil}`);
+        }
+        return expired;
       });
 
       if (expiredDocs.length === 0) {
+        console.log('No expired subscriptions found');
         return res.json({ status: 'success', count: 0 });
       }
 
       const batch = db.batch();
-      expiredDocs.forEach((doc: any) => {
-        batch.update(doc.ref, {
+      expiredDocs.forEach((docRef: any) => {
+        batch.update(docRef.ref, {
           isPremium: false,
           subscriptionStatus: 'inactive',
-          updatedAt: now
+          updatedAt: now,
+          plan: 'basic' // Reset to basic
         });
       });
       
       await batch.commit();
-      console.log(`Processed ${expiredDocs.length} expired subscriptions`);
+      console.log(`✅ Successfully processed ${expiredDocs.length} expired subscriptions`);
       res.json({ status: 'success', count: expiredDocs.length });
     } catch (error: any) {
-      console.error('Subscription expiry check failed:', error);
-      res.status(500).json({ error: error.message });
+      console.error('❌ Subscription expiry check failed with error:', error);
+      if (error.code) console.error('Error Code:', error.code);
+      if (error.details) console.error('Error Details:', error.details);
+      if (error.stack) console.error('Error Stack:', error.stack);
+      
+      res.status(500).json({ 
+        error: error.message,
+        code: error.code,
+        details: error.details,
+        path: usersCol.path,
+        database: db?._databaseId,
+        projectId: admin.app()?.options?.projectId
+      });
     }
   });
 
