@@ -149,7 +149,7 @@ const PublicProfile: React.FC = () => {
       {/* Main Scrollable Content */}
       <main className="relative w-full max-w-[390px] mx-auto min-h-screen">
         {/* Cover Image Area */}
-        <div className="relative h-[220px] w-full overflow-hidden bg-zinc-100">
+        <div className="relative h-[250px] w-full overflow-hidden bg-zinc-100">
           <motion.div 
             style={{ opacity: coverOpacity }}
             className="w-full h-full relative"
@@ -164,189 +164,164 @@ const PublicProfile: React.FC = () => {
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-zinc-200 to-zinc-300" />
             )}
-            {/* Identity Overlay on Cover */}
-            <div className="absolute inset-0 bg-black/20" />
-            <div className="absolute inset-x-0 bottom-12 px-6 flex flex-col items-center pointer-events-none">
-              <h1 className="text-[22px] font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-                {profile.displayName || profile.username}
-              </h1>
-              <p className="text-white/70 text-[14px] font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
-                @{profile.username}
-              </p>
-              <p className="text-white/80 text-[12px] mt-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] line-clamp-1">
-                {profile.bio || 'Your short bio here'}
-              </p>
+            {/* Overlay for better text readability if needed, but the design seems to want it clean */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            
+            <div className="absolute bottom-6 left-6 right-6">
+               <div className="flex items-center gap-2 mb-1">
+                 <h1 className="text-[28px] font-black text-white leading-tight">
+                   {profile.displayName || profile.username}
+                 </h1>
+                 {profile.isVerified && (
+                   <div className="bg-blue-500 text-white rounded-full p-0.5 mt-1">
+                     <Check className="w-4 h-4 stroke-[4]" />
+                   </div>
+                 )}
+               </div>
+               <p className="text-white/90 text-[16px] font-bold">
+                 @{profile.username}
+               </p>
             </div>
           </motion.div>
         </div>
 
-        {/* Profile Info & Avatar */}
-        <div className="px-6 relative -mt-[48px] flex flex-col items-center">
-          <motion.div 
-            style={{ scale: avatarScale, y: avatarY }}
-            className="w-[96px] h-[96px] rounded-full border-[3px] border-white shadow-lg bg-zinc-100 overflow-hidden z-10"
-          >
-            {profile.photoURL ? (
-              <img 
-                src={profile.photoURL} 
-                alt={profile.username} 
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-zinc-300 font-bold text-2xl uppercase">
-                {profile.username.substring(0, 2)}
-              </div>
-            )}
-          </motion.div>
+        <div className="px-6 py-6 space-y-6">
+          {/* Bio if exists */}
+          {profile.bio && (
+            <p className="text-zinc-600 text-[15px] leading-relaxed">
+              {profile.bio}
+            </p>
+          )}
 
-          {/* Compact Info Section */}
-          <div className="mt-4 w-full flex flex-col items-center gap-4">
-            {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
-              <div className="flex flex-wrap items-center justify-center gap-4 py-2">
-                {Object.entries(profile.socialLinks).map(([id, url]) => {
-                  const Icon = BrandIcons[id as keyof typeof BrandIcons];
-                  if (!Icon && id === 'threads') {
-                    return (
-                      <a key={id} href={url} target="_blank" rel="noopener noreferrer" className="p-2 bg-zinc-50 rounded-full hover:bg-zinc-100 transition-colors">
-                        <AtSign className="w-5 h-5 text-zinc-900" />
-                      </a>
-                    );
-                  }
-                  if (!Icon) return null;
+          {/* Social Platforms Rail */}
+          {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
+            <div className="flex flex-wrap items-center gap-3">
+              {Object.entries(profile.socialLinks).map(([id, url]) => {
+                const Icon = BrandIcons[id as keyof typeof BrandIcons];
+                if (!Icon && id === 'threads') {
                   return (
-                    <a key={id} href={url} target="_blank" rel="noopener noreferrer" className="p-2 bg-zinc-50 rounded-full hover:bg-zinc-100 transition-colors">
-                      <Icon className="w-5 h-5 text-zinc-900" />
+                    <a key={id} href={url} target="_blank" rel="noopener noreferrer" className="p-3 bg-zinc-50 rounded-2xl hover:bg-zinc-100 transition-colors">
+                      <AtSign className="w-6 h-6 text-zinc-900" />
                     </a>
                   );
-                })}
-              </div>
-            )}
-            <div className="flex items-center gap-2 text-zinc-900 font-medium">
-              <Mail className="w-4 h-4 text-[#A3E635]" />
-              <span className="text-[14px]">{profile.contactEmail || profile.email || 'your@email.com'}</span>
+                }
+                if (!Icon) return null;
+                return (
+                  <a key={id} href={url} target="_blank" rel="noopener noreferrer" className="p-3 bg-zinc-50 rounded-2xl hover:bg-zinc-100 transition-colors">
+                    <Icon className="w-6 h-6 text-zinc-900" />
+                  </a>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Connect Button */}
+          <button 
+            onClick={() => setShowContactForm(true)}
+            className="w-full h-14 text-white rounded-2xl font-black text-[16px] shadow-lg shadow-lime-100/50 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            style={{ backgroundColor: profile.brandColor || '#A3E635' }}
+          >
+            <Mail className="w-5 h-5" />
+            Connect with me
+          </button>
+
+          {/* Shouts/Media Tabs Slider Section */}
+          <div className="pt-4">
+            <div className="flex bg-zinc-100 p-1.5 rounded-2xl">
+              <button 
+                onClick={() => setActiveTab('shouts')}
+                className={`flex-1 py-3 rounded-xl text-[14px] font-black transition-all ${activeTab === 'shouts' ? 'bg-white shadow-sm text-black' : 'text-zinc-500'}`}
+              >
+                Shouts
+              </button>
+              <button 
+                onClick={() => setActiveTab('media')}
+                className={`flex-1 py-3 rounded-xl text-[14px] font-black transition-all ${activeTab === 'media' ? 'bg-white shadow-sm text-black' : 'text-zinc-500'}`}
+              >
+                Media
+              </button>
             </div>
 
-            <button 
-              onClick={() => setShowContactForm(true)}
-              className="w-full h-11 bg-[#A3E635] text-white rounded-xl font-bold text-[15px] shadow-lg shadow-lime-100/50 active:scale-[0.98] transition-all"
-            >
-              Connect with me
-            </button>
+            <div className="mt-4">
+              <AnimatePresence mode="wait">
+                {activeTab === 'shouts' ? (
+                  <motion.div 
+                    key="shouts"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    className="py-12 flex flex-col items-center text-center gap-2 bg-zinc-50 rounded-3xl"
+                  >
+                    <MessageSquare className="w-10 h-10 text-zinc-200" />
+                    <h3 className="text-[16px] font-black">No Shouts yet</h3>
+                    <p className="text-[14px] text-zinc-400 px-10 leading-snug">
+                      Check back later for updates from {profile.displayName || profile.username}.
+                    </p>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    key="media"
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="py-12 flex flex-col items-center text-center gap-2 bg-zinc-50 rounded-3xl"
+                  >
+                    <ImageIcon className="w-10 h-10 text-zinc-200" />
+                    <h3 className="text-[16px] font-black">No Media yet</h3>
+                    <p className="text-[14px] text-zinc-400 px-10 leading-snug">
+                      Photos and highlights will be displayed here soon.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
-        </div>
 
-        {/* Tabs Row */}
-        <div className="mt-8 border-b border-zinc-100 flex items-center">
-          <button 
-            onClick={() => setActiveTab('shouts')}
-            className={`flex-1 flex flex-col items-center py-3 relative transition-colors ${activeTab === 'shouts' ? 'text-black' : 'text-[#6B7280]'}`}
-          >
-            <span className="text-[14px] font-bold">Shouts</span>
-            {activeTab === 'shouts' && (
-              <motion.div layoutId="tab-indicator" className="absolute bottom-0 inset-x-0 h-[2px] bg-[#A3E635]" />
-            )}
-          </button>
-          <button 
-            onClick={() => setActiveTab('media')}
-            className={`flex-1 flex flex-col items-center py-3 relative transition-colors ${activeTab === 'media' ? 'text-black' : 'text-[#6B7280]'}`}
-          >
-            <span className="text-[14px] font-bold">Media</span>
-            {activeTab === 'media' && (
-              <motion.div layoutId="tab-indicator" className="absolute bottom-0 inset-x-0 h-[2px] bg-[#A3E635]" />
-            )}
-          </button>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="mt-4 pb-32">
-          <AnimatePresence mode="wait">
-            {activeTab === 'shouts' ? (
-              <motion.div 
-                key="shouts"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="px-6 py-12 flex flex-col items-center text-center gap-2"
-              >
-                <div className="w-16 h-16 bg-zinc-50 rounded-full flex items-center justify-center mb-2">
-                  <MessageSquare className="w-8 h-8 text-[#D1D5DB]" />
-                </div>
-                <h3 className="text-[16px] font-bold">No Shouts yet!</h3>
-                <p className="text-[14px] text-[#6B7280]">
-                  Shouts posted by {profile.displayName || profile.username} will appear here
-                </p>
-              </motion.div>
-            ) : (
-              <motion.div 
-                key="media"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="px-6 py-12 flex flex-col items-center text-center gap-2"
-              >
-                <div className="w-16 h-16 bg-zinc-50 rounded-full flex items-center justify-center mb-2">
-                  <ImageIcon className="w-8 h-8 text-[#D1D5DB]" />
-                </div>
-                <h3 className="text-[16px] font-bold">No Media yet!</h3>
-                <p className="text-[14px] text-[#6B7280]">
-                  Photos and videos will appear here once shared
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div className="h-4 bg-[#F3F4F6] w-full" />
-
-          {/* Featured Links / Merch */}
-          <div className="px-6 py-8 space-y-4">
+          {/* Links Section */}
+          <div className="space-y-4 pt-8">
+            <h3 className="text-[18px] font-black px-1">Featured</h3>
             {links.map((link) => (
               <a 
                 key={link.id} 
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block p-4 bg-white border border-[#E5E7EB] rounded-2xl shadow-sm hover:border-[#A3E635] transition-all group"
+                className="block p-5 bg-white border border-zinc-100 rounded-3xl shadow-sm hover:border-zinc-300 transition-all group"
               >
                 <div className="flex items-center gap-4">
                   {link.icon ? (
-                    <img src={link.icon} alt="" className="w-10 h-10 rounded-xl object-cover" />
+                    <img src={link.icon} alt="" className="w-12 h-12 rounded-2xl object-cover shadow-sm" />
                   ) : (
-                    <div className="w-10 h-10 bg-zinc-50 rounded-xl flex items-center justify-center text-zinc-400">
-                      <LinkIcon className="w-5 h-5 transition-colors group-hover:text-[#A3E635]" />
+                    <div className="w-12 h-12 bg-zinc-50 rounded-2xl flex items-center justify-center text-zinc-300">
+                      <LinkIcon className="w-6 h-6" />
                     </div>
                   )}
-                  <span className="flex-1 text-[14px] font-bold group-hover:text-[#A3E635] transition-colors">{link.title}</span>
-                  <ChevronLeft className="w-4 h-4 text-zinc-300 rotate-180" />
+                  <div className="flex-1">
+                    <span className="block text-[15px] font-black">{link.title}</span>
+                    <span className="block text-[11px] text-zinc-400 truncate max-w-[200px]">{link.url.replace('https://', '')}</span>
+                  </div>
+                  <div 
+                    className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors"
+                    style={{ backgroundColor: (profile.brandColor || '#A3E635') + '10', color: profile.brandColor || '#A3E635' }}
+                  >
+                    <ChevronLeft className="w-5 h-5 rotate-180" />
+                  </div>
                 </div>
               </a>
             ))}
 
+            {/* Standard Branding Links */}
             <RouterLink 
               to="/"
-              className="block p-4 bg-white border border-[#E5E7EB] rounded-2xl shadow-sm group hover:border-[#A3E635] transition-all"
+              className="block p-5 bg-[#F9FAFB] rounded-3xl group transition-all mt-10"
             >
               <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#F0FFE6] rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
                   <Logo size="sm" variant="icon-only" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-[14px] font-bold">Create Your Profile On chipng.com</p>
-                  <p className="text-[12px] text-[#6B7280]">Join today and start making money</p>
-                </div>
-              </div>
-            </RouterLink>
-
-            <RouterLink 
-              to="/"
-              className="block p-4 bg-white border border-[#E5E7EB] rounded-2xl shadow-sm group hover:border-[#A3E635] transition-all"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-lime-50 rounded-xl flex items-center justify-center text-[#A3E635] font-black text-xs">
-                  me
-                </div>
-                <div className="flex-1">
-                  <p className="text-[14px] font-bold group-hover:text-[#A3E635]">chipng.com – Join today and start making money</p>
+                  <p className="text-[15px] font-black">Create Your Chip NG Profile</p>
+                  <p className="text-[12px] text-zinc-500">Join the creator economy today.</p>
                 </div>
               </div>
             </RouterLink>
@@ -354,9 +329,9 @@ const PublicProfile: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <footer className="py-12 flex flex-col items-center gap-2">
-            <Logo size="sm" variant="icon-only" className="grayscale opacity-50" />
-            <span className="text-[12px] font-medium text-[#6B7280]">Powered by chipng.com</span>
+        <footer className="py-20 flex flex-col items-center gap-3">
+            <Logo size="sm" variant="icon-only" className="grayscale opacity-20" />
+            <span className="text-[13px] font-bold text-zinc-400 tracking-tight">Verified by chipng.com</span>
         </footer>
       </main>
 

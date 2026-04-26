@@ -563,7 +563,7 @@ const Dashboard: React.FC = () => {
     try {
       return preparePaystackConfig({
         email: user.email,
-        amountNaira: 1000,
+        amountNaira: 2000,
         metadata: {
           userId: user.uid,
           isVerification: true
@@ -650,12 +650,16 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    const value = window.prompt(`Enter your ${platformId} handle or URL`, '');
+    const value = window.prompt(`Enter your ${platformId} username (e.g. @username)`, '');
     if (value === null) return;
 
-    let finalUrl = value;
-    if (!value.startsWith('http')) {
-      finalUrl = urlPrefix + value.replace('@', '');
+    // Clean @ if provided
+    const cleanValue = value.replace('@', '').trim();
+    if (!cleanValue) return;
+
+    let finalUrl = cleanValue;
+    if (!cleanValue.startsWith('http')) {
+      finalUrl = urlPrefix + cleanValue;
     }
 
     try {
@@ -840,21 +844,24 @@ const Dashboard: React.FC = () => {
                 exit={{ opacity: 0, y: -10 }}
                 className="px-6 flex flex-col items-center"
               >
-                {/* Profile Pic Section */}
-                <div className="mt-8 mb-6 relative group">
-                  <div className="w-[100px] h-[100px] rounded-full bg-[#F3F4F6] flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
-                    {profile?.photoURL ? (
-                      <img src={profile.photoURL} alt="Profile" className="w-full h-full object-cover" />
+                {/* Cover Image Section */}
+                <div className="w-full mt-8 mb-6 group">
+                  <div className="relative w-full h-[180px] rounded-[2rem] bg-[#F3F4F6] flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
+                    {profile?.coverImage ? (
+                      <img src={profile.coverImage} alt="Cover" className="w-full h-full object-cover" />
                     ) : (
-                      <Camera className="w-8 h-8 text-[#6B7280]" />
+                      <div className="flex flex-col items-center gap-2">
+                        <ImageIcon className="w-8 h-8 text-[#6B7280]" />
+                        <span className="text-[12px] font-bold text-[#6B7280]">Add Cover Image</span>
+                      </div>
                     )}
-                  </div>
-                  <label className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                    <Plus className="w-6 h-6 text-white" />
-                    <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'profile')} accept="image/*" />
-                  </label>
-                  <div className="absolute -bottom-1 -right-1 bg-[#A3E635] text-white text-[10px] font-bold px-2 py-1.5 rounded-[12px] border-2 border-white">
-                    +25%
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                      <div className="flex flex-col items-center gap-2 text-white">
+                        <Camera className="w-8 h-8" />
+                        <span className="text-[14px] font-bold">Change Cover</span>
+                      </div>
+                      <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'cover')} accept="image/*" />
+                    </label>
                   </div>
                 </div>
 
@@ -1081,6 +1088,41 @@ const Dashboard: React.FC = () => {
                 className="px-6 py-6 space-y-10"
               >
                 <div className="space-y-4">
+                   <h3 className="text-[22px] font-bold">Brand Color</h3>
+                   <div className="flex flex-wrap gap-3">
+                      {[
+                        '#A3E635', // Lime
+                        '#3B82F6', // Blue
+                        '#EF4444', // Red
+                        '#F59E0B', // Amber
+                        '#8B5CF6', // Violet
+                        '#EC4899', // Pink
+                        '#000000', // Black
+                        '#6366F1', // Indigo
+                        '#10B981', // Emerald
+                        '#F97316', // Orange
+                      ].map(color => (
+                        <button 
+                          key={color}
+                          onClick={() => handleUpdateProfile({ brandColor: color })}
+                          className={`w-10 h-10 rounded-full border-4 transition-all ${profile?.brandColor === color ? 'border-black scale-110 shadow-lg' : 'border-white'}`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                      <div className="flex items-center gap-2 ml-auto">
+                        <span className="text-xs font-bold text-zinc-400">Hex</span>
+                        <input 
+                          type="text" 
+                          value={profile?.brandColor || ''}
+                          onChange={(e) => handleUpdateProfile({ brandColor: e.target.value })}
+                          className="w-24 h-10 px-3 bg-[#F3F4F6] border-none rounded-xl text-xs font-bold uppercase"
+                          placeholder="#000000"
+                        />
+                      </div>
+                   </div>
+                </div>
+
+                <div className="space-y-4">
                    <h3 className="text-[22px] font-bold">Themes</h3>
                    <div className="grid grid-cols-2 gap-4">
                       {['minimal', 'modern', 'brutalist', 'gradient'].map(t => (
@@ -1190,6 +1232,108 @@ const Dashboard: React.FC = () => {
                     <p className="text-xs text-blue-700/80 dark:text-blue-400/80 leading-relaxed mt-1 font-medium italic">
                       "Data is immortal, but mistakes should be reversible." Every significant change is automatically versioned.
                     </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'verification' && (
+              <motion.div 
+                key="verification"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-8 space-y-8"
+              >
+                <div className="space-y-4 text-center">
+                  <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto">
+                    <BadgeCheck className="w-12 h-12 text-blue-500" />
+                  </div>
+                  <h2 className="text-[24px] font-black">Get Verified</h2>
+                  <p className="text-zinc-500 text-[14px]">
+                    Stand out with a blue tick verification badge on your profile.
+                  </p>
+                </div>
+
+                <div className="bg-white p-6 rounded-[2.5rem] border border-zinc-100 shadow-sm space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-green-50 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Check className="w-4 h-4 text-green-500" />
+                      </div>
+                      <p className="text-[14px] font-medium text-zinc-600">Boost your credibility and trust</p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-green-50 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Check className="w-4 h-4 text-green-500" />
+                      </div>
+                      <p className="text-[14px] font-medium text-zinc-600">Priority support and early access</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-zinc-50">
+                    <div className="flex justify-between items-center mb-6">
+                      <span className="text-[14px] font-bold text-zinc-400">One-time fee</span>
+                      <span className="text-[20px] font-black">₦2,000</span>
+                    </div>
+
+                    {profile?.isVerified ? (
+                      <div className="w-full py-4 bg-zinc-50 text-zinc-400 rounded-2xl font-black text-center flex items-center justify-center gap-2">
+                        <BadgeCheck className="w-5 h-5" />
+                        Verified Account
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={triggerVerification}
+                        className="w-full py-4 bg-black text-white rounded-2xl font-black shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
+                      >
+                        Get Verified Now
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'settings' && (
+              <motion.div 
+                key="settings"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-8 space-y-8"
+              >
+                <div className="space-y-6">
+                  <h2 className="text-[24px] font-black">Account Settings</h2>
+                  
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Username</label>
+                      <input 
+                        type="text" 
+                        value={profile?.username}
+                        disabled
+                        className="w-full h-12 bg-zinc-50 border-none rounded-xl px-4 font-bold text-zinc-400"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Display Name</label>
+                      <input 
+                        type="text" 
+                        value={profile?.displayName}
+                        onChange={(e) => handleUpdateProfile({ displayName: e.target.value })}
+                        className="w-full h-12 bg-zinc-50 border-none rounded-xl px-4 font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-6">
+                    <button 
+                      onClick={() => auth.signOut()}
+                      className="w-full py-4 border-2 border-red-100 text-red-500 rounded-2xl font-bold hover:bg-red-50 transition-colors"
+                    >
+                      Sign Out
+                    </button>
                   </div>
                 </div>
               </motion.div>

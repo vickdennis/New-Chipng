@@ -55,6 +55,7 @@ export interface User {
   profileLayout?: LayoutType;
   profileFont?: FontType;
   textColor?: string;
+  brandColor?: string;
   location?: {
     lat: number;
     lng: number;
