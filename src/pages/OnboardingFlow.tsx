@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, 
   Calendar, 
@@ -11,19 +12,11 @@ import {
   X, 
   Eye, 
   Share2,
-  Instagram,
-  Twitter,
-  Linkedin,
-  Youtube,
-  Facebook,
-  Music2,
-  Globe,
-  Mail,
-  Smartphone,
-  CreditCard,
-  Tv,
   Heart
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { safeWrite } from '../services/backupService';
+import { toast } from 'sonner';
 
 // --- Types ---
 type AccountType = 'creator' | 'business' | 'personal' | 'agency';
@@ -32,7 +25,7 @@ type Screen = 1 | 2 | 3 | 4 | 5 | 6;
 // --- Components ---
 
 const ScreenWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="w-[390px] h-[844px] bg-white overflow-hidden relative shadow-2xl rounded-[3rem] border-[8px] border-zinc-900 mx-auto my-10 flex flex-col font-sans">
+  <div className="w-full max-w-[390px] h-[844px] bg-white overflow-hidden relative shadow-2xl rounded-[3rem] border-[8px] border-zinc-900 mx-auto my-4 flex flex-col font-sans">
     {/* Status Bar Mock */}
     <div className="h-12 flex items-center justify-between px-8 text-[12px] font-bold">
       <span>9:41</span>
@@ -42,7 +35,7 @@ const ScreenWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         <div className="w-5 h-2.5 rounded-sm bg-black" />
       </div>
     </div>
-    <div className="flex-1 overflow-y-auto no-scrollbar">
+    <div className="flex-1 overflow-y-auto no-scrollbar pb-10">
       {children}
     </div>
   </div>
@@ -60,6 +53,8 @@ const ProgressBar: React.FC<{ progress: number }> = ({ progress }) => (
 // --- Main Component ---
 
 const OnboardingFlow: React.FC = () => {
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [currentScreen, setCurrentScreen] = useState<Screen>(1);
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [signupData, setSignupData] = useState({
@@ -70,9 +65,67 @@ const OnboardingFlow: React.FC = () => {
   });
   const [profileStrength, setProfileStrength] = useState(5);
   const [selectedTheme, setSelectedTheme] = useState(0);
+  const [saving, setSaving] = useState(false);
 
-  const nextScreen = () => setCurrentScreen((prev) => Math.min(prev + 1, 6) as Screen);
+  useEffect(() => {
+    if (user) {
+      setSignupData({
+        fullName: user.displayName || '',
+        dob: '',
+        username: user.username || '',
+        agreed: true
+      });
+    }
+  }, [user]);
+
+  const nextScreen = () => {
+    if (currentScreen === 2) {
+      handleSaveBasicInfo();
+    } else {
+      setCurrentScreen((prev) => Math.min(prev + 1, 6) as Screen);
+    }
+  };
+
   const prevScreen = () => setCurrentScreen((prev) => Math.max(prev - 1, 1) as Screen);
+
+  const handleSaveBasicInfo = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      await safeWrite('users', user.uid, {
+        displayName: signupData.fullName,
+        username: signupData.username,
+        onboardingCompleted: false // Still in progress
+      }, 'update');
+      setCurrentScreen(3);
+    } catch (error) {
+      toast.error('Failed to save info');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      await safeWrite('users', user.uid, {
+        onboardingCompleted: true
+      }, 'update');
+      toast.success('Onboarding complete!');
+      navigate('/dashboard');
+    } catch (error) {
+      toast.error('Failed to complete onboarding');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (authLoading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  if (!user) {
+    navigate('/login');
+    return null;
+  }
 
   // --- Screens ---
 
@@ -178,17 +231,17 @@ const OnboardingFlow: React.FC = () => {
         <div className="pb-10 space-y-4">
           <button
             onClick={nextScreen}
-            disabled={!signupData.fullName || !signupData.username || !signupData.dob || !signupData.agreed}
-            className={`w-full h-12 rounded-[12px] font-bold text-[16px] transition-all ${
+            disabled={saving || !signupData.fullName || !signupData.username || !signupData.dob || !signupData.agreed}
+            className={`w-full h-12 rounded-[12px] font-bold text-[16px] transition-all flex items-center justify-center ${
               (signupData.fullName && signupData.username && signupData.dob && signupData.agreed)
                 ? 'bg-[#A3E635] text-white shadow-lg shadow-lime-200' 
                 : 'bg-[#D1D5DB] text-[#9CA3AF]'
             }`}
           >
-            Continue
+            {saving ? 'Saving...' : 'Continue'}
           </button>
           <p className="text-center text-[14px]">
-            Have an account already? <span className="text-[#A3E635] font-bold cursor-pointer">Log in</span>
+            Have an account already? <span className="text-[#A3E635] font-bold cursor-pointer" onClick={() => navigate('/login')}>Log in</span>
           </p>
         </div>
       </div>
@@ -200,13 +253,17 @@ const OnboardingFlow: React.FC = () => {
       <div className="flex items-center justify-between px-6 h-14 bg-white z-10 sticky top-0">
         <button className="text-black font-medium" onClick={prevScreen}>Cancel</button>
         <h1 className="font-semibold text-[16px]">Edit Profile</h1>
-        <button className="text-[#A3E635] font-bold text-[16px] opacity-100 disabled:opacity-30">Done</button>
+        <button className="text-[#A3E635] font-bold text-[16px]" onClick={nextScreen}>Done</button>
       </div>
 
       <div className="px-6 flex flex-col items-center">
         <div className="mt-8 mb-6 relative">
-          <div className="w-[100px] h-[100px] rounded-full bg-[#F3F4F6] flex items-center justify-center border-2 border-white shadow-sm">
-            <Camera className="w-8 h-8 text-[#6B7280]" />
+          <div className="w-[100px] h-[100px] rounded-full bg-[#F3F4F6] flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
+            {user?.photoURL ? (
+              <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <Camera className="w-8 h-8 text-[#6B7280]" />
+            )}
           </div>
           <div className="absolute -bottom-1 -right-1 bg-[#A3E635] text-white text-[10px] font-bold px-2 py-1.5 rounded-[12px] border-2 border-white">
             +25%
@@ -218,7 +275,7 @@ const OnboardingFlow: React.FC = () => {
           <ProgressBar progress={profileStrength} />
         </div>
 
-        <div className="w-full space-y-0.5 mb-10">
+        <div className="w-full space-y-0.5 mb-10 text-left">
           <div className="flex items-center justify-between py-4 border-b border-[#F3F4F6]">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-lime-50 flex items-center justify-center text-[#A3E635]">
@@ -234,7 +291,7 @@ const OnboardingFlow: React.FC = () => {
               <span className="text-[15px] font-medium">Bio</span>
               <span className="text-[#A3E635] font-bold text-[13px]">+15%</span>
             </div>
-            <p className="text-[#6B7280] text-[14px]">Add bio to your profile</p>
+            <p className="text-[#6B7280] text-[14px]">{user?.bio || 'Add bio to your profile'}</p>
           </div>
 
           <div className="py-4 border-b border-[#F3F4F6]">
@@ -248,7 +305,7 @@ const OnboardingFlow: React.FC = () => {
           </div>
         </div>
 
-        <div className="w-full">
+        <div className="w-full text-left">
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-bold text-[18px]">Featured Links</h3>
             <span className="text-[#A3E635] font-bold text-[13px]">+15%</span>
@@ -270,39 +327,6 @@ const OnboardingFlow: React.FC = () => {
                 <span className="text-[12px] font-bold text-zinc-900">Small Link</span>
               </button>
             </div>
-
-            <button className="w-full p-5 border-b border-[#F3F4F6] flex items-center justify-between group">
-              <div className="flex items-center gap-3">
-                <Plus className="w-5 h-5 text-[#A3E635]" />
-                <span className="font-medium text-[15px]">Add No Thumbnail Link</span>
-              </div>
-            </button>
-            
-            <button className="w-full p-5 border-b border-[#F3F4F6] flex items-center justify-between group" onClick={nextScreen}>
-              <div className="flex items-center gap-3">
-                <Plus className="w-5 h-5 text-[#A3E635]" />
-                <span className="font-medium text-[15px]">Add Multi-Link</span>
-              </div>
-              <ChevronLeft className="w-4 h-4 text-zinc-400 rotate-180" />
-            </button>
-          </div>
-
-          <div className="py-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[15px] font-medium">Merch (0 items)</span>
-              <button className="text-[#A3E635] font-bold text-[14px]">Manage Merch</button>
-            </div>
-            
-            <div className="pt-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-[18px]">Gallery</h3>
-                <span className="text-[#A3E635] font-bold text-[13px]">+15%</span>
-              </div>
-              <button className="w-32 aspect-square border-2 border-dashed border-[#D1D5DB] rounded-[16px] flex flex-col items-center justify-center gap-2">
-                <Plus className="w-6 h-6 text-[#A3E635]" />
-                <span className="text-[12px] font-bold">Add Photo</span>
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -317,7 +341,7 @@ const OnboardingFlow: React.FC = () => {
         <button className="text-[#A3E635] font-bold text-[16px]" onClick={nextScreen}>Done</button>
       </div>
 
-      <div className="px-6 pt-6 pb-20 space-y-10">
+      <div className="px-6 pt-6 pb-20 space-y-10 text-left">
         <div className="space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
@@ -346,41 +370,6 @@ const OnboardingFlow: React.FC = () => {
                <Plus className="w-5 h-5 text-[#A3E635]" />
             </div>
           </div>
-
-          <div className="pt-6 border-t border-[#F3F4F6] space-y-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-[16px]">Shouts & Media</span>
-                  <span className="bg-[#A3E635] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Pro</span>
-                </div>
-                <p className="text-[13px] text-[#6B7280] leading-snug">
-                  Hidden from your profile. Enable or disable shouts to turn your profile into a presentation page
-                </p>
-              </div>
-              <div className="w-12 h-6 bg-[#E5E7EB] rounded-full relative flex-shrink-0">
-               <div className="w-5 h-5 bg-white rounded-full absolute left-0.5 top-0.5 shadow-sm" />
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-6 border-t border-[#F3F4F6] space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-[16px]">Video Profile</span>
-              <span className="bg-[#A3E635] text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Pro</span>
-            </div>
-            <p className="text-[13px] text-[#6B7280] leading-snug">
-              Add video to your profile image. Upload and customize motion video for your profile.
-            </p>
-          </div>
-
-          <div className="pt-6 border-t border-[#F3F4F6] space-y-2">
-            <p className="text-[12px] font-bold text-zinc-400 uppercase tracking-widest">Gender</p>
-            <div className="w-full h-14 bg-[#F3F4F6] rounded-2xl px-6 flex items-center justify-between cursor-pointer">
-              <span className="font-medium">Prefer Not To Say</span>
-              <ChevronLeft className="w-5 h-5 rotate-270 text-zinc-400" />
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -392,8 +381,8 @@ const OnboardingFlow: React.FC = () => {
         <button onClick={prevScreen} className="mb-4">
           <ChevronLeft className="w-7 h-7 text-black" />
         </button>
-        <p className="text-[#6B7280] text-[13px] font-medium mb-1">@chipnguser</p>
-        <h2 className="text-[28px] font-bold mb-8">Choose Your Style</h2>
+        <p className="text-[#6B7280] text-[13px] font-medium mb-1">@{user?.username || 'chipnguser'}</p>
+        <h2 className="text-[28px] font-bold mb-8 text-left">Choose Your Style</h2>
 
         <div className="flex justify-between items-center mb-10">
           {[
@@ -442,13 +431,6 @@ const OnboardingFlow: React.FC = () => {
             ))}
           </div>
 
-          <div className="aspect-square w-full border-2 border-dashed border-[#E5E7EB] rounded-[32px] flex flex-col items-center justify-center p-10 text-center">
-            <div className="w-16 h-16 bg-[#F3F4F6] rounded-3xl flex items-center justify-center mb-4">
-              <Plus className="w-8 h-8 text-[#9CA3AF]" />
-            </div>
-            <p className="text-[#6B7280] font-medium leading-relaxed">No platforms added yet. Search or browse to add your favorite services.</p>
-          </div>
-
           <div className="space-y-4 pb-10">
             <button className="w-full h-14 border-2 border-[#A3E635] text-[#A3E635] rounded-2xl font-bold transition-all active:scale-98">
               + Add Custom Link
@@ -456,7 +438,6 @@ const OnboardingFlow: React.FC = () => {
             <button className="w-full text-center font-bold text-[15px] py-2" onClick={nextScreen}>
               Request a Platform
             </button>
-            <p className="text-center text-[#6B7280] text-[12px] pt-4">Want to add a Link to chipng.com?</p>
           </div>
         </div>
       </div>
@@ -467,67 +448,63 @@ const OnboardingFlow: React.FC = () => {
     <div className="h-full flex flex-col bg-white">
       <div className="flex items-center justify-between px-6 h-14 border-b border-[#F3F4F6]">
         <h1 className="font-semibold text-[16px]">Instagram Bio Link</h1>
-        <button className="p-2" onClick={() => setCurrentScreen(1)}>
+        <button className="p-2" onClick={() => navigate('/dashboard')}>
           <X className="w-6 h-6 text-black" />
         </button>
       </div>
 
       <div className="flex-1 px-8 pt-10 flex flex-col items-center text-center">
         <div className="w-[72px] h-[72px] rounded-full bg-[#F3F4F6] mb-4 border-2 border-white shadow-sm flex items-center justify-center overflow-hidden">
-          <div className="w-full h-full bg-[#A3E635]/10 flex items-center justify-center">
-             <Heart className="w-8 h-8 text-[#A3E635] fill-current opacity-20" />
-          </div>
+           {user?.photoURL ? (
+              <img src={user.photoURL} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-[#A3E635]/10 flex items-center justify-center">
+                 <Heart className="w-8 h-8 text-[#A3E635] fill-current opacity-20" />
+              </div>
+            )}
         </div>
-        <h2 className="text-[20px] font-bold mb-0.5">Victor Dennis</h2>
-        <p className="text-[#6B7280] text-[14px] font-medium mb-8">@nfccom</p>
+        <h2 className="text-[20px] font-bold mb-0.5">{signupData.fullName}</h2>
+        <p className="text-[#6B7280] text-[14px] font-medium mb-8">@{signupData.username}</p>
 
         <p className="text-[#6B7280] text-[14px] leading-relaxed mb-10">
           This is your chipng.com bio link! You can copy and paste it into all your social media accounts to help increase your exposure and showcase your chipng.com profile.
         </p>
 
         <div className="w-full bg-white border border-[#E5E7EB] border-l-[6px] border-l-[#A3E635] rounded-xl flex items-center justify-between p-4 mb-2 shadow-sm">
-          <span className="font-bold text-[16px] text-zinc-950">chip.ng/username</span>
-          <Copy className="w-5 h-5 text-[#A3E635]" />
+          <span className="font-bold text-[16px] text-zinc-950">chipng.com/{signupData.username}</span>
+          <Copy className="w-5 h-5 text-[#A3E635]" onClick={() => {
+            navigator.clipboard.writeText(`chipng.com/${signupData.username}`);
+            toast.success('Link copied!');
+          }} />
         </div>
         <button className="text-[#A3E635] font-extrabold text-[14px] mb-12">Copy</button>
 
         <div className="w-full space-y-4">
-          <button className="w-full h-14 bg-[#A3E635] text-white rounded-[16px] font-bold text-[16px] shadow-lg shadow-lime-200 transition-all active:scale-98">
-            VIEW PUBLIC PROFILE
+          <button 
+            onClick={handleComplete}
+            disabled={saving}
+            className="w-full h-14 bg-[#A3E635] text-white rounded-[16px] font-bold text-[16px] shadow-lg shadow-lime-200 transition-all active:scale-98"
+          >
+            {saving ? 'Finalizing...' : 'VIEW PUBLIC PROFILE'}
           </button>
           <button className="w-full h-14 bg-white border-2 border-[#A3E635] text-[#A3E635] rounded-[16px] font-bold text-[16px] transition-all active:scale-98 flex items-center justify-center gap-3">
             <Share2 className="w-5 h-5" />
             SHARE BIO LINK
           </button>
+          
+          <button 
+            onClick={() => navigate('/dashboard')}
+            className="w-full text-[#6B7280] text-[14px] font-medium py-4 text-center"
+          >
+            Cancel
+          </button>
         </div>
-
-        <button className="mt-10 pb-10 text-[#6B7280] font-bold text-[14px]" onClick={() => setCurrentScreen(1)}>
-          Cancel
-        </button>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-zinc-100 flex flex-col items-center justify-center py-12 px-4 select-none">
-      <div className="max-w-2xl text-center mb-8">
-        <h1 className="text-4xl font-extrabold text-zinc-900 mb-2">Prototype sequence</h1>
-        <p className="text-zinc-500">Interactive screen flow for Chip NG Onboarding</p>
-        <div className="flex gap-2 justify-center mt-6">
-          {[1, 2, 3, 4, 5, 6].map(num => (
-            <button 
-              key={num}
-              onClick={() => setCurrentScreen(num as Screen)}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold transition-all ${
-                currentScreen === num ? 'bg-[#A3E635] text-white' : 'bg-white text-zinc-400'
-              }`}
-            >
-              {num}
-            </button>
-          ))}
-        </div>
-      </div>
-
+    <div className="min-h-screen bg-zinc-100 flex flex-col items-center justify-center py-4 px-4 select-none">
       <AnimatePresence mode="wait">
         <motion.div
           key={currentScreen}
@@ -535,6 +512,7 @@ const OnboardingFlow: React.FC = () => {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
           transition={{ duration: 0.3 }}
+          className="w-full flex justify-center"
         >
           <ScreenWrapper>
             {currentScreen === 1 && <Screen1 />}
@@ -546,20 +524,6 @@ const OnboardingFlow: React.FC = () => {
           </ScreenWrapper>
         </motion.div>
       </AnimatePresence>
-
-      <div className="mt-12 max-w-sm text-center">
-        <p className="text-zinc-400 text-xs uppercase tracking-widest font-bold">Design Specifications</p>
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          <div className="p-3 bg-white rounded-xl border border-zinc-200">
-            <div className="w-4 h-4 bg-[#A3E635] rounded-full mx-auto mb-1" />
-            <p className="text-[10px] font-bold text-zinc-500">#A3E635</p>
-          </div>
-          <div className="p-3 bg-white rounded-xl border border-zinc-200">
-            <p className="text-[12px] font-bold text-zinc-900">390 x 844</p>
-            <p className="text-[10px] font-bold text-zinc-500">iPhone Format</p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };

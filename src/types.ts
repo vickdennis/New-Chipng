@@ -47,6 +47,7 @@ export interface User {
   isVerified?: boolean;
   plan: PlanType;
   subscriptionStatus: 'active' | 'inactive';
+  onboardingCompleted?: boolean;
   phone?: string;
   address?: string;
   contactEmail?: string;

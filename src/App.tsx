@@ -20,12 +20,17 @@ import { Toaster } from 'sonner';
 
 import ErrorBoundary from './components/ErrorBoundary';
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean }> = ({ children, adminOnly }) => {
+const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean; allowIncomplete?: boolean }> = ({ children, adminOnly, allowIncomplete }) => {
   const { user, loading } = useAuth();
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   if (!user) return <Navigate to="/login" />;
   if (adminOnly && user.role !== 'admin') return <Navigate to="/dashboard" />;
+  
+  // Force onboarding if explicitly not completed
+  if (user.onboardingCompleted === false && !allowIncomplete && user.role !== 'admin') {
+    return <Navigate to="/onboarding" />;
+  }
 
   return <>{children}</>;
 };
@@ -40,6 +45,7 @@ const App: React.FC = () => {
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/onboarding" element={<ProtectedRoute allowIncomplete><OnboardingFlow /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/payment-success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
