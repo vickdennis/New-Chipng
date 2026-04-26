@@ -1,10 +1,10 @@
 {
   "projectId": "chip-ng",
-  "appId": "1:785969524878:web:8ac086e387f1c9441219df",
-  "apiKey": "AIzaSyA6raGGKduSnFPhTb670xvVPWFRlGO_iwo",
+  "appId": "1:460166364740:web:a1a6c777c565f62cde0611",
+  "apiKey": "AIzaSyB2d5Kp_xH__CmtTM8astfs4A-lDUZsipo",
   "authDomain": "chip-ng.firebaseapp.com",
   "firestoreDatabaseId": "ai-studio-3007a85d-1558-47cb-99dd-f4be9f0e79fb",
   "storageBucket": "chip-ng.firebasestorage.app",
-  "messagingSenderId": "785969524878",
-  "measurementId": ""
+  "messagingSenderId": "460166364740",
+  "measurementId": "G-SBW4FMKLCR"
 }
