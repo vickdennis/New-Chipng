@@ -21,10 +21,17 @@ import { Toaster } from 'sonner';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode; adminOnly?: boolean; allowIncomplete?: boolean }> = ({ children, adminOnly, allowIncomplete }) => {
-  const { user, loading } = useAuth();
+  const { user, firebaseUser, loading } = useAuth();
 
   if (loading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  if (!user) return <Navigate to="/login" />;
+  if (!firebaseUser) return <Navigate to="/login" />;
+  
+  // If user profile doc doesn't exist yet, but they are authenticated
+  if (!user) {
+    if (adminOnly) return <Navigate to="/dashboard" />;
+    return <>{children}</>;
+  }
+
   if (adminOnly && user.role !== 'admin') return <Navigate to="/dashboard" />;
   
   // Force onboarding if explicitly not completed

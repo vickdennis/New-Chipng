@@ -11,7 +11,7 @@ import {
   Link as LinkIcon, AlertCircle,
   Mail, MessageSquare, ChevronLeft,
   Image as ImageIcon,
-  Plus
+  Plus, AtSign
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { toast } from 'sonner';

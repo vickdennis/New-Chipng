@@ -694,7 +694,75 @@ const Dashboard: React.FC = () => {
     return Math.round((filledFields / fields.length) * 100);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">Loading...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-white">Loading...</div>;
+  if (!user) return <div className="min-h-screen flex items-center justify-center">Redirecting to login...</div>;
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
+        <Logo size="lg" className="mb-8" />
+        <div className="max-w-md w-full space-y-6">
+          <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/20 p-6 rounded-[2.5rem] flex flex-col items-center text-center">
+            <AlertCircle className="w-12 h-12 text-amber-500 mb-4" />
+            <h1 className="text-2xl font-black text-zinc-900 dark:text-white mb-2">Profile Not Found</h1>
+            <p className="text-zinc-500 dark:text-zinc-400">
+              We couldn't find your profile data. This can happen if account creation was interrupted. 
+              Let's fix it by setting up your profile now.
+            </p>
+          </div>
+          
+          <button
+            onClick={async () => {
+              try {
+                let baseUsername = user.email?.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user';
+                let finalUsername = baseUsername;
+                
+                const check = await getUserByUsername(finalUsername);
+                if (check) {
+                  finalUsername = `${baseUsername}${Math.floor(Math.random() * 10000)}`;
+                }
+
+                await safeWrite('users', user.uid, {
+                  uid: user.uid,
+                  email: user.email,
+                  username: finalUsername,
+                  displayName: user.displayName || finalUsername,
+                  photoURL: user.photoURL || null,
+                  bio: 'Welcome to my Chip NG profile!',
+                  role: 'user',
+                  createdAt: new Date().toISOString(),
+                  status: 'active',
+                  theme: 'minimal',
+                  buttonStyle: 'rounded',
+                  backgroundType: 'solid',
+                  backgroundColor: '#ffffff',
+                  totalClicks: 0,
+                  plan: 'basic',
+                  subscriptionStatus: 'active',
+                  onboardingCompleted: false
+                }, 'create');
+                
+                toast.success('Profile created successfully!');
+              } catch (error) {
+                console.error('Failed to create profile:', error);
+                toast.error('Failed to create profile. Please try again.');
+              }
+            }}
+            className="w-full bg-[#A3E635] text-white py-4 rounded-2xl font-black shadow-lg shadow-lime-100 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            Setup My Profile
+          </button>
+          
+          <button 
+            onClick={() => auth.signOut()}
+            className="text-zinc-400 font-bold hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const mockAnalyticsData = [
     { name: 'Mon', views: 400, clicks: 240 },

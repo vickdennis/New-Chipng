@@ -18,7 +18,42 @@ const Login: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      const user = result.user;
+
+      // Check if user doc exists
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists()) {
+        // Create user doc if it's missing for some reason
+        let baseUsername = user.email?.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user';
+        let finalUsername = baseUsername;
+        
+        while (true) {
+          const usernameCheck = await getUserByUsername(finalUsername);
+          if (!usernameCheck) break;
+          finalUsername = `${baseUsername}${Math.floor(Math.random() * 10000)}`;
+        }
+
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          email: user.email,
+          username: finalUsername,
+          displayName: user.displayName || finalUsername,
+          photoURL: user.photoURL || null,
+          bio: 'Welcome to my Chip NG profile!',
+          role: 'user',
+          createdAt: serverTimestamp(),
+          status: 'active',
+          theme: 'minimal',
+          buttonStyle: 'rounded',
+          backgroundType: 'solid',
+          backgroundColor: '#ffffff',
+          totalClicks: 0,
+          plan: 'basic',
+          subscriptionStatus: 'active'
+        });
+      }
+
       toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (error: any) {

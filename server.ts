@@ -25,40 +25,18 @@ try {
       databaseId: firebaseConfig?.firestoreDatabaseId
     });
     
-    // Setting these environment variables often helps the Admin SDK pick up the right project
     if (firebaseConfig.projectId) {
       process.env.GOOGLE_CLOUD_PROJECT = firebaseConfig.projectId;
-      process.env.GCLOUD_PROJECT = firebaseConfig.projectId;
     }
   }
 
-  // Initialize Admin with explicit projectId if available
+  // Initialize Admin
   if (!admin.apps?.length) {
-    const targetProject = firebaseConfig?.projectId;
-    // Try both with and without explicit credential
-    const adminOptions: any = {
-      ...firebaseConfig, // Include everything from config (apiKey, etc) as a hybrid attempt
-      projectId: targetProject
-    };
-    
-    if (targetProject) {
-      console.log(`📡 Setting projectId from config: ${targetProject}`);
-    }
-
-    try {
-      console.log("🛠️ Attempting initialization with full config...");
-      admin.initializeApp(adminOptions);
-      console.log(`✅ Firebase Admin initialized with config`);
-    } catch (e: any) {
-      console.error(`❌ Admin.initializeApp error: ${e.message}`);
-      try {
-        console.log("🛠️ Falling back to default initialization...");
-        admin.initializeApp();
-        console.log(`✅ Firebase Admin initialized with defaults`);
-      } catch (e2: any) {
-        console.error(`❌ Admin.initializeApp fallback error: ${e2.message}`);
-      }
-    }
+    admin.initializeApp({
+      projectId: firebaseConfig?.projectId,
+      credential: admin.credential.applicationDefault()
+    });
+    console.log("✅ Firebase Admin initialized");
   }
 
   const app = admin.app();
@@ -66,14 +44,20 @@ try {
   
   // Explicitly target the database
   if (databaseId) {
-    console.log(`🎯 Targeting specific database: ${databaseId}`);
+    console.log(`🎯 Targeting Firestore database: ${databaseId}`);
     db = getFirestore(app, databaseId);
   } else {
     db = getFirestore(app);
   }
-  console.log(`✅ Targeting Firestore database: ${databaseId || '(default)'} in project: ${admin.app().options.projectId}`);
 } catch (error: any) {
   console.error("❌ Firebase Admin initialization failed:", error.message);
+  // Fallback to basic init if above fails
+  if (!admin.apps?.length) {
+    try {
+      admin.initializeApp();
+      db = getFirestore();
+    } catch (e) {}
+  }
 }
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;

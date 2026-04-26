@@ -67,7 +67,7 @@ export const safeWrite = async (collectionName: string, documentId: string | nul
     // 2. Perform Write
     if (action === 'create') {
       const colRef = collection(db, collectionName);
-      const newDocRef = doc(colRef);
+      const newDocRef = documentId ? doc(db, collectionName, documentId) : doc(colRef);
       await setDoc(newDocRef, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), isDeleted: false });
       
       // Create an initial snapshot for the new document
