@@ -24,25 +24,40 @@ try {
       projectId: firebaseConfig?.projectId,
       databaseId: firebaseConfig?.firestoreDatabaseId
     });
+    
+    // Setting these environment variables often helps the Admin SDK pick up the right project
+    if (firebaseConfig.projectId) {
+      process.env.GOOGLE_CLOUD_PROJECT = firebaseConfig.projectId;
+      process.env.GCLOUD_PROJECT = firebaseConfig.projectId;
+    }
   }
 
   // Initialize Admin with explicit projectId if available
   if (!admin.apps?.length) {
     const targetProject = firebaseConfig?.projectId;
-    const adminOptions: any = {};
+    // Try both with and without explicit credential
+    const adminOptions: any = {
+      ...firebaseConfig, // Include everything from config (apiKey, etc) as a hybrid attempt
+      projectId: targetProject
+    };
     
     if (targetProject) {
-      adminOptions.projectId = targetProject;
       console.log(`📡 Setting projectId from config: ${targetProject}`);
     }
 
     try {
+      console.log("🛠️ Attempting initialization with full config...");
       admin.initializeApp(adminOptions);
-      console.log(`✅ Firebase Admin initialized`);
+      console.log(`✅ Firebase Admin initialized with config`);
     } catch (e: any) {
       console.error(`❌ Admin.initializeApp error: ${e.message}`);
-      // Fallback
-      admin.initializeApp();
+      try {
+        console.log("🛠️ Falling back to default initialization...");
+        admin.initializeApp();
+        console.log(`✅ Firebase Admin initialized with defaults`);
+      } catch (e2: any) {
+        console.error(`❌ Admin.initializeApp fallback error: ${e2.message}`);
+      }
     }
   }
 
@@ -57,14 +72,6 @@ try {
     db = getFirestore(app);
   }
   console.log(`✅ Targeting Firestore database: ${databaseId || '(default)'} in project: ${admin.app().options.projectId}`);
-
-  // Final check: confirm db is linked to the right project
-  if (db) {
-    try {
-      const proj = admin.app().options.projectId;
-      console.log(`✅ System ready. Project: ${proj}, DB: ${db._databaseId || 'default'}`);
-    } catch (e) {}
-  }
 } catch (error: any) {
   console.error("❌ Firebase Admin initialization failed:", error.message);
 }
@@ -147,25 +154,29 @@ async function rollbackDocument(collectionName: string, documentId: string, back
     }
 
     const backupData = backupSnap.data();
-    
-    // Restore data
+    const now = new Date().toISOString();
+
+    // Create a special rollback backup before restoring
+    const currentSnap = await db.collection(collectionName).doc(documentId).get();
+    if (currentSnap.exists) {
+      await db.collection(backupCollection).add({
+        originalId: documentId,
+        collectionName,
+        data: currentSnap.data(),
+        action: 'rollback',
+        timestamp: now,
+        performedBy: 'system-rollback'
+      });
+    }
+
+    // Restore the data
     await db.collection(collectionName).doc(documentId).set({
       ...backupData.data,
-      updatedAt: new Date().toISOString(),
+      isDeleted: false,
+      updatedAt: now,
       restoredFrom: backupSnap.id,
-      restoredAt: new Date().toISOString()
-    }, { merge: false }); // Overwrite with backup data
-
-    // Log the rollback itself as a new backup/event
-    await db.collection(`${collectionName}_backup`).add({
-      originalId: documentId,
-      collectionName,
-      data: backupData.data,
-      action: 'rollback',
-      timestamp: new Date().toISOString(),
-      performedBy: 'admin',
-      restoredFrom: backupSnap.id
-    });
+      restoredAt: now
+    }, { merge: false });
 
     return true;
   } catch (error) {
@@ -482,11 +493,12 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       if (error.details) console.error('Error Details:', error.details);
       if (error.stack) console.error('Error Stack:', error.stack);
       
+      const usersColPath = db ? db.collection('users').path : 'users';
       res.status(500).json({ 
         error: error.message,
         code: error.code,
         details: error.details,
-        path: usersCol.path,
+        path: usersColPath,
         database: db?._databaseId,
         projectId: admin.app()?.options?.projectId
       });

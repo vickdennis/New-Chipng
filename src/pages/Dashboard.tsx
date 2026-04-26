@@ -20,7 +20,9 @@ import {
   Plus, Trash2, GripVertical, Eye, EyeOff, Image as ImageIcon,
   LogOut, ExternalLink, Copy, Check, Moon, Sun, Palette,
   Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash,
-  CreditCard, Calendar, LayoutGrid, Star, Square, AlertCircle, Lightbulb, Camera
+  CreditCard, Calendar, LayoutGrid, Star, Square, AlertCircle, Lightbulb, Camera,
+  Briefcase, Play, Heart, Coffee, BookOpen, Globe, Search, ChevronRight, X,
+  History as HistoryIcon, RotateCcw
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -124,7 +126,7 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
                   className="p-2 rounded-lg text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                   title="View History"
                 >
-                  <History className="w-4 h-4" />
+                  <HistoryIcon className="w-4 h-4" />
                 </button>
               )}
               <button 
@@ -216,6 +218,68 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
   );
 };
 
+const CATEGORIES = [
+  { id: 'socials', label: 'Socials', icon: MessageCircle },
+  { id: 'music', label: 'Music', icon: Music },
+  { id: 'business', label: 'Business', icon: Briefcase },
+  { id: 'payments', label: 'Payments', icon: CreditCard },
+  { id: 'entertainment', label: 'Entertainment', icon: Play },
+  { id: 'lifestyle', label: 'Lifestyle', icon: Heart },
+] as const;
+
+const PLATFORMS = {
+  socials: [
+    { id: 'instagram', label: 'Instagram', icon: BrandIcons.instagram, color: '#E4405F', urlPrefix: 'https://instagram.com/' },
+    { id: 'twitter', label: 'Twitter / X', icon: BrandIcons.x, color: '#000000', urlPrefix: 'https://twitter.com/' },
+    { id: 'tiktok', label: 'TikTok', icon: BrandIcons.tiktok, color: '#000000', urlPrefix: 'https://tiktok.com/@' },
+    { id: 'youtube', label: 'YouTube', icon: BrandIcons.youtube, color: '#FF0000', urlPrefix: 'https://youtube.com/' },
+    { id: 'facebook', label: 'Facebook', icon: BrandIcons.facebook, color: '#1877F2', urlPrefix: 'https://facebook.com/' },
+    { id: 'threads', label: 'Threads', icon: AtSign, color: '#000000', urlPrefix: 'https://threads.net/@' },
+    { id: 'linkedin', label: 'LinkedIn', icon: BrandIcons.linkedin, color: '#0A66C2', urlPrefix: 'https://linkedin.com/in/' },
+    { id: 'whatsapp', label: 'WhatsApp', icon: BrandIcons.whatsapp, color: '#25D366', urlPrefix: 'https://wa.me/' },
+    { id: 'telegram', label: 'Telegram', icon: Send, color: '#26A5E4', urlPrefix: 'https://t.me/' },
+    { id: 'snapchat', label: 'Snapchat', icon: BrandIcons.snapchat, color: '#FFFC00', urlPrefix: 'https://snapchat.com/add/' },
+    { id: 'discord', label: 'Discord', icon: BrandIcons.discord, color: '#5865F2', urlPrefix: 'https://discord.gg/' },
+    { id: 'reddit', label: 'Reddit', icon: BrandIcons.reddit, color: '#FF4500', urlPrefix: 'https://reddit.com/u/' },
+    { id: 'pinterest', label: 'Pinterest', icon: Pin, color: '#BD081C', urlPrefix: 'https://pinterest.com/' },
+    { id: 'twitch', label: 'Twitch', icon: BrandIcons.twitch, color: '#9146FF', urlPrefix: 'https://twitch.tv/' }
+  ],
+  music: [
+    { id: 'spotify', label: 'Spotify', icon: BrandIcons.spotify, color: '#1DB954', urlPrefix: 'https://open.spotify.com/user/' },
+    { id: 'applemusic', label: 'Apple Music', icon: Apple, color: '#FA243C', urlPrefix: 'https://music.apple.com/' },
+    { id: 'soundcloud', label: 'SoundCloud', icon: BrandIcons.soundcloud, color: '#FF5500', urlPrefix: 'https://soundcloud.com/' },
+    { id: 'deezer', label: 'Deezer', icon: Music, color: '#00C7FF', urlPrefix: 'https://deezer.com/' },
+    { id: 'tidal', label: 'Tidal', icon: Music2, color: '#000000', urlPrefix: 'https://tidal.com/' }
+  ],
+  business: [
+    { id: 'website', label: 'Website', icon: Globe, color: '#6B7280', urlPrefix: 'https://' },
+    { id: 'linkedin', label: 'LinkedIn Business', icon: BrandIcons.linkedin, color: '#0A66C2', urlPrefix: 'https://linkedin.com/company/' },
+    { id: 'github', label: 'GitHub', icon: BrandIcons.github, color: '#181717', urlPrefix: 'https://github.com/' },
+    { id: 'portfolio', label: 'Portfolio', icon: LayoutGrid, color: '#6366F1', urlPrefix: 'https://' },
+    { id: 'behance', label: 'Behance', icon: BrandIcons.behance, color: '#1769FF', urlPrefix: 'https://behance.net/' },
+    { id: 'dribbble', label: 'Dribbble', icon: BrandIcons.dribbble, color: '#EA4C89', urlPrefix: 'https://dribbble.com/' }
+  ],
+  payments: [
+    { id: 'paypal', label: 'PayPal', icon: CreditCard, color: '#003087', urlPrefix: 'https://paypal.me/' },
+    { id: 'buymeacoffee', label: 'Buy Me a Coffee', icon: Coffee, color: '#FFDD00', urlPrefix: 'https://buymeacoffee.com/' },
+    { id: 'patreon', label: 'Patreon', icon: Star, color: '#FF424D', urlPrefix: 'https://patreon.com/' },
+    { id: 'cashapp', label: 'Cash App', icon: CreditCard, color: '#00D632', urlPrefix: 'https://cash.app/$' },
+    { id: 'venmo', label: 'Venmo', icon: CreditCard, color: '#3D95CE', urlPrefix: 'https://venmo.com/' }
+  ],
+  entertainment: [
+    { id: 'netflix', label: 'Netflix', icon: Play, color: '#E50914', urlPrefix: 'https://netflix.com/' },
+    { id: 'hulu', label: 'Hulu', icon: Play, color: '#1CE783', urlPrefix: 'https://hulu.com/' },
+    { id: 'primevideo', label: 'Prime Video', icon: Play, color: '#00A8E1', urlPrefix: 'https://amazon.com/video/' },
+    { id: 'disneyplus', label: 'Disney+', icon: Play, color: '#006E99', urlPrefix: 'https://disneyplus.com/' }
+  ],
+  lifestyle: [
+    { id: 'blog', label: 'Blog', icon: BookOpen, color: '#6B7280', urlPrefix: 'https://' },
+    { id: 'medium', label: 'Medium', icon: BrandIcons.medium, color: '#000000', urlPrefix: 'https://medium.com/@' },
+    { id: 'substack', label: 'Substack', icon: BrandIcons.substack, color: '#FF6719', urlPrefix: 'https://substack.com/' },
+    { id: 'goodreads', label: 'Goodreads', icon: Star, color: '#372213', urlPrefix: 'https://goodreads.com/' }
+  ]
+};
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserType | null>(null);
@@ -233,6 +297,9 @@ const Dashboard: React.FC = () => {
   const [links, setLinks] = useState<Link[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup' | 'ai'>('links');
+  const [isAddPlatformModalOpen, setIsAddPlatformModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<keyof typeof PLATFORMS>('socials');
+  const [searchQuery, setSearchQuery] = useState('');
   const [backups, setBackups] = useState<BackupData[]>([]);
   const [isRollingBack, setIsRollingBack] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -374,11 +441,14 @@ const Dashboard: React.FC = () => {
       
       setLinks(newLinks);
 
-      const batch = writeBatch(db);
-      newLinks.forEach((link, index) => {
-        batch.update(doc(db, 'links', link.id), { position: index });
-      });
-      await batch.commit();
+      // Perform safe writes for each affected link to ensure backups exist for position changes
+      try {
+        for (let i = 0; i < newLinks.length; i++) {
+          await safeWrite('links', newLinks[i].id, { position: i }, 'update');
+        }
+      } catch (error) {
+        console.error('Error updating link positions safely:', error);
+      }
     }
   };
 
@@ -570,6 +640,42 @@ const Dashboard: React.FC = () => {
     return false;
   };
 
+  const handleSelectPlatform = async (platformId: string, urlPrefix: string) => {
+    if (!profile) return;
+    
+    // Check if platform already exists
+    const currentSocials = profile.socialLinks || {};
+    if (currentSocials[platformId as keyof typeof currentSocials]) {
+      toast.error(`${platformId} is already added`);
+      return;
+    }
+
+    const value = window.prompt(`Enter your ${platformId} handle or URL`, '');
+    if (value === null) return;
+
+    let finalUrl = value;
+    if (!value.startsWith('http')) {
+      finalUrl = urlPrefix + value.replace('@', '');
+    }
+
+    try {
+      await handleUpdateProfile({
+        socialLinks: {
+          ...currentSocials,
+          [platformId]: finalUrl
+        }
+      });
+      setIsAddPlatformModalOpen(false);
+      toast.success(`${platformId} added successfully`);
+    } catch (error) {
+      toast.error(`Failed to add ${platformId}`);
+    }
+  };
+
+  const filteredPlatforms = PLATFORMS[selectedCategory].filter(p => 
+    p.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const calculateCompletion = () => {
     if (!profile) return 0;
     const fields = [
@@ -698,7 +804,7 @@ const Dashboard: React.FC = () => {
                 {/* Edit Sections List */}
                 <div className="w-full space-y-0.5 mb-10">
                   <button 
-                    onClick={() => setActiveTab('appearance')}
+                    onClick={() => setIsAddPlatformModalOpen(true)}
                     className="w-full flex items-center justify-between py-4 border-b border-[#F3F4F6] group hover:bg-zinc-50 transition-colors px-2 -mx-2 rounded-lg"
                   >
                     <div className="flex items-center gap-3">
@@ -707,7 +813,9 @@ const Dashboard: React.FC = () => {
                       </div>
                       <span className="text-[15px] font-medium">Add Platforms</span>
                     </div>
-                    <span className="text-[#6B7280] group-hover:text-black font-bold text-[13px] transition-colors">{profile?.socialLinks ? 'Update' : '+20%'}</span>
+                    <span className="text-[#6B7280] group-hover:text-black font-bold text-[13px] transition-colors">
+                      {profile?.socialLinks && Object.keys(profile.socialLinks).length > 0 ? 'Update' : '+20%'}
+                    </span>
                   </button>
 
                   <div className="py-4 border-b border-[#F3F4F6]">
@@ -997,7 +1105,7 @@ const Dashboard: React.FC = () => {
                             onClick={() => fetchHistory('links', link.id)}
                             className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
                           >
-                            <History className="w-4 h-4" />
+                            <HistoryIcon className="w-4 h-4" />
                           </button>
                         </div>
                       ))}
@@ -1028,7 +1136,7 @@ const Dashboard: React.FC = () => {
             { id: 'analytics', icon: BarChart2, label: 'Stats' },
             { id: 'appearance', icon: Palette, label: 'Style' },
             { id: 'settings', icon: Settings, label: 'Setup' },
-            ...(profile?.role === 'admin' ? [{ id: 'backup', icon: History, label: 'History' }] : [])
+            ...(profile?.role === 'admin' ? [{ id: 'backup', icon: HistoryIcon, label: 'History' }] : [])
           ].map(item => (
             <button 
               key={item.id}
@@ -1065,6 +1173,126 @@ const Dashboard: React.FC = () => {
           </div>
       </div>
 
+      {/* Add Platform Modal */}
+      <AnimatePresence>
+        {isAddPlatformModalOpen && (
+          <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAddPlatformModalOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              className="relative w-full max-w-lg bg-white rounded-t-[2.5rem] sm:rounded-b-[2.5rem] p-6 pb-12 shadow-2xl flex flex-col h-[80vh] sm:h-auto sm:max-h-[85vh]"
+            >
+              <div className="w-12 h-1.5 bg-zinc-100 rounded-full mx-auto mb-6 sm:hidden" />
+              
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-black">Add Platform</h2>
+                  <p className="text-[#6B7280] text-sm font-medium">Add social icons to your profile.</p>
+                </div>
+                <button 
+                  onClick={() => setIsAddPlatformModalOpen(false)}
+                  className="p-2 bg-zinc-50 rounded-full hover:bg-zinc-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-zinc-400" />
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative mb-6">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                <input 
+                  type="text" 
+                  placeholder="Search platforms..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-12 bg-zinc-50 border-none rounded-2xl pl-11 pr-4 focus:ring-2 focus:ring-[#A3E635] transition-all font-medium"
+                />
+              </div>
+
+              {/* Categories Scroll */}
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-6 mb-2 -mx-2 px-2">
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id as any)}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2.5 rounded-2xl whitespace-nowrap font-bold text-sm transition-all border-2",
+                      selectedCategory === cat.id 
+                        ? "bg-[#A3E635] text-white border-[#A3E635] shadow-lg shadow-lime-100" 
+                        : "bg-white text-[#6B7280] border-[#F3F4F6] hover:border-zinc-200"
+                    )}
+                  >
+                    <cat.icon className="w-4 h-4" />
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Platforms Grid */}
+              <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-1 gap-2 pr-1">
+                {filteredPlatforms.length > 0 ? (
+                  filteredPlatforms.map(platform => (
+                    <button
+                      key={platform.id}
+                      onClick={() => handleSelectPlatform(platform.id, platform.urlPrefix)}
+                      className="w-full flex items-center justify-between p-4 bg-white border border-[#F3F4F6] rounded-2xl group hover:border-[#A3E635] hover:bg-lime-50 transition-all text-left"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div 
+                          className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm"
+                          style={{ backgroundColor: platform.color }}
+                        >
+                          <platform.icon className="w-6 h-6" />
+                        </div>
+                        <span className="font-bold text-[15px]">{platform.label}</span>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-zinc-300 group-hover:text-[#A3E635] transition-colors" />
+                    </button>
+                  ))
+                ) : (
+                  <div className="py-12 text-center">
+                    <p className="text-zinc-400 font-medium italic">No platforms found for "{searchQuery}"</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Added Platforms Section (Optional) */}
+              {profile?.socialLinks && Object.keys(profile.socialLinks).length > 0 && searchQuery === '' && (
+                <div className="mt-6 pt-6 border-t border-[#F3F4F6]">
+                  <h4 className="text-[12px] font-bold text-zinc-400 uppercase tracking-widest mb-3 ml-1">Added Platforms ({Object.keys(profile.socialLinks).length})</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(profile.socialLinks).map(([id, url]) => (
+                      <div key={id} className="flex items-center gap-2 bg-zinc-50 border border-[#F3F4F6] px-3 py-1.5 rounded-full">
+                        <span className="text-xs font-bold capitalize">{id}</span>
+                        <button 
+                          onClick={async () => {
+                            const newSocials = { ...profile.socialLinks };
+                            delete (newSocials as any)[id];
+                            await handleUpdateProfile({ socialLinks: newSocials });
+                            toast.success(`${id} removed`);
+                          }}
+                          className="text-zinc-400 hover:text-red-500 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <UpgradeModal 
         isOpen={upgradeModal.isOpen} 
         onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
@@ -1087,7 +1315,7 @@ const Dashboard: React.FC = () => {
                 <div>
                   <h2 className="text-2xl font-black dark:text-white flex items-center gap-3">
                     <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
-                      <History className="w-6 h-6 text-blue-500" />
+                      <HistoryIcon className="w-6 h-6 text-blue-500" />
                     </div>
                     Version History
                   </h2>

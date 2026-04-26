@@ -18,6 +18,8 @@ import { toast } from 'sonner';
 import { User, Link as LinkType } from '../types';
 import { Helmet } from 'react-helmet-async';
 
+import { BrandIcons } from '../components/icons/BrandIcons';
+
 const PublicProfile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
   const [profile, setProfile] = useState<User | null>(null);
@@ -200,6 +202,26 @@ const PublicProfile: React.FC = () => {
 
           {/* Compact Info Section */}
           <div className="mt-4 w-full flex flex-col items-center gap-4">
+            {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
+              <div className="flex flex-wrap items-center justify-center gap-4 py-2">
+                {Object.entries(profile.socialLinks).map(([id, url]) => {
+                  const Icon = BrandIcons[id as keyof typeof BrandIcons];
+                  if (!Icon && id === 'threads') {
+                    return (
+                      <a key={id} href={url} target="_blank" rel="noopener noreferrer" className="p-2 bg-zinc-50 rounded-full hover:bg-zinc-100 transition-colors">
+                        <AtSign className="w-5 h-5 text-zinc-900" />
+                      </a>
+                    );
+                  }
+                  if (!Icon) return null;
+                  return (
+                    <a key={id} href={url} target="_blank" rel="noopener noreferrer" className="p-2 bg-zinc-50 rounded-full hover:bg-zinc-100 transition-colors">
+                      <Icon className="w-5 h-5 text-zinc-900" />
+                    </a>
+                  );
+                })}
+              </div>
+            )}
             <div className="flex items-center gap-2 text-zinc-900 font-medium">
               <Mail className="w-4 h-4 text-[#A3E635]" />
               <span className="text-[14px]">{profile.contactEmail || profile.email || 'your@email.com'}</span>
@@ -306,7 +328,7 @@ const PublicProfile: React.FC = () => {
             >
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 bg-[#F0FFE6] rounded-xl flex items-center justify-center">
-                  <Logo size="xs" variant="icon-only" />
+                  <Logo size="sm" variant="icon-only" />
                 </div>
                 <div className="flex-1">
                   <p className="text-[14px] font-bold">Create Your Profile On chipng.com</p>
@@ -333,7 +355,7 @@ const PublicProfile: React.FC = () => {
 
         {/* Footer */}
         <footer className="py-12 flex flex-col items-center gap-2">
-            <Logo size="xs" variant="icon-only" className="grayscale opacity-50" />
+            <Logo size="sm" variant="icon-only" className="grayscale opacity-50" />
             <span className="text-[12px] font-medium text-[#6B7280]">Powered by chipng.com</span>
         </footer>
       </main>

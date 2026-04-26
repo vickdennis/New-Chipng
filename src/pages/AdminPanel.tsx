@@ -144,21 +144,19 @@ const AdminPanel: React.FC = () => {
   const handleDeleteUser = async (userId: string) => {
     if (!window.confirm('Are you sure you want to delete this user? This will soft-delete their account and associated data.')) return;
     try {
-      // 1. Soft Delete links
+      // 1. Soft Delete links with backups
       const linksSnapshot = await getDocs(query(collection(db, 'links'), where('userId', '==', userId)));
-      const batch = writeBatch(db);
-      linksSnapshot.docs.forEach(doc => {
-        batch.update(doc.ref, { isDeleted: true, deletedAt: serverTimestamp(), updatedAt: serverTimestamp() });
-      });
-      await batch.commit();
+      for (const linkDoc of linksSnapshot.docs) {
+        await safeWrite('links', linkDoc.id, null, 'delete');
+      }
 
-      // 2. Soft Delete user
+      // 2. Soft Delete user with backup
       await safeWrite('users', userId, null, 'delete');
       
-      toast.success('User and all associated data soft-deleted');
+      toast.success('User and all associated data soft-deleted with backups');
     } catch (error) {
       console.error('Error deleting user:', error);
-      toast.error('Failed to delete user');
+      toast.error('Failed to delete user safely');
     }
   };
 
@@ -261,10 +259,7 @@ const AdminPanel: React.FC = () => {
 
   const handleSaveUser = async (userId: string, data: Partial<User>) => {
     try {
-      // Create backup before batch operation
-      await createBackup('users', userId, 'update');
-
-      // Sanitize data for updateDoc - remove fields that shouldn't be in the document body
+      // Use safeWrite for user profile update - this handles backup automatically
       const { uid, id, ...updateData } = data as any;
       
       // Ensure socialLinks is an object
@@ -272,44 +267,40 @@ const AdminPanel: React.FC = () => {
         updateData.socialLinks = {};
       }
 
-      await updateDoc(doc(db, 'users', userId), updateData);
+      const userSuccess = await safeWrite('users', userId, updateData, 'update');
+      if (!userSuccess) throw new Error('Failed to update user profile safely');
       
-      // Save links if any were modified
-      const batch = writeBatch(db);
-
+      // Handle links with backups for each modification
       // Delete links that were removed
-      deletedLinkIds.forEach(linkId => {
-        batch.delete(doc(db, 'links', linkId));
-      });
+      for (const linkId of deletedLinkIds) {
+        await safeWrite('links', linkId, null, 'delete');
+      }
 
-      editingUserLinks.forEach(link => {
+      for (const link of editingUserLinks) {
         if (link.id.startsWith('new-')) {
-          const newLinkRef = doc(collection(db, 'links'));
           const { id: _, ...linkData } = link;
-          batch.set(newLinkRef, {
+          await safeWrite('links', null, {
             ...linkData,
             userId: userId
-          });
+          }, 'create');
         } else {
-          const linkRef = doc(db, 'links', link.id);
           const { id: _, ...linkData } = link;
-          batch.update(linkRef, {
+          await safeWrite('links', link.id, {
             title: linkData.title,
             url: linkData.url,
             active: linkData.active,
             position: linkData.position
-          });
+          }, 'update');
         }
-      });
-      await batch.commit();
+      }
 
-      toast.success('User and links updated successfully');
+      toast.success('User and links updated safely with backups');
       setEditingUser(null);
       setEditingUserLinks([]);
       setDeletedLinkIds([]);
     } catch (error) {
       console.error('Error updating user:', error);
-      toast.error('Failed to update user. Please check permissions.');
+      toast.error('Failed to update user safely. Please check permissions.');
     }
   };
 
