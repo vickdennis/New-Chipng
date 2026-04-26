@@ -7,11 +7,11 @@ import {
 } from 'firebase/firestore';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 import { 
-  Share2, QrCode, X, Check, 
+  Share2, QrCode, X, Check, BadgeCheck,
   Link as LinkIcon, AlertCircle,
   Mail, MessageSquare, ChevronLeft,
   Image as ImageIcon,
-  Plus, AtSign
+  Plus, AtSign, UserPlus
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import { toast } from 'sonner';
@@ -29,6 +29,27 @@ const PublicProfile: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'shouts' | 'media'>('shouts');
   const [showContactForm, setShowContactForm] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const handleSaveContact = () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:${profile?.displayName || profile?.username}
+N:${profile?.displayName || profile?.username};;;;
+EMAIL;TYPE=INTERNET;TYPE=WORK:${profile?.contactEmail || profile?.email}
+NOTE:${profile?.bio || ''}
+URL:${window.location.host}/${profile?.username}
+END:VCARD`;
+    
+    const blob = new Blob([vcard], { type: 'text/vcard' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${profile?.username}.vcf`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Contact vCard downloaded!');
+  };
 
   // Scroll animations
   const { scrollY } = useScroll();
@@ -164,21 +185,19 @@ const PublicProfile: React.FC = () => {
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-zinc-200 to-zinc-300" />
             )}
-            {/* Overlay for better text readability if needed, but the design seems to want it clean */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            {/* Blending Gradient at the bottom to match background */}
+            <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/20" />
             
-            <div className="absolute bottom-6 left-6 right-6">
-               <div className="flex items-center gap-2 mb-1">
-                 <h1 className="text-[28px] font-black text-white leading-tight">
+            <div className="absolute bottom-8 left-0 right-0 flex flex-col items-center px-6">
+               <div className="flex items-center gap-1.5 mb-1 justify-center">
+                 <h1 className="text-[32px] font-black text-black leading-tight drop-shadow-[0_2px_10px_rgba(255,255,255,0.8)]">
                    {profile.displayName || profile.username}
                  </h1>
                  {profile.isVerified && (
-                   <div className="bg-blue-500 text-white rounded-full p-0.5 mt-1">
-                     <Check className="w-4 h-4 stroke-[4]" />
-                   </div>
+                   <BadgeCheck className="w-8 h-8 text-[#1D9BF0] fill-[#1D9BF0] stroke-white stroke-1 mt-1" />
                  )}
                </div>
-               <p className="text-white/90 text-[16px] font-bold">
+               <p className="text-zinc-600 text-[18px] font-bold">
                  @{profile.username}
                </p>
             </div>
@@ -188,14 +207,14 @@ const PublicProfile: React.FC = () => {
         <div className="px-6 py-6 space-y-6">
           {/* Bio if exists */}
           {profile.bio && (
-            <p className="text-zinc-600 text-[15px] leading-relaxed">
+            <p className="text-zinc-500 text-[15px] leading-relaxed text-center px-4">
               {profile.bio}
             </p>
           )}
 
-          {/* Social Platforms Rail */}
+          {/* Social Platforms Rail - Centered */}
           {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               {Object.entries(profile.socialLinks).map(([id, url]) => {
                 const Icon = BrandIcons[id as keyof typeof BrandIcons];
                 if (!Icon && id === 'threads') {
@@ -215,15 +234,24 @@ const PublicProfile: React.FC = () => {
             </div>
           )}
 
-          {/* Connect Button */}
-          <button 
-            onClick={() => setShowContactForm(true)}
-            className="w-full h-14 text-white rounded-2xl font-black text-[16px] shadow-lg shadow-lime-100/50 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            style={{ backgroundColor: profile.brandColor || '#A3E635' }}
-          >
-            <Mail className="w-5 h-5" />
-            Connect with me
-          </button>
+          {/* Action Buttons Row */}
+          <div className="flex gap-3">
+            <button 
+              onClick={() => setShowContactForm(true)}
+              className="flex-[2] h-14 text-white rounded-2xl font-black text-[16px] shadow-lg shadow-lime-100/50 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+              style={{ backgroundColor: profile.brandColor || '#A3E635' }}
+            >
+              <Mail className="w-5 h-5" />
+              Connect
+            </button>
+            <button 
+              onClick={handleSaveContact}
+              className="flex-1 h-14 bg-zinc-100 text-zinc-900 rounded-2xl font-black text-[16px] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            >
+              <UserPlus className="w-5 h-5" />
+              Save
+            </button>
+          </div>
 
           {/* Shouts/Media Tabs Slider Section */}
           <div className="pt-4">

@@ -1246,8 +1246,8 @@ const Dashboard: React.FC = () => {
                 className="px-6 py-8 space-y-8"
               >
                 <div className="space-y-4 text-center">
-                  <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto">
-                    <BadgeCheck className="w-12 h-12 text-blue-500" />
+                  <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto shadow-sm">
+                    <BadgeCheck className="w-12 h-12 text-[#1D9BF0] fill-[#1D9BF0] stroke-white stroke-1" />
                   </div>
                   <h2 className="text-[24px] font-black">Get Verified</h2>
                   <p className="text-zinc-500 text-[14px]">
