@@ -790,9 +790,9 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F3F4F6] md:flex md:items-center md:justify-center md:p-8 font-sans">
+    <div className="min-h-screen bg-[#F3F4F6] dark:bg-zinc-900 md:flex md:items-center md:justify-center md:p-8 font-sans transition-colors duration-300">
       {/* Sidebar for Desktop - Minimal */}
-      <aside className="hidden md:flex flex-col w-64 h-[844px] bg-white rounded-l-[3rem] p-8 border-r border-[#F3F4F6] shadow-xl">
+      <aside className="hidden md:flex flex-col w-64 h-[844px] bg-white dark:bg-zinc-950 rounded-l-[3rem] p-8 border-r border-[#F3F4F6] dark:border-zinc-800 shadow-xl transition-colors duration-300">
         <RouterLink to="/" className="mb-10">
           <Logo size="sm" className="!justify-start" />
         </RouterLink>
@@ -826,22 +826,26 @@ const Dashboard: React.FC = () => {
       </aside>
 
       {/* Main Mobile-Style Container */}
-      <div className="w-full max-w-[390px] h-screen md:h-[844px] bg-white overflow-hidden relative md:shadow-2xl md:rounded-r-[3rem] md:rounded-l-none flex flex-col border-x md:border-l-0 border-[#F3F4F6]">
+      <div className="w-full max-w-[390px] h-screen md:h-[844px] bg-white dark:bg-zinc-950 overflow-hidden relative md:shadow-2xl md:rounded-r-[3rem] md:rounded-l-none flex flex-col border-x md:border-l-0 border-[#F3F4F6] dark:border-zinc-800 transition-colors duration-300">
         {/* Status Bar */}
-        <div className="h-10 flex items-center justify-between px-8 text-[12px] font-bold bg-white z-20">
+        <div className="h-10 flex items-center justify-between px-8 text-[12px] font-bold bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-400 z-20">
           <span>{format(new Date(), 'HH:mm')}</span>
           <div className="flex gap-1.5 items-center">
-            <div className="w-3.5 h-3.5 rounded-full border border-black" />
-            <div className="w-4 h-2 rounded-sm border border-black" />
-            <div className="w-5 h-2.5 rounded-sm bg-black" />
+            <div className="w-3.5 h-3.5 rounded-full border border-black dark:border-zinc-400" />
+            <div className="w-4 h-2 rounded-sm border border-black dark:border-zinc-400" />
+            <div className="w-5 h-2.5 rounded-sm bg-black dark:bg-zinc-400" />
           </div>
         </div>
 
         {/* Tab Headers */}
-        <div className="flex items-center justify-between px-6 h-14 bg-white sticky top-10 z-10 border-b border-[#F3F4F6]">
-          <button className="text-black font-medium text-[15px]" onClick={() => navigate('/')}>Home</button>
-          <h1 className="font-semibold text-[16px] capitalize">{activeTab === 'links' ? 'Edit Profile' : activeTab}</h1>
-          <button className="text-[#A3E635] font-bold text-[16px]" onClick={copyLink}>Copy</button>
+        <div className="flex items-center justify-between px-6 h-14 bg-white dark:bg-zinc-950 sticky top-10 z-10 border-b border-[#F3F4F6] dark:border-zinc-800">
+          <div className="w-10">
+            <ThemeToggle />
+          </div>
+          <h1 className="font-bold text-[18px] capitalize text-zinc-900 dark:text-white">
+            {activeTab === 'links' ? 'Edit Profile' : activeTab}
+          </h1>
+          <div className="w-10" />
         </div>
 
         {/* Scrollable Content */}
@@ -904,47 +908,36 @@ const Dashboard: React.FC = () => {
                     </span>
                   </button>
 
-                  <div className="mt-2 space-y-1">
+                  <div className="mt-4 flex flex-wrap gap-4 justify-center">
                     {profile?.socialLinks && Object.entries(profile.socialLinks).map(([id, url]) => {
-                      const platform = PLATFORMS.socials.find(p => p.id === id) || 
-                                       PLATFORMS.music.find(p => p.id === id) || 
-                                       PLATFORMS.payment.find(p => p.id === id);
+                      const platform = Object.values(PLATFORMS).flat().find(p => p.id === id);
                       if (!platform) return null;
                       
+                      const Icon = platform.icon;
+                      const platformName = platform.label;
+                      
                       return (
-                        <div key={id} className="w-full flex items-center justify-between py-3 border-b border-zinc-50 group px-2 -mx-2 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-zinc-50 flex items-center justify-center text-zinc-400">
-                               {platform.id === 'instagram' && <BrandIcons.instagram className="w-4 h-4" />}
-                               {platform.id === 'twitter' && <BrandIcons.twitter className="w-4 h-4" />}
-                               {platform.id === 'x' && <BrandIcons.twitter className="w-4 h-4" />}
-                               {platform.id === 'youtube' && <BrandIcons.youtube className="w-4 h-4" />}
-                               {platform.id === 'tiktok' && <BrandIcons.tiktok className="w-4 h-4" />}
-                            </div>
-                            <div>
-                              <p className="text-[13px] font-bold">{platform.label}</p>
-                              <p className="text-[11px] text-zinc-400 truncate max-w-[150px]">@{url.split('/').pop()}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button 
-                              onClick={() => handleSelectPlatform(platform.id, platform.urlPrefix)}
-                              className="text-[12px] font-bold text-blue-500 bg-blue-50 px-2.5 py-1.5 rounded-xl"
-                            >
-                              Edit
-                            </button>
-                            <button 
-                              onClick={async () => {
-                                if (!window.confirm(`Remove ${platform.label}?`)) return;
-                                const newLinks = { ...profile.socialLinks };
-                                delete newLinks[id as keyof typeof newLinks];
-                                await handleUpdateProfile({ socialLinks: newLinks });
-                              }}
-                              className="text-[12px] font-bold text-red-500 bg-red-50 px-2.5 py-1.5 rounded-xl"
-                            >
-                              Remove
-                            </button>
-                          </div>
+                        <div key={id} className="relative group flex flex-col items-center gap-1.5 min-w-[64px]">
+                          <button 
+                            onClick={() => handleSelectPlatform(platform.id, platform.urlPrefix)}
+                            className="w-12 h-12 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all active:scale-95"
+                            title={`Edit ${platform.label}`}
+                          >
+                             <Icon className="w-5 h-5" />
+                          </button>
+                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tight">{platformName}</span>
+                          <button 
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!window.confirm(`Remove ${platform.label}?`)) return;
+                              const newLinks = { ...profile.socialLinks };
+                              delete newLinks[id as keyof typeof newLinks];
+                              await handleUpdateProfile({ socialLinks: newLinks });
+                            }}
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
                         </div>
                       );
                     })}
@@ -1124,15 +1117,15 @@ const Dashboard: React.FC = () => {
                 className="px-6 py-6 space-y-6"
               >
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white p-4 rounded-[24px] border border-[#F3F4F6] shadow-sm">
+                  <div className="bg-white dark:bg-zinc-900 p-4 rounded-[24px] border border-[#F3F4F6] dark:border-zinc-800 shadow-sm">
                     <p className="text-[#6B7280] text-[12px] font-medium mb-1">Views</p>
-                    <p className="text-[24px] font-bold">1,284</p>
-                    <p className="text-[10px] text-green-500 font-bold">+12% vs last week</p>
+                    <p className="text-[24px] font-bold text-zinc-900 dark:text-white">{profile?.totalClicks || 0}</p>
+                    <p className="text-[10px] text-green-500 font-bold">+100% lifetime</p>
                   </div>
-                  <div className="bg-white p-4 rounded-[24px] border border-[#F3F4F6] shadow-sm">
-                    <p className="text-[#6B7280] text-[12px] font-medium mb-1">Clicks</p>
-                    <p className="text-[24px] font-bold">482</p>
-                    <p className="text-[10px] text-green-500 font-bold">+5% vs last week</p>
+                  <div className="bg-white dark:bg-zinc-900 p-4 rounded-[24px] border border-[#F3F4F6] dark:border-zinc-800 shadow-sm">
+                    <p className="text-[#6B7280] text-[12px] font-medium mb-1">Link Clicks</p>
+                    <p className="text-[24px] font-bold text-zinc-900 dark:text-white">{links.reduce((sum, l) => sum + (l.clicks || 0), 0)}</p>
+                    <p className="text-[10px] text-zinc-400 font-bold">{links.length} Active links</p>
                   </div>
                 </div>
 
@@ -1379,7 +1372,7 @@ const Dashboard: React.FC = () => {
                 className="px-6 py-8 space-y-8"
               >
                 <div className="space-y-6">
-                  <h2 className="text-[24px] font-black">Account Settings</h2>
+                  <h2 className="text-[24px] font-black text-zinc-900 dark:text-white transition-colors duration-300">Account Settings</h2>
                   
                   <div className="space-y-4">
                     <div className="space-y-1">
@@ -1388,7 +1381,7 @@ const Dashboard: React.FC = () => {
                         type="text" 
                         value={profile?.username}
                         disabled
-                        className="w-full h-12 bg-zinc-50 border-none rounded-xl px-4 font-bold text-zinc-400"
+                        className="w-full h-12 bg-zinc-50 dark:bg-zinc-900 border-none rounded-xl px-4 font-bold text-zinc-400"
                       />
                     </div>
                     <div className="space-y-1">
@@ -1397,7 +1390,7 @@ const Dashboard: React.FC = () => {
                         type="text" 
                         value={profile?.displayName}
                         onChange={(e) => handleUpdateProfile({ displayName: e.target.value })}
-                        className="w-full h-12 bg-zinc-50 border-none rounded-xl px-4 font-bold"
+                        className="w-full h-12 bg-zinc-50 dark:bg-zinc-900 border-none rounded-xl px-4 font-bold text-zinc-900 dark:text-white transition-colors duration-300"
                       />
                     </div>
                   </div>
@@ -1405,7 +1398,7 @@ const Dashboard: React.FC = () => {
                   <div className="pt-6">
                     <button 
                       onClick={() => auth.signOut()}
-                      className="w-full py-4 border-2 border-red-100 text-red-500 rounded-2xl font-bold hover:bg-red-50 transition-colors"
+                      className="w-full py-4 border-2 border-red-100 dark:border-red-900/20 text-red-500 rounded-2xl font-bold hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
                     >
                       Sign Out
                     </button>
@@ -1417,13 +1410,12 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Bottom Navigation */}
-        <div className="h-20 bg-white border-t border-[#F3F4F6] px-6 flex items-center justify-between sticky bottom-0 z-20">
+        <div className="h-20 bg-white dark:bg-zinc-950 border-t border-[#F3F4F6] dark:border-zinc-800 px-6 flex items-center justify-between sticky bottom-0 z-20 transition-colors duration-300">
           {[
             { id: 'links', icon: LinkIcon, label: 'Edit' },
             { id: 'analytics', icon: BarChart2, label: 'Stats' },
             { id: 'appearance', icon: Palette, label: 'Style' },
-            { id: 'settings', icon: Settings, label: 'Setup' },
-            ...(profile?.role === 'admin' ? [{ id: 'backup', icon: HistoryIcon, label: 'History' }] : [])
+            { id: 'settings', icon: Settings, label: 'Setup' }
           ].map(item => (
             <button 
               key={item.id}

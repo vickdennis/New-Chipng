@@ -51,6 +51,17 @@ END:VCARD`;
     toast.success('Contact vCard downloaded!');
   };
 
+  const handleLinkClick = async (linkId: string) => {
+    try {
+      const linkRef = doc(db, 'links', linkId);
+      await updateDoc(linkRef, {
+        clicks: increment(1)
+      });
+    } catch (err) {
+      console.error('Failed to track link click:', err);
+    }
+  };
+
   // Scroll animations
   const { scrollY } = useScroll();
   const coverOpacity = useTransform(scrollY, [0, 200], [1, 0]);
@@ -212,9 +223,9 @@ END:VCARD`;
             </p>
           )}
 
-          {/* Social Platforms Row - Display Platform Names */}
+          {/* Social Platforms Row - Display Platform Names in a row with horizontal scroll */}
           {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-6 overflow-x-auto no-scrollbar py-2 px-6 -mx-6 justify-center">
               {Object.entries(profile.socialLinks).map(([id, url]) => {
                 const Icon = BrandIcons[id as keyof typeof BrandIcons];
                 const platformName = id === 'x' ? 'X' : id.charAt(0).toUpperCase() + id.slice(1);
@@ -225,15 +236,15 @@ END:VCARD`;
                     href={url} 
                     target="_blank" 
                     rel="noopener noreferrer" 
-                    className="flex items-center gap-3 p-3 bg-zinc-50 rounded-2xl hover:bg-zinc-100 transition-all border border-zinc-100 active:scale-95"
+                    className="flex flex-col items-center gap-2 flex-shrink-0 group"
                   >
                     <div 
-                      className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm"
+                      className="w-14 h-14 bg-zinc-50 rounded-2xl flex items-center justify-center border border-zinc-100 hover:bg-zinc-100 transition-all active:scale-90"
                       style={{ color: profile.brandColor || '#18181b' }}
                     >
-                      {Icon ? <Icon className="w-5 h-5 transition-colors" /> : <AtSign className="w-5 h-5" />}
+                      {Icon ? <Icon className="w-7 h-7 transition-colors" /> : <AtSign className="w-7 h-7" />}
                     </div>
-                    <span className="text-[13px] font-black text-zinc-900">{platformName}</span>
+                    <span className="text-[11px] font-black text-zinc-400 group-hover:text-zinc-900 transition-colors uppercase tracking-wider">{platformName}</span>
                   </a>
                 );
               })}
@@ -322,6 +333,7 @@ END:VCARD`;
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => handleLinkClick(link.id)}
                 className="block p-5 bg-white border border-zinc-100 rounded-3xl shadow-sm hover:border-zinc-300 transition-all group"
               >
                 <div className="flex items-center gap-4">
