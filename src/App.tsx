@@ -14,6 +14,7 @@ import BlogPost from './pages/BlogPost';
 import AdminBlogDashboard from './pages/AdminBlogDashboard';
 import AdminBlogEditor from './pages/AdminBlogEditor';
 import Shop from './pages/Shop';
+import OnboardingFlow from './pages/OnboardingFlow';
 import PaymentSuccess from './pages/PaymentSuccess';
 import { Toaster } from 'sonner';
 
@@ -46,6 +47,7 @@ const App: React.FC = () => {
               <Route path="/blog/:slug" element={<BlogPost />} />
               <Route path="/admin" element={<ProtectedRoute adminOnly><AdminPanel /></ProtectedRoute>} />
               <Route path="/admin/blog" element={<ProtectedRoute adminOnly><AdminBlogDashboard /></ProtectedRoute>} />
+              <Route path="/prototype" element={<OnboardingFlow />} />
               <Route path="/admin/blog/new" element={<ProtectedRoute adminOnly><AdminBlogEditor /></ProtectedRoute>} />
               <Route path="/admin/blog/edit/:id" element={<ProtectedRoute adminOnly><AdminBlogEditor /></ProtectedRoute>} />
               <Route path="/shop" element={<Shop />} />
