@@ -9,8 +9,17 @@ import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
 import crypto from "crypto";
 import axios from "axios";
+import multer from "multer";
 
 dotenv.config();
+
+// Initialize Multer for memory storage
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
 
 // Initialize Firebase Admin configuration before other imports
 const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
@@ -426,6 +435,40 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     }
   });
 
+  // Server-side upload proxy to bypass storage/unauthorized issues
+  app.post("/api/upload", upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const { path: storagePath } = req.body;
+      if (!storagePath) {
+        return res.status(400).json({ error: "Storage path is required" });
+      }
+
+      const bucket = admin.storage().bucket(firebaseConfig?.storageBucket);
+      const file = bucket.file(storagePath);
+
+      await file.save(req.file.buffer, {
+        metadata: {
+          contentType: req.file.mimetype,
+        }
+      });
+
+      // Make public (standard for this app) or just get signed URL
+      // If rules are a problem, making it public on the file itself via ACL might work
+      // or just return the URL if the app expects public access.
+      // Firestore storage public URL format:
+      const publicUrl = `https://firebasestorage.googleapis.com/v1/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media`;
+
+      res.json({ url: publicUrl });
+    } catch (error: any) {
+      console.error("Upload proxy failed:", error.message);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/admin/rollback", async (req, res) => {
     try {
       const { collectionName, documentId, backupId, adminToken } = req.body;
@@ -620,7 +663,35 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  // Tracking endpoint
+app.post("/api/track", async (req, res) => {
+  try {
+    const { collection, id, field } = req.body;
+    if (!collection || !id || !field) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    if (!['users', 'links'].includes(collection)) {
+      return res.status(400).json({ error: "Invalid collection" });
+    }
+
+    if (!['totalClicks', 'clicks'].includes(field)) {
+      return res.status(400).json({ error: "Invalid tracking field" });
+    }
+
+    const docRef = admin.firestore().collection(collection).doc(id);
+    await docRef.update({
+      [field]: admin.firestore.FieldValue.increment(1)
+    });
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Tracking error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }

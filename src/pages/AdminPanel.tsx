@@ -185,19 +185,31 @@ const AdminPanel: React.FC = () => {
 
     setIsUploadingProductImage(true);
     const timestamp = Date.now();
-    // Include user UID in path for better security rule compatibility
-    const storageRef = ref(storage, `products/${user?.uid || 'admin'}/${timestamp}_${file.name}`);
+    const storagePath = `products/${user?.uid || 'admin'}/${timestamp}_${file.name}`;
 
     try {
-      console.log('Uploading product image...', file.name);
-      const snapshot = await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(snapshot.ref);
-      console.log('Product image uploaded successfully:', url);
+      console.log('Uploading product image via proxy...', storagePath);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', storagePath);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const { url } = await response.json();
+      console.log('Product image uploaded successfully via proxy:', url);
       setProductForm(prev => ({ ...prev, image: url }));
       toast.success('Product image uploaded');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Product image upload error:', error);
-      toast.error('Failed to upload product image. Please check your connection and permissions.');
+      toast.error(`Failed to upload product image: ${error.message}`);
     } finally {
       setIsUploadingProductImage(false);
     }

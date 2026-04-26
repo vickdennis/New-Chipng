@@ -529,16 +529,27 @@ const Dashboard: React.FC = () => {
     setIsUploading(true);
     const folder = type === 'profile' ? 'profiles' : type === 'cover' ? 'covers' : type === 'background' ? 'backgrounds' : 'link-icons';
     const timestamp = Date.now();
-    const storageRef = ref(storage, `${folder}/${user.uid}/${timestamp}_${file.name}`);
+    const storagePath = `${folder}/${user.uid}/${timestamp}_${file.name}`;
     
-    console.log(`Starting upload to: ${folder}/${user.uid}/${timestamp}_${file.name}`);
-    console.log('File info:', { name: file.name, size: file.size, type: file.type });
+    console.log(`Starting server-side upload proxy to: ${storagePath}`);
 
     try {
-      const snapshot = await uploadBytes(storageRef, file);
-      console.log('Upload successful, getting download URL...');
-      const url = await getDownloadURL(snapshot.ref);
-      console.log('Download URL obtained:', url);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', storagePath);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const { url } = await response.json();
+      console.log('Upload successful via proxy, URL:', url);
       
       if (type === 'profile') {
         await handleUpdateProfile({ photoURL: url });
@@ -550,9 +561,9 @@ const Dashboard: React.FC = () => {
         await handleUpdateLink(linkId, { icon: url });
       }
       toast.success(`${type.replace('-', ' ')} updated`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error);
-      toast.error(`Failed to upload ${type.replace('-', ' ')} image. Please check your connection.`);
+      toast.error(`Failed to upload ${type.replace('-', ' ')} image: ${error.message}`);
     } finally {
       setIsUploading(false);
       e.target.value = '';

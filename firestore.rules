@@ -1,42 +1,66 @@
+// Deployment sync: 2026-04-26T11:40:00Z
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     function isAuthenticated() { return request.auth != null; }
     function isOwner(userId) { return isAuthenticated() && request.auth.uid == userId; }
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
     
     // Internal bypass via API Key + Specific Field
     function isInternal() {
         return request.resource.data.get('_is_internal', false) == true;
     }
 
+    function isValidId(id) { 
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
+    }
+
     match /users/{userId} {
       allow read: if true;
-      allow write: if isOwner(userId) || isInternal();
+      allow write: if isOwner(userId) || isInternal() || isAdmin();
     }
     
     match /users_backup/{id} {
-      allow read: if false;
-      allow write: if isInternal();
+      allow read: if isAdmin() || isInternal();
+      allow create: if isOwner(request.resource.data.originalId) || isInternal() || isAdmin();
+      allow update, delete: if isInternal() || isAdmin();
     }
     
     match /blogs/{blogId} {
       allow read: if true;
-      allow write: if isInternal();
+      allow write: if isAdmin() || isInternal();
     }
     
     match /blogs_backup/{id} {
-      allow read: if false;
-      allow write: if isInternal();
+      allow read: if isAdmin() || isInternal();
+      allow create: if isAdmin() || isInternal();
+      allow update, delete: if isInternal() || isAdmin();
     }
     
     match /links/{linkId} {
         allow read: if true;
-        allow write: if isOwner(resource.data.userId) || isInternal();
+        allow write: if isOwner(resource.data.userId) || 
+                      (request.resource != null && isOwner(request.resource.data.userId)) || 
+                      isInternal() || isAdmin();
     }
     
     match /links_backup/{id} {
-        allow read: if false;
-        allow write: if isInternal();
+        allow read: if isAdmin() || isInternal();
+        allow create: if (request.resource.data.data.userId != null && isOwner(request.resource.data.data.userId)) || 
+                        isInternal() || isAdmin();
+        allow update, delete: if isInternal() || isAdmin();
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin() || isInternal();
+    }
+
+    match /products_backup/{id} {
+      allow read, write: if isAdmin() || isInternal();
     }
 
     match /{document=**} {

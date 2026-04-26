@@ -53,9 +53,10 @@ END:VCARD`;
 
   const handleLinkClick = async (linkId: string) => {
     try {
-      const linkRef = doc(db, 'links', linkId);
-      await updateDoc(linkRef, {
-        clicks: increment(1)
+      await fetch('/api/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ collection: 'links', id: linkId, field: 'clicks' })
       });
     } catch (err) {
       console.error('Failed to track link click:', err);
@@ -89,8 +90,10 @@ END:VCARD`;
         const profileRef = doc(db, 'users', userId);
 
         // Track profile view
-        updateDoc(profileRef, {
-          totalClicks: increment(1)
+        fetch('/api/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ collection: 'users', id: userId, field: 'totalClicks' })
         }).catch(err => console.error('Failed to track view:', err));
 
         unsubProfile = onSnapshot(profileRef, (doc) => {
@@ -225,7 +228,7 @@ END:VCARD`;
 
           {/* Social Platforms Row - Display Platform Names in a row with horizontal scroll */}
           {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
-            <div className="flex items-center gap-6 overflow-x-auto no-scrollbar py-2 px-6 -mx-6 justify-center">
+            <div className="flex items-center gap-6 overflow-x-auto no-scrollbar py-2 px-6 -mx-6 flex-nowrap justify-start sm:justify-center">
               {Object.entries(profile.socialLinks).map(([id, url]) => {
                 const Icon = BrandIcons[id as keyof typeof BrandIcons];
                 const platformName = id === 'x' ? 'X' : id.charAt(0).toUpperCase() + id.slice(1);

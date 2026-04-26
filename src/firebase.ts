@@ -13,7 +13,7 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
 });
 
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const storage = getStorage(app);
+export const storage = getStorage(app, firebaseConfig.storageBucket);
 export const googleProvider = new GoogleAuthProvider();
 
 export enum OperationType {
