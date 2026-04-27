@@ -10,6 +10,7 @@ import fs from "fs";
 import crypto from "crypto";
 import axios from "axios";
 import multer from "multer";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 dotenv.config();
 
@@ -456,15 +457,147 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         }
       });
 
-      // Make public (standard for this app) or just get signed URL
-      // If rules are a problem, making it public on the file itself via ACL might work
-      // or just return the URL if the app expects public access.
-      // Firestore storage public URL format:
+      // Try to make the file public so it can be viewed by anyone
+      try {
+        await file.makePublic();
+      } catch (e) {
+        console.warn("Could not make file public, URLs might require authentication:", e);
+      }
+
       const publicUrl = `https://firebasestorage.googleapis.com/v1/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media`;
 
       res.json({ url: publicUrl });
     } catch (error: any) {
       console.error("Upload proxy failed:", error.message);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // AI Designer Proxy Endpoint
+  app.post("/api/ai/design", async (req, res) => {
+    try {
+      const { messages, userContext } = req.body;
+      const key = process.env.GEMINI_API_KEY;
+
+      if (!key) {
+        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+      }
+
+      const ai = new GoogleGenerativeAI(key);
+      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const systemInstruction = `
+        You are the Chip NG "AI Designer", a professional profile engineer. 
+        Your goal is to help users set up their perfect link-in-bio profile instantly.
+        
+        CURRENT CONTEXT:
+        ${JSON.stringify(userContext)}
+
+        Be helpful, creative, and efficient. 
+        If a user mentions their social media, ask if they want you to add links for them.
+        
+        You have access to functions to: updateProfile, addLink, updateLink, deleteLink, applyTheme.
+      `;
+
+      // Tools config
+      const tools = [
+        {
+          functionDeclarations: [
+            {
+              name: "updateProfile",
+              description: "Update the user's profile details like display name, bio, or username.",
+              parameters: {
+                type: "OBJECT",
+                properties: {
+                  displayName: { type: "STRING" },
+                  bio: { type: "STRING" },
+                  username: { type: "STRING" },
+                  textColor: { type: "STRING" }
+                }
+              }
+            },
+            {
+              name: "addLink",
+              description: "Add a new link to the user's profile.",
+              parameters: {
+                type: "OBJECT",
+                properties: {
+                  title: { type: "STRING" },
+                  url: { type: "STRING" },
+                  type: { type: "STRING" }
+                },
+                required: ["title", "url"]
+              }
+            },
+            {
+              name: "updateLink",
+              description: "Update an existing link's title, URL, or type.",
+              parameters: {
+                type: "OBJECT",
+                properties: {
+                  id: { type: "STRING" },
+                  title: { type: "STRING" },
+                  url: { type: "STRING" },
+                  type: { type: "STRING" }
+                },
+                required: ["id"]
+              }
+            },
+            {
+              name: "deleteLink",
+              description: "Delete a link from the profile.",
+              parameters: {
+                type: "OBJECT",
+                properties: {
+                  id: { type: "STRING" }
+                },
+                required: ["id"]
+              }
+            },
+            {
+              name: "applyTheme",
+              description: "Change the visual theme of the profile.",
+              parameters: {
+                type: "OBJECT",
+                properties: {
+                  theme: { type: "STRING" }
+                },
+                required: ["theme"]
+              }
+            }
+          ]
+        }
+      ];
+
+      const history = messages.map((m: any) => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.content }]
+      })).slice(0, -1);
+
+      const lastMessage = messages[messages.length - 1].content;
+
+      const chat = model.startChat({
+        history: history,
+        generationConfig: {
+          maxOutputTokens: 1000,
+        },
+        tools: tools as any,
+        systemInstruction: systemInstruction
+      });
+
+      const result = await chat.sendMessage(lastMessage);
+      const response = await result.response;
+      
+      const functionCalls = response.functionCalls();
+      const text = response.text();
+
+      res.json({
+        text: text || "",
+        functionCalls: functionCalls || []
+      });
+
+    } catch (error: any) {
+      console.error("AI Designer Proxy failed:", error.message);
       res.status(500).json({ error: error.message });
     }
   });

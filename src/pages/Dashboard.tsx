@@ -1858,7 +1858,7 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Right Side: Phone Preview (Sticky) */}
+        {/* Right Side: Phone Preview (Sticky) */}
         <aside className="hidden xl:flex w-[500px] h-screen border-l border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 items-center justify-center sticky top-0 px-8">
            <div className="relative w-full max-w-[320px] aspect-[9/18.5] bg-zinc-950 rounded-[3.5rem] border-[10px] border-zinc-900 dark:border-zinc-800 shadow-[0_40px_100px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col group p-1 transition-all">
               {/* iPhone Dynamic Island */}
@@ -1905,7 +1905,7 @@ const Dashboard: React.FC = () => {
                     </div>
 
                     <div className="pt-8 opacity-20 hover:opacity-100 transition-opacity">
-                       <Logo size="xs" />
+                       <Logo size="sm" />
                     </div>
                  </div>
               </div>
