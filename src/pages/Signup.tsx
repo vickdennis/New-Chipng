@@ -8,6 +8,8 @@ import { Mail, Lock, User as UserIcon, ArrowRight } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
 
+import { motion, AnimatePresence } from 'motion/react';
+
 const Signup: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -165,21 +167,46 @@ const Signup: React.FC = () => {
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-[420px] relative z-10">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-[420px] relative z-10"
+      >
         <div className="text-center mb-12">
           <Link to="/">
-            <div className="inline-flex items-center justify-center p-4 bg-zinc-900 rounded-[2rem] mb-8 border border-white/5 shadow-2xl hover:scale-110 active:scale-95 transition-transform group">
+            <motion.div 
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="inline-flex items-center justify-center p-4 bg-zinc-900 rounded-[2rem] mb-8 border border-white/5 shadow-2xl transition-transform group"
+            >
               <Logo size="lg" variant="icon-only" color="neon" />
-            </div>
+            </motion.div>
           </Link>
-          <h1 className="text-5xl font-black tracking-tight mb-4 bg-gradient-to-br from-white to-zinc-500 bg-clip-text text-transparent">
+          <motion.h1 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-5xl font-black tracking-tight mb-4 bg-gradient-to-br from-white to-zinc-500 bg-clip-text text-transparent"
+          >
             Join the link-in-bio <br />
             revolution.
-          </h1>
-          <p className="text-zinc-500 font-medium text-lg">Build your professional identity in seconds.</p>
+          </motion.h1>
+          <motion.p 
+             initial={{ opacity: 0, y: 10 }}
+             animate={{ opacity: 1, y: 0 }}
+             transition={{ delay: 0.2 }}
+             className="text-zinc-500 font-medium text-lg"
+          >
+            Build your professional identity in seconds.
+          </motion.p>
         </div>
 
-        <div className="bg-zinc-900/50 backdrop-blur-xl border border-white/5 p-8 rounded-[3rem] shadow-2xl">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-zinc-900/50 backdrop-blur-xl border border-white/5 p-8 rounded-[3rem] shadow-2xl"
+        >
           <form onSubmit={handleSignup} className="space-y-6">
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 ml-4">Unique Username</label>
@@ -232,13 +259,15 @@ const Signup: React.FC = () => {
               </div>
             </div>
 
-            <button 
+            <motion.button 
               type="submit" 
               disabled={loading}
-              className="w-full bg-lime-400 text-zinc-950 py-5 rounded-[1.8rem] font-black text-lg flex items-center justify-center gap-3 hover:bg-lime-300 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_20px_50px_rgba(163,230,53,0.2)]"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full bg-lime-400 text-zinc-950 py-5 rounded-[1.8rem] font-black text-lg flex items-center justify-center gap-3 hover:bg-lime-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_20px_50px_rgba(163,230,53,0.2)]"
             >
               {loading ? 'Generating...' : 'Start Building'} <ArrowRight className="w-6 h-6" />
-            </button>
+            </motion.button>
           </form>
 
           <div className="relative my-10">
@@ -275,7 +304,7 @@ const Signup: React.FC = () => {
             </svg>
             Continue with Google
           </button>
-        </div>
+        </motion.div>
 
         <p className="text-center mt-10 text-zinc-500 font-medium">
           Already have an account? <Link to="/login" className="text-lime-400 font-black hover:underline ml-2">Sign in</Link>
@@ -286,7 +315,7 @@ const Signup: React.FC = () => {
            <div className="h-4 w-px bg-zinc-800" />
            <span className="text-[10px] font-black tracking-widest uppercase">Secured by Chip NG</span>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

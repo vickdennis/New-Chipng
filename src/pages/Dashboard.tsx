@@ -299,6 +299,7 @@ const Dashboard: React.FC = () => {
   const [media, setMedia] = useState<Media[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup' | 'ai' | 'posts'>('links');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isAddPlatformModalOpen, setIsAddPlatformModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<keyof typeof PLATFORMS>('socials');
   const [searchQuery, setSearchQuery] = useState('');
@@ -825,9 +826,15 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] dark:bg-zinc-950 flex font-sans selection:bg-lime-400 selection:text-zinc-950 transition-colors duration-500 overflow-hidden">
+    <div className="min-h-screen bg-[#F8F9FA] dark:bg-zinc-950 flex font-sans selection:bg-lime-400 selection:text-zinc-950 transition-colors duration-500 overflow-hidden relative">
+      {/* Animated Background Details */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-lime-400/5 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-400/5 blur-[100px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
+      </div>
+
       {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex flex-col w-72 h-screen bg-white dark:bg-zinc-900 border-r border-zinc-100 dark:border-zinc-800 p-8 sticky top-0 z-50">
+      <aside className="hidden lg:flex flex-col w-72 h-screen bg-white/80 dark:bg-zinc-900/80 backdrop-blur-3xl border-r border-zinc-100 dark:border-zinc-800 p-8 sticky top-0 z-50">
         <RouterLink to="/" className="mb-12 block group">
           <Logo size="sm" className="!justify-start transition-transform group-hover:scale-105" />
         </RouterLink>
@@ -1547,21 +1554,129 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4">
-                  <div className="p-8 bg-black text-white rounded-[2.5rem] relative overflow-hidden group">
-                    <div className="relative z-10 space-y-4">
-                      <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
-                        <Crown className="w-6 h-6 text-lime-400" />
+                    <div className="p-8 bg-black text-white rounded-[2.5rem] relative overflow-hidden group">
+                      <div className="relative z-10 space-y-4">
+                        <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                          <Crown className="w-6 h-6 text-lime-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold">Business Hub</h3>
+                          <p className="text-zinc-400 text-sm mt-1">Unlock advanced analytics, maps, and appointment booking.</p>
+                        </div>
+                        {profile?.plan !== 'business' && (
+                          <button 
+                            onClick={() => setShowUpgradeModal(true)}
+                            className="px-6 py-3 bg-lime-400 text-black font-black rounded-xl text-sm"
+                          >
+                            Upgrade to Business
+                          </button>
+                        )}
                       </div>
-                      <div>
-                        <h3 className="text-xl font-bold">Business Pro</h3>
-                        <p className="text-zinc-400 text-sm mt-1">Unlock advanced analytics, custom domains, and zero-fee transactions.</p>
-                      </div>
-                      <button className="px-6 py-3 bg-lime-400 text-black font-black rounded-xl text-sm">Upgrade Now</button>
+                      <Crown className="absolute -bottom-8 -right-8 w-48 h-48 text-white/5 rotate-12 transition-transform group-hover:scale-110" />
                     </div>
-                    <Crown className="absolute -bottom-8 -right-8 w-48 h-48 text-white/5 rotate-12 transition-transform group-hover:scale-110" />
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                    {/* Appointments Management */}
+                    <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center">
+                            <Calendar className="w-5 h-5 text-purple-500" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-sm dark:text-white">Appointments</h4>
+                            <p className="text-xs text-zinc-500">Allow users to book time with you.</p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => handleUpdateProfile({ appointmentsEnabled: !profile?.appointmentsEnabled })}
+                          className={`w-12 h-6 rounded-full p-1 transition-colors ${profile?.appointmentsEnabled ? 'bg-lime-400' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                        >
+                          <div className={`w-4 h-4 bg-white rounded-full transition-transform ${profile?.appointmentsEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </button>
+                      </div>
+
+                      {profile?.appointmentsEnabled && (
+                        <div className="space-y-4 pt-4 border-t border-zinc-50 dark:border-zinc-800">
+                          {profile.appointments?.map((appt, idx) => (
+                            <div key={appt.id} className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl">
+                              <div>
+                                <h5 className="text-xs font-bold dark:text-white">{appt.title}</h5>
+                                <p className="text-[10px] text-zinc-500">{appt.dateTime}</p>
+                              </div>
+                              <button 
+                                onClick={() => {
+                                  const newAppts = [...(profile.appointments || [])];
+                                  newAppts.splice(idx, 1);
+                                  handleUpdateProfile({ appointments: newAppts });
+                                }}
+                                className="text-zinc-400 hover:text-red-500"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                          <button 
+                            onClick={() => {
+                              const title = prompt('Appointment Title:');
+                              const dateTime = prompt('Date/Time (e.g. Mon-Fri, 9am-5pm):');
+                              const contactLink = prompt('Contact Link (WhatsApp/Calendly):');
+                              if (title && dateTime && contactLink) {
+                                const newAppts = [...(profile.appointments || []), {
+                                  id: Math.random().toString(36).substr(2, 9),
+                                  title,
+                                  dateTime,
+                                  contactLink
+                                }];
+                                handleUpdateProfile({ appointments: newAppts });
+                              }
+                            }}
+                            className="w-full py-3 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold text-zinc-500 hover:border-lime-400 hover:text-lime-500 transition-all"
+                          >
+                            + Add Availability Slot
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Location Management */}
+                    <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm space-y-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center">
+                          <MapPin className="w-5 h-5 text-amber-500" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-sm dark:text-white">Business Location</h4>
+                          <p className="text-xs text-zinc-500">Show your office or store on a map.</p>
+                        </div>
+                      </div>
+                      <div className="space-y-3">
+                        <input 
+                          type="text"
+                          value={profile?.address || ''}
+                          onChange={(e) => handleUpdateProfile({ address: e.target.value })}
+                          placeholder="Store Address (e.g. 123 Main St, Lagos)"
+                          className="w-full p-3 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-xs outline-none"
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                           <input 
+                              type="number"
+                              value={profile?.location?.lat || ''}
+                              onChange={(e) => handleUpdateProfile({ location: { ...profile?.location, lat: parseFloat(e.target.value), lng: profile?.location?.lng || 0 } })}
+                              placeholder="Latitude"
+                              className="w-full p-3 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[10px] outline-none"
+                           />
+                           <input 
+                              type="number"
+                              value={profile?.location?.lng || ''}
+                              onChange={(e) => handleUpdateProfile({ location: { ...profile?.location, lng: parseFloat(e.target.value), lat: profile?.location?.lat || 0 } })}
+                              placeholder="Longitude"
+                              className="w-full p-3 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[10px] outline-none"
+                           />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
                     <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm">
                       <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mb-4">
                         <Mail className="w-5 h-5 text-blue-500" />

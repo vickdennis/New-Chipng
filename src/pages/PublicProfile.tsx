@@ -11,8 +11,8 @@ import {
   Link as LinkIcon, AlertCircle,
   Mail, MessageSquare, ChevronLeft, ChevronRight,
   Image as ImageIcon,
-  Plus, AtSign, User as UserIcon, UserPlus, Megaphone,
-  CheckCircle2, ArrowUpRight, Send, Camera,
+  Plus, AtSign, User as UserIcon, UserPlus, Megaphone, Calendar,
+  CheckCircle2, ArrowUpRight, Send, Camera, MapPin,
   Instagram, Twitter, Facebook, Youtube, Github, Linkedin, Globe
 } from 'lucide-react';
 
@@ -225,13 +225,21 @@ END:VCARD`;
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
-      <motion.div 
-        animate={{ scale: [1, 1.2, 1], opacity: [0.3, 1, 0.3] }}
-        transition={{ duration: 1.5, repeat: Infinity }}
-      >
-        <Logo size="lg" variant="icon-only" />
-      </motion.div>
+    <div className="min-h-screen bg-black p-6">
+      <div className="max-w-lg mx-auto space-y-8 pt-20">
+        <div className="flex flex-col items-center gap-6">
+          <div className="w-28 h-28 bg-zinc-900 rounded-[2.2rem] animate-pulse" />
+          <div className="space-y-3 flex flex-col items-center">
+            <div className="h-10 w-48 bg-zinc-900 rounded-xl animate-pulse" />
+            <div className="h-4 w-32 bg-zinc-900 rounded-lg animate-pulse" />
+          </div>
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-20 w-full bg-zinc-900 rounded-[2rem] animate-pulse" />
+          ))}
+        </div>
+      </div>
     </div>
   );
 
@@ -577,6 +585,82 @@ END:VCARD`;
                   </motion.div>
                 ))}
               </div>
+            </section>
+          )}
+
+          {/* Business Section (Pro/Business Plan) */}
+          {(profile.appointmentsEnabled || profile.address) && (
+            <section className="space-y-10 py-12">
+               {profile.appointmentsEnabled && profile.appointments && profile.appointments.length > 0 && (
+                 <div className="space-y-6">
+                    <div className="flex items-center gap-4 px-2">
+                      <div className="w-12 h-12 bg-[#A3E635]/10 rounded-2xl flex items-center justify-center">
+                        <Calendar className="w-6 h-6 text-[#A3E635]" />
+                      </div>
+                      <h2 className="text-3xl font-black tracking-tighter">Book an Appointment</h2>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-4">
+                      {profile.appointments.map(appt => (
+                        <motion.a
+                          key={appt.id}
+                          href={appt.contactLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          whileHover={{ x: 10 }}
+                          className="flex items-center justify-between p-6 bg-zinc-900 border border-white/5 rounded-[2.5rem] group"
+                        >
+                          <div className="space-y-1">
+                            <h4 className="text-lg font-bold group-hover:text-[#A3E635] transition-colors">{appt.title}</h4>
+                            <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">{appt.dateTime}</p>
+                          </div>
+                          <div className="px-6 py-2 bg-zinc-800 group-hover:bg-[#A3E635] text-white group-hover:text-black rounded-xl text-xs font-black transition-all">
+                            Book
+                          </div>
+                        </motion.a>
+                      ))}
+                    </div>
+                 </div>
+               )}
+
+               {profile.address && (
+                 <div className="space-y-6">
+                    <div className="flex items-center gap-4 px-2">
+                       <div className="w-12 h-12 bg-[#A3E635]/10 rounded-2xl flex items-center justify-center">
+                        <MapPin className="w-6 h-6 text-[#A3E635]" />
+                      </div>
+                      <h2 className="text-3xl font-black tracking-tighter">Find Us</h2>
+                    </div>
+
+                    <div className="rounded-[3rem] overflow-hidden border border-white/5 bg-zinc-900 shadow-2xl">
+                       <div className="aspect-[16/10] bg-zinc-800 relative">
+                          {/* Mock Map using Static Image if lat/lng present, otherwise just address */}
+                          <iframe
+                            src={`https://www.google.com/maps/embed/v1/place?key=YOUR_API_KEY_OR_MOCK&q=${encodeURIComponent(profile.address)}`}
+                            className="w-full h-full border-0 grayscale invert opacity-70 contrast-125"
+                            allowFullScreen
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                          ></iframe>
+                          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-zinc-950 via-transparent to-transparent text-white p-8 flex flex-col justify-end">
+                             <div className="flex items-center gap-2 mb-2">
+                                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Physical Presence</span>
+                             </div>
+                             <p className="text-xl font-bold max-w-xs leading-snug">{profile.address}</p>
+                             <a 
+                               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile.address)}`}
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               className="mt-6 flex items-center justify-center gap-2 py-4 bg-white text-black font-black rounded-2xl text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all pointer-events-auto"
+                             >
+                               Get Directions <ArrowUpRight className="w-4 h-4" />
+                             </a>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+               )}
             </section>
           )}
         </div>

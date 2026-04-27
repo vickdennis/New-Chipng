@@ -578,10 +578,15 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         parts: [{ text: m.content }]
       })).slice(0, -1);
 
+      // GEMINI API REQUIREMENT: First message in history must be 'user'
+      // If history starts with 'model', remove it (and any subsequent non-user messages until we find one)
+      let firstUserIndex = history.findIndex((h: any) => h.role === 'user');
+      const validHistory = firstUserIndex !== -1 ? history.slice(firstUserIndex) : [];
+
       const lastMessage = messages[messages.length - 1].content;
 
       const chat = model.startChat({
-        history: history,
+        history: validHistory,
         generationConfig: {
           maxOutputTokens: 1000,
         },
@@ -607,6 +612,28 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
 
     } catch (error: any) {
       console.error("AI Designer Proxy failed:", error.message);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/track", async (req, res) => {
+    try {
+      const { collection: collectionName, id, field } = req.body;
+      if (!collectionName || !id || !field) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Use REST Patch to increment field
+      const doc = await restFirestore('get', collectionName, id);
+      if (doc) {
+        const currentVal = doc.fields[field]?.doubleValue || doc.fields[field]?.integerValue || 0;
+        const newData = { [field]: currentVal + 1 };
+        await restFirestore('patch', collectionName, id, newData);
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Track API failed:", error.message);
       res.status(500).json({ error: error.message });
     }
   });
