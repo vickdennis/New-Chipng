@@ -824,68 +824,172 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F3F4F6] dark:bg-zinc-900 md:flex md:items-center md:justify-center md:p-8 font-sans transition-colors duration-300">
-      {/* Sidebar for Desktop - Minimal */}
-      <aside className="hidden md:flex flex-col w-64 h-[844px] bg-white dark:bg-zinc-950 rounded-l-[3rem] p-8 border-r border-[#F3F4F6] dark:border-zinc-800 shadow-xl transition-colors duration-300">
-        <RouterLink to="/" className="mb-10">
-          <Logo size="sm" className="!justify-start" />
+    <div className="min-h-screen bg-[#F8F9FA] dark:bg-zinc-950 flex font-sans selection:bg-lime-400 selection:text-zinc-950 transition-colors duration-500 overflow-hidden">
+      {/* Sidebar - Desktop */}
+      <aside className="hidden lg:flex flex-col w-72 h-screen bg-white dark:bg-zinc-900 border-r border-zinc-100 dark:border-zinc-800 p-8 sticky top-0 z-50">
+        <RouterLink to="/" className="mb-12 block group">
+          <Logo size="sm" className="!justify-start transition-transform group-hover:scale-105" />
         </RouterLink>
-        <nav className="flex-1 space-y-1">
-          {[
-            { id: 'links', icon: LinkIcon, label: 'Edit Profile' },
-            { id: 'posts', icon: ImageIcon, label: 'Posts & Media' },
-            { id: 'analytics', icon: BarChart2, label: 'Analytics' },
-            { id: 'business', icon: Crown, label: 'Business' },
-            { id: 'verification', icon: BadgeCheck, label: 'Verification' },
-            { id: 'billing', icon: CreditCard, label: 'Billing' },
-            { id: 'settings', icon: Settings, label: 'Settings' }
-          ].map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id as any)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                activeTab === item.id 
-                  ? 'bg-[#A3E635] text-white font-bold shadow-lg shadow-lime-200' 
-                  : 'text-[#6B7280] hover:bg-[#F9FAFB]'
-              }`}
-            >
-              <item.icon className="w-5 h-5" />
-              {item.label}
-            </button>
-          ))}
+
+        <nav className="flex-1 space-y-8 overflow-y-auto no-scrollbar">
+          <div>
+            <p className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-6">Create</p>
+            <div className="space-y-1">
+              {[
+                { id: 'links', icon: LayoutGrid, label: 'Profile Links' },
+                { id: 'posts', icon: ImageIcon, label: 'Posts & Feed' },
+                { id: 'ai', icon: Sparkles, label: 'AI Designer', badge: 'New' },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id as any)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300",
+                    activeTab === item.id 
+                      ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 font-bold shadow-2xl shadow-zinc-200 dark:shadow-none translate-x-1" 
+                      : "text-zinc-500 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                  )}
+                >
+                  <item.icon className={cn("w-5 h-5", activeTab === item.id ? "animate-pulse" : "")} />
+                  <span className="text-[14px]">{item.label}</span>
+                  {item.badge && (
+                    <span className="ml-auto bg-lime-400 text-zinc-950 text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider">{item.badge}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+             <p className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-6">Insights</p>
+             <div className="space-y-1">
+              {[
+                { id: 'analytics', icon: TrendingUp, label: 'Analytics' },
+                { id: 'business', icon: Crown, label: 'Business Hub' },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id as any)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all",
+                    activeTab === item.id 
+                      ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 font-bold shadow-xl translate-x-1" 
+                      : "text-zinc-500 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                  )}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span className="text-[14px]">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+             <p className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-6">Account</p>
+             <div className="space-y-1">
+              {[
+                { id: 'verification', icon: BadgeCheck, label: 'Verification' },
+                { id: 'billing', icon: CreditCard, label: 'Billing' },
+                ...(profile?.role === 'admin' ? [{ id: 'backup', icon: HistoryIcon, label: 'Revision History' }] : []),
+                { id: 'settings', icon: Settings, label: 'Settings' }
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id as any)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all",
+                    activeTab === item.id 
+                      ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 font-bold shadow-xl translate-x-1" 
+                      : "text-zinc-500 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                  )}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span className="text-[14px]">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </nav>
-        <button onClick={() => auth.signOut()} className="flex items-center gap-3 px-4 py-3 text-[#6B7280] hover:text-red-500">
-          <LogOut className="w-5 h-5" />
-          Logout
-        </button>
+
+        <div className="mt-8 pt-8 border-t border-zinc-100 dark:border-zinc-800">
+           <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-3xl p-4 mb-6">
+              <div className="flex items-center gap-3 mb-3">
+                 <div className="w-10 h-10 bg-lime-400 rounded-2xl flex items-center justify-center">
+                    <User className="w-5 h-5 text-zinc-950" />
+                 </div>
+                 <div className="flex-1 truncate">
+                    <p className="text-sm font-bold truncate dark:text-white">{profile?.displayName || 'Set Name'}</p>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-tight">{profile?.plan || 'Free'} Plan</p>
+                 </div>
+              </div>
+              <button 
+                onClick={() => auth.signOut()}
+                className="w-full flex items-center justify-center gap-2 py-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors font-bold text-xs"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign out
+              </button>
+           </div>
+        </div>
       </aside>
 
-      {/* Main Mobile-Style Container */}
-      <div className="w-full max-w-[390px] h-screen md:h-[844px] bg-white dark:bg-zinc-950 overflow-hidden relative md:shadow-2xl md:rounded-r-[3rem] md:rounded-l-none flex flex-col border-x md:border-l-0 border-[#F3F4F6] dark:border-zinc-800 transition-colors duration-300">
-        {/* Status Bar */}
-        <div className="h-10 flex items-center justify-between px-8 text-[12px] font-bold bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-400 z-20">
-          <span>{format(new Date(), 'HH:mm')}</span>
-          <div className="flex gap-1.5 items-center">
-            <div className="w-3.5 h-3.5 rounded-full border border-black dark:border-zinc-400" />
-            <div className="w-4 h-2 rounded-sm border border-black dark:border-zinc-400" />
-            <div className="w-5 h-2.5 rounded-sm bg-black dark:bg-zinc-400" />
-          </div>
-        </div>
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col h-screen overflow-hidden overflow-y-auto no-scrollbar scroll-smooth">
+        {/* Top Floating Navbar (Mobile + Tablet) */}
+        <header className="lg:hidden h-20 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-100 dark:border-zinc-800 px-6 flex items-center justify-between sticky top-0 z-40">
+           <Logo size="sm" />
+           <div className="flex gap-4">
+             <ThemeToggle />
+             <button onClick={() => auth.signOut()} className="p-2 border border-zinc-100 dark:border-zinc-800 rounded-xl">
+               <LogOut className="w-5 h-5 text-zinc-400" />
+             </button>
+           </div>
+        </header>
 
-        {/* Tab Headers */}
-        <div className="flex items-center justify-between px-6 h-14 bg-white dark:bg-zinc-950 sticky top-10 z-10 border-b border-[#F3F4F6] dark:border-zinc-800">
-          <div className="w-10">
-            <ThemeToggle />
-          </div>
-          <h1 className="font-bold text-[18px] capitalize text-zinc-900 dark:text-white">
-            {activeTab === 'links' ? 'Edit Profile' : activeTab}
-          </h1>
-          <div className="w-10" />
-        </div>
+        {/* Editor Wrapper */}
+        <div className="flex-1 max-w-4xl w-full mx-auto p-6 md:p-12 space-y-12 pb-40">
+          {/* Dashboard Header */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-[12px] font-black uppercase tracking-[0.2em] text-lime-500">Dashboard</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+                <span className="text-[12px] font-black uppercase tracking-[0.2em] text-zinc-400">{activeTab}</span>
+              </div>
+              <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-zinc-900 dark:text-white leading-none">
+                {activeTab === 'links' ? 'Profile Editor' : activeTab === 'posts' ? 'Content Feed' : activeTab === 'ai' ? 'AI Designer' : activeTab === 'backup' ? 'Revision History' : activeTab === 'business' ? 'Business Hub' : activeTab}
+              </h1>
+            </div>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto no-scrollbar pb-24">
-          <AnimatePresence mode="wait">
+            <div className="flex flex-col gap-3">
+               <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-[2rem] p-1.5 border border-zinc-200 dark:border-zinc-800">
+                  <div className="flex items-center gap-3 px-4 py-2 flex-1">
+                     <LinkIcon className="w-4 h-4 text-zinc-400" />
+                     <span className="text-[14px] font-bold text-zinc-600 dark:text-zinc-400 truncate max-w-[150px]">chip.ng/{profile?.username}</span>
+                  </div>
+                  <button 
+                    onClick={copyLink}
+                    className="flex items-center gap-2 px-6 py-2 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-[1.5rem] font-black text-xs hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  >
+                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
+               </div>
+            </div>
+          </div>
+
+          {/* Navigation Bar for Mobile */}
+          <div className="flex lg:hidden overflow-x-auto no-scrollbar gap-2 pb-4">
+             {CATEGORIES.map(cat => (
+               <button key={cat.id} className="whitespace-nowrap px-6 py-3 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl font-bold text-[13px] shadow-sm">
+                  {cat.label}
+               </button>
+             ))}
+          </div>
+
+          {/* Active Tab Content */}
+          <div className="relative">
+            <AnimatePresence mode="wait">
             {activeTab === 'links' && (
               <motion.div 
                 key="links"
@@ -1229,7 +1333,8 @@ const Dashboard: React.FC = () => {
                             await safeWrite('shouts', null, {
                               userId: user?.uid,
                               content,
-                              image: imageUrl
+                              image: imageUrl,
+                              createdAt: new Date().toISOString()
                             }, 'create');
 
                             (document.getElementById('shout-content') as HTMLTextAreaElement).value = '';
@@ -1271,7 +1376,7 @@ const Dashboard: React.FC = () => {
                           {shout.image && (
                             <img src={shout.image} alt="" className="w-full h-48 object-cover rounded-2xl mb-2" />
                           )}
-                          <span className="text-[10px] text-zinc-400 font-bold uppercase">{format(new Date(shout.createdAt), 'MMM d, h:mm a')}</span>
+                          <span className="text-[10px] text-zinc-400 font-bold uppercase">{shout.createdAt ? format(new Date(shout.createdAt), 'MMM d, h:mm a') : 'Just now'}</span>
                         </div>
                       ))}
                     </div>
@@ -1302,7 +1407,8 @@ const Dashboard: React.FC = () => {
                             await safeWrite('media', null, {
                               userId: user?.uid,
                               url: data.url,
-                              type: file.type.startsWith('video') ? 'video' : 'image'
+                              type: file.type.startsWith('video') ? 'video' : 'image',
+                              createdAt: new Date().toISOString()
                             }, 'create');
                             toast.success('Media uploaded!');
                           } catch (err) {
@@ -1339,6 +1445,74 @@ const Dashboard: React.FC = () => {
                       ))}
                     </div>
                   )}
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'ai' && (
+              <motion.div 
+                key="ai"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="px-6 py-6"
+              >
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-[28px] font-black tracking-tighter dark:text-white">AI Designer</h2>
+                      <p className="text-[#6B7280] text-[14px] font-medium leading-tight">Your personal assistant for profile optimization.</p>
+                    </div>
+                  </div>
+                  <AIDesigner user={user} profile={profile} links={links} />
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'business' && (
+              <motion.div 
+                key="business"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-8 space-y-8"
+              >
+                <div className="space-y-4">
+                  <h2 className="text-[28px] font-black tracking-tighter dark:text-white">Business Hub</h2>
+                  <p className="text-[#6B7280] text-[14px] font-medium leading-tight">Scale your brand with advanced monetization and lead tools.</p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="p-8 bg-black text-white rounded-[2.5rem] relative overflow-hidden group">
+                    <div className="relative z-10 space-y-4">
+                      <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                        <Crown className="w-6 h-6 text-lime-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold">Business Pro</h3>
+                        <p className="text-zinc-400 text-sm mt-1">Unlock advanced analytics, custom domains, and zero-fee transactions.</p>
+                      </div>
+                      <button className="px-6 py-3 bg-lime-400 text-black font-black rounded-xl text-sm">Upgrade Now</button>
+                    </div>
+                    <Crown className="absolute -bottom-8 -right-8 w-48 h-48 text-white/5 rotate-12 transition-transform group-hover:scale-110" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm">
+                      <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mb-4">
+                        <Mail className="w-5 h-5 text-blue-500" />
+                      </div>
+                      <h4 className="font-bold text-sm dark:text-white">Lead Capture</h4>
+                      <p className="text-xs text-zinc-500 mt-1">Connect Mailchimp or Google Sheets.</p>
+                    </div>
+                    <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm">
+                      <div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center mb-4">
+                        <CreditCard className="w-5 h-5 text-purple-500" />
+                      </div>
+                      <h4 className="font-bold text-sm dark:text-white">Shop Links</h4>
+                      <p className="text-xs text-zinc-500 mt-1">Sell digital or physical products.</p>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -1559,6 +1733,84 @@ const Dashboard: React.FC = () => {
               </motion.div>
             )}
 
+            {activeTab === 'billing' && (
+              <motion.div 
+                key="billing"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-8 space-y-8"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-8 bg-zinc-900 text-white rounded-[2.5rem] space-y-6">
+                    <div className="flex items-center justify-between">
+                      <p className="text-zinc-400 font-bold text-xs uppercase tracking-widest">Current Plan</p>
+                      <Crown className="w-5 h-5 text-lime-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-4xl font-black capitalize">{profile?.plan || 'Basic'}</h3>
+                      <p className="text-zinc-500 text-sm mt-1">
+                        {profile?.plan === 'pro' || profile?.plan === 'business' 
+                          ? `Renews on ${profile.premiumUntil ? format(new Date(profile.premiumUntil), 'MMM d, yyyy') : 'soon'}`
+                          : 'Unlock more features with Pro'}
+                      </p>
+                    </div>
+                    {profile?.plan !== 'business' && (
+                      <button 
+                        onClick={() => navigate('/pricing')}
+                        className="w-full py-3 bg-white text-black font-black rounded-xl text-sm"
+                      >
+                        Upgrade Plan
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="p-8 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] space-y-6">
+                    <p className="text-zinc-400 font-bold text-xs uppercase tracking-widest">Ad-Free Experience</p>
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-lime-50 dark:bg-lime-900/20 rounded-2xl flex items-center justify-center">
+                        <CheckCircle2 className="w-6 h-6 text-lime-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold dark:text-white">Active Status</h4>
+                        <p className="text-xs text-zinc-500">Your profile is currently clean and fast.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-xl font-black dark:text-white ml-2">Payment History</h3>
+                  {transactions.length === 0 ? (
+                    <div className="p-12 bg-zinc-50 dark:bg-zinc-900 rounded-[2.5rem] text-center border-2 border-dashed border-zinc-100 dark:border-zinc-800">
+                      <CreditCard className="w-10 h-10 text-zinc-200 mx-auto mb-4" />
+                      <p className="text-zinc-400 font-bold">No transactions yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {transactions.map(tx => (
+                        <div key={tx.id} className="p-6 bg-white dark:bg-zinc-900 border border-zinc-50 dark:border-zinc-800 rounded-[2rem] flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-zinc-50 dark:bg-zinc-800 rounded-xl flex items-center justify-center">
+                              <CreditCard className="w-5 h-5 text-zinc-400" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm dark:text-white capitalize">{tx.plan} Subscription</p>
+                              <p className="text-[10px] text-zinc-400 uppercase font-black">{tx.reference}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-black text-sm dark:text-white">₦{tx.amount.toLocaleString()}</p>
+                            <p className="text-[10px] text-zinc-400 font-bold">{tx.createdAt ? format(new Date(tx.createdAt), 'MMM d, yyyy') : 'Just now'}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
             {activeTab === 'settings' && (
               <motion.div 
                 key="settings"
@@ -1604,49 +1856,99 @@ const Dashboard: React.FC = () => {
             )}
           </AnimatePresence>
         </div>
+      </div>
 
-        {/* Bottom Navigation */}
-        <div className="h-20 bg-white dark:bg-zinc-950 border-t border-[#F3F4F6] dark:border-zinc-800 px-6 flex items-center justify-between sticky bottom-0 z-20 transition-colors duration-300">
-          {[
-            { id: 'links', icon: LinkIcon, label: 'Edit' },
-            { id: 'analytics', icon: BarChart2, label: 'Stats' },
-            { id: 'appearance', icon: Palette, label: 'Style' },
-            { id: 'settings', icon: Settings, label: 'Setup' }
-          ].map(item => (
-            <button 
-              key={item.id}
-              onClick={() => setActiveTab(item.id as any)}
-              className={`flex flex-col items-center gap-1 transition-colors ${activeTab === item.id ? 'text-[#A3E635]' : 'text-[#979797]'}`}
-            >
-              <item.icon className="w-6 h-6" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
-            </button>
-          ))}
-          <a 
-            href={`/${profile?.username}`}
-            target="_blank"
-            className="flex flex-col items-center gap-1 text-[#979797]"
+      {/* Right Side: Phone Preview (Sticky) */}
+        <aside className="hidden xl:flex w-[500px] h-screen border-l border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 items-center justify-center sticky top-0 px-8">
+           <div className="relative w-full max-w-[320px] aspect-[9/18.5] bg-zinc-950 rounded-[3.5rem] border-[10px] border-zinc-900 dark:border-zinc-800 shadow-[0_40px_100px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col group p-1 transition-all">
+              {/* iPhone Dynamic Island */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-8 bg-zinc-900 dark:bg-zinc-800 rounded-b-3xl z-50 flex items-center justify-center gap-1.5">
+                 <div className="w-1 h-1 rounded-full bg-zinc-700" />
+                 <div className="w-10 h-1 bg-zinc-800 rounded-full" />
+              </div>
+
+              {/* Preview Content Inside Phone */}
+              <div className="flex-1 overflow-y-auto no-scrollbar relative bg-[#FAFAFA] dark:bg-zinc-950 rounded-[2.8rem]">
+                 <div className="p-6 space-y-6 flex flex-col items-center pt-16">
+                    {/* Mock Profile Header */}
+                    <div className="relative w-full aspect-video rounded-3xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden mb-[-40px]">
+                       {profile?.coverImage && <img src={profile.coverImage} className="w-full h-full object-cover" />}
+                    </div>
+
+                    <div className="w-24 h-24 rounded-[2rem] bg-zinc-200 dark:bg-zinc-900 overflow-hidden shadow-2xl ring-4 ring-white dark:ring-zinc-950 relative z-10">
+                       {profile?.photoURL ? (
+                         <img src={profile.photoURL} alt="" className="w-full h-full object-cover" />
+                       ) : (
+                         <User className="w-full h-full p-6 text-zinc-400" />
+                       )}
+                    </div>
+                    
+                    <div className="text-center space-y-2">
+                       <h3 className="font-black text-xl flex items-center justify-center gap-1 dark:text-white">
+                         {profile?.displayName || '@username'}
+                         {profile?.isVerified && <BadgeCheck className="w-5 h-5 text-[#1D9BF0] fill-[#1D9BF0] stroke-white stroke-1" />}
+                       </h3>
+                       <p className="text-[11px] font-bold text-zinc-500 max-w-[220px] leading-relaxed uppercase tracking-tight">
+                         {profile?.bio || 'Bio preview will appear here...'}
+                       </p>
+                    </div>
+
+                    {/* Links Mock */}
+                    <div className="w-full space-y-3 px-2">
+                       {links.length > 0 ? links.slice(0, 4).map(link => (
+                         <div key={link.id} className="w-full p-4 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl shadow-sm flex items-center justify-center font-black text-[11px] uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
+                            {link.title}
+                         </div>
+                       )) : [1, 2, 3].map(i => (
+                         <div key={i} className="w-full h-14 bg-white dark:bg-zinc-900 border border-zinc-50 dark:border-zinc-800 rounded-2xl animate-pulse" />
+                       ))}
+                    </div>
+
+                    <div className="pt-8 opacity-20 hover:opacity-100 transition-opacity">
+                       <Logo size="xs" />
+                    </div>
+                 </div>
+              </div>
+
+              {/* iPhone Home Indicator */}
+              <div className="h-1 bg-zinc-900/10 dark:bg-white/10 w-32 rounded-full mx-auto mb-4 absolute bottom-0 left-1/2 -translate-x-1/2" />
+              
+              {/* Overlay Label */}
+              <div className="absolute inset-0 bg-zinc-950/40 backdrop-blur-[4px] opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center z-50">
+                 <button 
+                  onClick={() => window.open(`/${profile?.username}`, '_blank')}
+                  className="px-8 py-4 bg-lime-400 text-zinc-950 font-black rounded-3xl flex items-center gap-3 shadow-2xl scale-90 group-hover:scale-100 transition-all border-4 border-white/20"
+                >
+                   Live View <ExternalLink className="w-5 h-5" />
+                 </button>
+              </div>
+           </div>
+        </aside>
+      </main>
+
+      {/* Floating Bottom Nav (Mobile Only) */}
+      <nav className="fixed lg:hidden bottom-8 left-1/2 -translate-x-1/2 bg-black text-white px-2 py-2 rounded-full flex items-center gap-1 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[110] ring-1 ring-white/10">
+        {[
+          { id: 'links', icon: LayoutGrid, label: 'Edit' },
+          { id: 'ai', icon: Sparkles, label: 'AI' },
+          { id: 'analytics', icon: TrendingUp, label: 'Stats' },
+          { id: 'appearance', icon: Palette, label: 'Style' },
+        ].map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveTab(item.id as any)}
+            className={cn(
+              "p-4 rounded-full transition-all flex items-center gap-2",
+              activeTab === item.id 
+                ? "bg-lime-400 text-zinc-950 shadow-xl scale-110" 
+                : "text-zinc-500 hover:text-white"
+            )}
           >
-            <Eye className="w-6 h-6" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Preview</span>
-          </a>
-        </div>
-      </div>
-
-      {/* Preview Pane for Desktop only */}
-      <div className="hidden lg:flex flex-col ml-12 w-64 items-center justify-center gap-6">
-          <div className="bg-white p-6 rounded-[2rem] shadow-xl border border-[#F3F4F6] text-center space-y-4">
-            <h4 className="font-bold">Live Preview</h4>
-            <p className="text-[12px] text-[#6B7280]">Open your public link to see changes in real-time.</p>
-            <a 
-              href={`/${profile?.username}`}
-              target="_blank"
-              className="block w-full py-3 bg-[#F9FAFB] text-black rounded-xl font-bold text-[14px] border border-[#F3F4F6] hover:bg-zinc-100 transition-colors"
-            >
-              chipng.com/{profile?.username}
-            </a>
-          </div>
-      </div>
+            <item.icon className="w-5 h-5" />
+            {activeTab === item.id && <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>}
+          </button>
+        ))}
+      </nav>
 
       {/* Add Platform Modal */}
       <AnimatePresence>
