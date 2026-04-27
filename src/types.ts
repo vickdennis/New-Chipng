@@ -112,6 +112,22 @@ export interface Link {
   type?: 'standard' | 'youtube' | 'tiktok';
 }
 
+export interface Shout {
+  id: string;
+  userId: string;
+  content: string;
+  image?: string;
+  createdAt: string;
+}
+
+export interface Media {
+  id: string;
+  userId: string;
+  url: string;
+  type: 'image' | 'video';
+  createdAt: string;
+}
+
 export interface ThemeConfig {
   name: ThemeType;
   background: string;

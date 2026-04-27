@@ -22,7 +22,7 @@ import {
   Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash,
   CreditCard, Calendar, LayoutGrid, Star, Square, AlertCircle, Lightbulb, Camera,
   Briefcase, Play, Heart, Coffee, BookOpen, Globe, Search, ChevronRight, X,
-  History as HistoryIcon, RotateCcw
+  History as HistoryIcon, RotateCcw, Megaphone, Clock, BadgeCheck
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -32,12 +32,12 @@ import {
 } from 'recharts';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { toast } from 'sonner';
-import { Link, Transaction, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment } from '../types';
+import { Link, Transaction, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment, Shout, Media } from '../types';
 import { auth } from '../firebase';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { DISPLAY_DOMAIN } from '../constants';
 import UpgradeModal from '../components/UpgradeModal';
-import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2, BadgeCheck } from 'lucide-react';
+import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2 } from 'lucide-react';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { usePaystackPayment } from 'react-paystack';
 import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
@@ -295,8 +295,10 @@ const Dashboard: React.FC = () => {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   const [links, setLinks] = useState<Link[]>([]);
+  const [shouts, setShouts] = useState<Shout[]>([]);
+  const [media, setMedia] = useState<Media[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup' | 'ai'>('links');
+  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup' | 'ai' | 'posts'>('links');
   const [isAddPlatformModalOpen, setIsAddPlatformModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<keyof typeof PLATFORMS>('socials');
   const [searchQuery, setSearchQuery] = useState('');
@@ -386,6 +388,16 @@ const Dashboard: React.FC = () => {
       handleFirestoreError(error, OperationType.LIST, 'transactions');
     });
 
+    const qShouts = query(collection(db, 'shouts'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const unsubShouts = onSnapshot(qShouts, (snapshot) => {
+      setShouts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Shout)));
+    });
+
+    const qMedia = query(collection(db, 'media'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const unsubMedia = onSnapshot(qMedia, (snapshot) => {
+      setMedia(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Media)));
+    });
+
     // Trigger subscription expiry check on load
     fetch('/api/cron/check-subscriptions', { method: 'POST' })
       .catch(err => console.error('Expiry check failed:', err));
@@ -394,6 +406,8 @@ const Dashboard: React.FC = () => {
       unsubProfile();
       unsubLinks();
       unsubTx();
+      unsubShouts();
+      unsubMedia();
     };
   }, [user]);
 
@@ -810,6 +824,7 @@ const Dashboard: React.FC = () => {
         <nav className="flex-1 space-y-1">
           {[
             { id: 'links', icon: LinkIcon, label: 'Edit Profile' },
+            { id: 'posts', icon: ImageIcon, label: 'Posts & Media' },
             { id: 'analytics', icon: BarChart2, label: 'Analytics' },
             { id: 'business', icon: Crown, label: 'Business' },
             { id: 'verification', icon: BadgeCheck, label: 'Verification' },
@@ -1154,6 +1169,167 @@ const Dashboard: React.FC = () => {
                       <Tooltip />
                     </AreaChart>
                   </ResponsiveContainer>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'posts' && (
+              <motion.div 
+                key="posts"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-6 space-y-8"
+              >
+                {/* Add Shout */}
+                <div className="bg-white dark:bg-zinc-950 p-6 rounded-[2.5rem] border border-[#F3F4F6] dark:border-zinc-800 shadow-sm">
+                  <h3 className="font-bold mb-4 text-zinc-900 dark:text-white">Post a Shout</h3>
+                  <div className="space-y-4">
+                    <textarea 
+                      placeholder="What's happening?"
+                      className="w-full bg-zinc-50 dark:bg-zinc-900 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-[#A3E635] transition-all resize-none h-24 text-zinc-900 dark:text-white"
+                      id="shout-content"
+                    />
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 text-zinc-500 cursor-pointer hover:text-zinc-900 dark:hover:text-white transition-colors text-sm font-bold">
+                        <ImageIcon className="w-5 h-5" />
+                        <span>Add Image</span>
+                        <input type="file" className="hidden" accept="image/*" id="shout-image" />
+                      </label>
+                      <button 
+                        onClick={async () => {
+                          const content = (document.getElementById('shout-content') as HTMLTextAreaElement).value;
+                          const imageFile = (document.getElementById('shout-image') as HTMLInputElement).files?.[0];
+                          
+                          if (!content.trim()) {
+                            toast.error('Shout content cannot be empty');
+                            return;
+                          }
+
+                          try {
+                            let imageUrl = '';
+                            if (imageFile) {
+                              const formData = new FormData();
+                              formData.append('file', imageFile);
+                              formData.append('path', `shouts/${user?.uid}/${Date.now()}_${imageFile.name}`);
+                              const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                              const data = await res.json();
+                              imageUrl = data.url;
+                            }
+
+                            await safeWrite('shouts', null, {
+                              userId: user?.uid,
+                              content,
+                              image: imageUrl
+                            }, 'create');
+
+                            (document.getElementById('shout-content') as HTMLTextAreaElement).value = '';
+                            (document.getElementById('shout-image') as HTMLInputElement).value = '';
+                            toast.success('Shout posted!');
+                          } catch (err) {
+                            toast.error('Failed to post shout');
+                          }
+                        }}
+                        className="px-6 py-2 bg-[#A3E635] text-white rounded-xl font-bold active:scale-95 transition-transform"
+                      >
+                        Post
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Shouts List */}
+                <div className="space-y-4">
+                  <h3 className="font-bold text-zinc-900 dark:text-white">Your Shouts</h3>
+                  {shouts.filter(shout => !(shout as any).isDeleted).length === 0 ? (
+                    <div className="bg-zinc-50 dark:bg-zinc-900/50 py-12 rounded-[2rem] flex flex-col items-center justify-center text-center px-6">
+                      <Megaphone className="w-10 h-10 text-zinc-200 mb-4" />
+                      <p className="text-zinc-500 font-bold">No shouts yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {shouts.filter(shout => !(shout as any).isDeleted).map(shout => (
+                        <div key={shout.id} className="bg-white dark:bg-zinc-950 p-4 rounded-[2rem] border border-[#F3F4F6] dark:border-zinc-800 shadow-sm group">
+                          <div className="flex justify-between items-start mb-2">
+                             <p className="text-[14px] text-zinc-900 dark:text-white font-medium">{shout.content}</p>
+                             <button 
+                               onClick={() => safeWrite('shouts', shout.id, null, 'delete')}
+                               className="p-2 opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-full transition-all"
+                             >
+                                <Trash2 className="w-4 h-4" />
+                             </button>
+                          </div>
+                          {shout.image && (
+                            <img src={shout.image} alt="" className="w-full h-48 object-cover rounded-2xl mb-2" />
+                          )}
+                          <span className="text-[10px] text-zinc-400 font-bold uppercase">{format(new Date(shout.createdAt), 'MMM d, h:mm a')}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Media Gallery */}
+                <div className="space-y-4 pt-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-zinc-900 dark:text-white">Media Gallery</h3>
+                    <label className="p-2 bg-lime-50 text-[#A3E635] rounded-xl cursor-pointer hover:bg-lime-100 transition-colors">
+                      <Plus className="w-5 h-5" />
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*,video/*" 
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          
+                          try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('path', `media/${user?.uid}/${Date.now()}_${file.name}`);
+                            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                            const data = await res.json();
+
+                            await safeWrite('media', null, {
+                              userId: user?.uid,
+                              url: data.url,
+                              type: file.type.startsWith('video') ? 'video' : 'image'
+                            }, 'create');
+                            toast.success('Media uploaded!');
+                          } catch (err) {
+                            toast.error('Failed to upload media');
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  
+                  {media.filter(m => !(m as any).isDeleted).length === 0 ? (
+                    <div className="bg-zinc-50 dark:bg-zinc-900/50 py-12 rounded-[2rem] flex flex-col items-center justify-center text-center px-6 border-2 border-dashed border-zinc-100">
+                      <ImageIcon className="w-10 h-10 text-zinc-200 mb-4" />
+                      <p className="text-zinc-500 font-bold">Your gallery is empty</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      {media.filter(m => !(m as any).isDeleted).map(m => (
+                        <div key={m.id} className="aspect-square bg-zinc-100 dark:bg-zinc-900 rounded-[2rem] overflow-hidden relative group">
+                          {m.type === 'image' ? (
+                            <img src={m.url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <video src={m.url} className="w-full h-full object-cover" />
+                          )}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button 
+                              onClick={() => safeWrite('media', m.id, null, 'delete')}
+                              className="w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}

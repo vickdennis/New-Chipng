@@ -129,6 +129,30 @@
       },
       "required": ["name", "description", "price", "image", "category", "stock", "active"]
     },
+    "Shout": {
+      "title": "Shout",
+      "description": "A status update or post by the user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "content": { "type": "string" },
+        "image": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "content", "createdAt"]
+    },
+    "Media": {
+      "title": "Media",
+      "description": "A media file (image/video) uploaded by the user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "type": { "type": "string", "enum": ["image", "video"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "url", "type", "createdAt"]
+    },
     "Backup": {
       "title": "Backup",
       "description": "A snapshot of a document for recovery purposes.",
@@ -183,6 +207,14 @@
     "/products/{productId}": {
       "schema": "Product",
       "description": "Shop products."
+    },
+    "/shouts/{shoutId}": {
+      "schema": "Shout",
+      "description": "User status updates."
+    },
+    "/media/{mediaId}": {
+      "schema": "Media",
+      "description": "User media uploads."
     },
     "/users_backup/{backupId}": {
       "schema": "Backup",
