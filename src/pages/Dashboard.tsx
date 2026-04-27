@@ -371,6 +371,7 @@ const Dashboard: React.FC = () => {
     const unsubLinks = onSnapshot(q, (snapshot) => {
       const sortedLinks = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() } as Link))
+        .filter(l => !(l as any).isDeleted)
         .sort((a, b) => (a.position || 0) - (b.position || 0));
       setLinks(sortedLinks);
       setLoading(false);
@@ -388,14 +389,22 @@ const Dashboard: React.FC = () => {
       handleFirestoreError(error, OperationType.LIST, 'transactions');
     });
 
-    const qShouts = query(collection(db, 'shouts'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const qShouts = query(collection(db, 'shouts'), where('userId', '==', user.uid));
     const unsubShouts = onSnapshot(qShouts, (snapshot) => {
-      setShouts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Shout)));
+      const sortedShouts = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Shout))
+        .filter(s => !(s as any).isDeleted)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setShouts(sortedShouts);
     });
 
-    const qMedia = query(collection(db, 'media'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const qMedia = query(collection(db, 'media'), where('userId', '==', user.uid));
     const unsubMedia = onSnapshot(qMedia, (snapshot) => {
-      setMedia(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Media)));
+      const sortedMedia = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Media))
+        .filter(m => !(m as any).isDeleted)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setMedia(sortedMedia);
     });
 
     // Trigger subscription expiry check on load
@@ -1241,14 +1250,14 @@ const Dashboard: React.FC = () => {
                 {/* Shouts List */}
                 <div className="space-y-4">
                   <h3 className="font-bold text-zinc-900 dark:text-white">Your Shouts</h3>
-                  {shouts.filter(shout => !(shout as any).isDeleted).length === 0 ? (
+                  {shouts.length === 0 ? (
                     <div className="bg-zinc-50 dark:bg-zinc-900/50 py-12 rounded-[2rem] flex flex-col items-center justify-center text-center px-6">
                       <Megaphone className="w-10 h-10 text-zinc-200 mb-4" />
                       <p className="text-zinc-500 font-bold">No shouts yet</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {shouts.filter(shout => !(shout as any).isDeleted).map(shout => (
+                      {shouts.map(shout => (
                         <div key={shout.id} className="bg-white dark:bg-zinc-950 p-4 rounded-[2rem] border border-[#F3F4F6] dark:border-zinc-800 shadow-sm group">
                           <div className="flex justify-between items-start mb-2">
                              <p className="text-[14px] text-zinc-900 dark:text-white font-medium">{shout.content}</p>
@@ -1304,14 +1313,14 @@ const Dashboard: React.FC = () => {
                     </label>
                   </div>
                   
-                  {media.filter(m => !(m as any).isDeleted).length === 0 ? (
+                  {media.length === 0 ? (
                     <div className="bg-zinc-50 dark:bg-zinc-900/50 py-12 rounded-[2rem] flex flex-col items-center justify-center text-center px-6 border-2 border-dashed border-zinc-100">
                       <ImageIcon className="w-10 h-10 text-zinc-200 mb-4" />
                       <p className="text-zinc-500 font-bold">Your gallery is empty</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 gap-4">
-                      {media.filter(m => !(m as any).isDeleted).map(m => (
+                      {media.map(m => (
                         <div key={m.id} className="aspect-square bg-zinc-100 dark:bg-zinc-900 rounded-[2rem] overflow-hidden relative group">
                           {m.type === 'image' ? (
                             <img src={m.url} alt="" className="w-full h-full object-cover" />

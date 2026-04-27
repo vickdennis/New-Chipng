@@ -84,7 +84,7 @@ END:VCARD`;
 
     const fetchProfile = async () => {
       try {
-        const userData = await getUserByUsername(username);
+        const userData = await getUserByUsername(username.toLowerCase());
         
         if (!userData) {
           setError('Profile not found');
@@ -95,12 +95,24 @@ END:VCARD`;
         const userId = userData.uid;
         const profileRef = doc(db, 'users', userId);
 
+        // Track profile view
+        fetch('/api/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ collection: 'users', id: userId, field: 'totalClicks' })
+        }).catch(err => console.error('Failed to track view:', err));
+
         unsubProfile = onSnapshot(profileRef, (doc) => {
           if (doc.exists()) {
             setProfile(doc.data() as User);
           } else {
             setError('Profile no longer exists');
+            setLoading(false);
           }
+        }, (error) => {
+          console.error("Profile snapshot error:", error);
+          setError('Failed to load profile');
+          setLoading(false);
         });
 
         const qLinks = query(
@@ -111,20 +123,44 @@ END:VCARD`;
         unsubLinks = onSnapshot(qLinks, (snapshot) => {
           const allLinks = snapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() } as LinkType))
-            .filter(link => link.active);
+            .filter(link => link.active && !(link as any).isDeleted);
           setLinks(allLinks);
           setLoading(false);
+        }, (error) => {
+          console.error("Links snapshot error:", error);
+          // If index is missing, try without orderBy for graceful degradation
+          if (error.message.includes('index')) {
+            const fallbackQ = query(collection(db, 'links'), where('userId', '==', userId));
+            onSnapshot(fallbackQ, (snapshot) => {
+              const allLinks = snapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as LinkType))
+                .filter(link => link.active && !(link as any).isDeleted)
+                .sort((a, b) => (a.position || 0) - (b.position || 0));
+              setLinks(allLinks);
+              setLoading(false);
+            });
+          } else {
+            setLoading(false);
+          }
         });
 
-        const qShouts = query(collection(db, 'shouts'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+        const qShouts = query(collection(db, 'shouts'), where('userId', '==', userId));
         unsubShouts = onSnapshot(qShouts, (snapshot) => {
-          setShouts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Shout)));
-        });
+          const sortedShouts = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as Shout))
+            .filter(s => !(s as any).isDeleted)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setShouts(sortedShouts);
+        }, (err) => console.error("Shouts error:", err));
 
-        const qMedia = query(collection(db, 'media'), where('userId', '==', userId), orderBy('createdAt', 'desc'));
+        const qMedia = query(collection(db, 'media'), where('userId', '==', userId));
         unsubMedia = onSnapshot(qMedia, (snapshot) => {
-          setMedia(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Media)));
-        });
+          const sortedMedia = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as Media))
+            .filter(m => !(m as any).isDeleted)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setMedia(sortedMedia);
+        }, (err) => console.error("Media error:", err));
       } catch (err) {
         console.error(err);
         setError('Something went wrong');
@@ -336,7 +372,7 @@ END:VCARD`;
                     exit={{ opacity: 0, y: -10 }}
                     className="space-y-6 flex flex-col items-center"
                   >
-                    {shouts.filter(s => !(s as any).isDeleted).length === 0 ? (
+                    {shouts.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-20 text-center">
                         <div className="relative mb-8 group cursor-default">
                           <div className="absolute inset-0 bg-[#A020F0]/20 blur-3xl rounded-full scale-150 animate-pulse" />
@@ -351,7 +387,7 @@ END:VCARD`;
                         <p className="text-zinc-500 font-medium">Shouts posted by {profile.displayName || profile.username} will appear here</p>
                       </div>
                     ) : (
-                      shouts.filter(s => !(s as any).isDeleted).map(shout => (
+                      shouts.map(shout => (
                         <div key={shout.id} className="w-full bg-zinc-900/40 backdrop-blur-sm border border-white/5 p-6 rounded-[2rem] space-y-4">
                            <p className="text-lg text-white/90 font-medium leading-relaxed">{shout.content}</p>
                            {shout.image && (
@@ -375,7 +411,7 @@ END:VCARD`;
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                   >
-                    {media.filter(m => !(m as any).isDeleted).length === 0 ? (
+                    {media.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-20 text-center">
                         <div className="w-24 h-24 bg-zinc-900 rounded-[2rem] flex items-center justify-center mb-6 border border-white/5">
                           <ImageIcon className="w-10 h-10 text-zinc-700" />
@@ -385,7 +421,7 @@ END:VCARD`;
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 gap-4">
-                        {media.filter(m => !(m as any).isDeleted).map(m => (
+                        {media.map(m => (
                           <div key={m.id} className="aspect-square rounded-[2rem] overflow-hidden bg-zinc-900 border border-white/5 group relative">
                             {m.type === 'image' ? (
                               <img src={m.url} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
