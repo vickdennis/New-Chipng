@@ -22,7 +22,7 @@ import {
   Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash,
   CreditCard, Calendar, LayoutGrid, Star, Square, AlertCircle, Lightbulb, Camera,
   Briefcase, Play, Heart, Coffee, BookOpen, Globe, Search, ChevronRight, X,
-  History as HistoryIcon, RotateCcw, Megaphone, Clock, BadgeCheck
+  History as HistoryIcon, RotateCcw, Megaphone, Clock, BadgeCheck, ArrowUpRight
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -306,6 +306,7 @@ const Dashboard: React.FC = () => {
   const [isRollingBack, setIsRollingBack] = useState(false);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const isAdmin = profile?.role === 'admin';
   const [upgradeModal, setUpgradeModal] = useState<{ isOpen: boolean; requiredPlan: PlanType; featureName: string }>({
     isOpen: false,
     requiredPlan: 'pro',
@@ -1000,22 +1001,50 @@ const Dashboard: React.FC = () => {
               >
                 {/* Cover Image Section */}
                 <div className="w-full mt-8 mb-6 group">
-                  <div className="relative w-full h-[180px] rounded-[2rem] bg-[#F3F4F6] flex items-center justify-center border-2 border-white shadow-sm overflow-hidden">
+                  <div className="relative w-full h-[180px] rounded-[2rem] bg-[#F3F4F6] dark:bg-zinc-900 flex items-center justify-center border-2 border-white dark:border-zinc-800 shadow-sm overflow-hidden group">
                     {profile?.coverImage ? (
-                      <img src={profile.coverImage} alt="Cover" className="w-full h-full object-cover" />
+                      <img 
+                        src={profile.coverImage} 
+                        referrerPolicy="no-referrer" 
+                        alt="Cover" 
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                      />
                     ) : (
                       <div className="flex flex-col items-center gap-2">
                         <ImageIcon className="w-8 h-8 text-[#6B7280]" />
                         <span className="text-[12px] font-bold text-[#6B7280]">Add Cover Image</span>
+                        <p className="text-[10px] text-zinc-400 font-medium tracking-tight">Max 5MB • 1920x1080 recommended</p>
                       </div>
                     )}
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 cursor-pointer transition-all duration-300 backdrop-blur-[2px]">
                       <div className="flex flex-col items-center gap-2 text-white">
                         <Camera className="w-8 h-8" />
-                        <span className="text-[14px] font-bold">Change Cover</span>
+                        <span className="text-[14px] font-black uppercase tracking-widest">Change Cover</span>
                       </div>
                       <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'cover')} accept="image/*" />
                     </label>
+                  </div>
+                  
+                  {/* Presets Gallery */}
+                  <div className="mt-4 flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                    {[
+                      'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=800',
+                      'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=800',
+                      'https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&q=80&w=800',
+                      'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&q=80&w=800',
+                      'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&q=80&w=800'
+                    ].map((url, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          safeWrite('users', user?.uid || '', { coverImage: url }, 'update');
+                          toast.success('Cover image updated!');
+                        }}
+                        className="w-16 h-10 rounded-xl overflow-hidden flex-shrink-0 border border-zinc-200 dark:border-zinc-800 hover:scale-105 transition-transform"
+                      >
+                        <img src={url} alt={`Preset ${idx + 1}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -1164,6 +1193,15 @@ const Dashboard: React.FC = () => {
                                 />
                               </div>
                               <div className="flex items-center gap-2">
+                                {isAdmin && (
+                                  <button 
+                                    onClick={() => fetchHistory('links', links[0].id)}
+                                    className="p-2 rounded-lg text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                                    title="View History"
+                                  >
+                                    <HistoryIcon className="w-4 h-4" />
+                                  </button>
+                                )}
                                 <Eye className={`w-5 h-5 cursor-pointer ${links[0].active ? 'text-[#A3E635]' : 'text-[#D1D5DB]'}`} onClick={() => handleUpdateLink(links[0].id, { active: !links[0].active })} />
                                 <Trash2 className="w-5 h-5 text-red-400 cursor-pointer" onClick={() => handleDeleteLink(links[0].id)} />
                               </div>
@@ -1183,6 +1221,22 @@ const Dashboard: React.FC = () => {
                                     <ImageIcon className="w-8 h-8" />
                                   </div>
                                 )}
+                                <div className="absolute top-2 right-2 flex items-center gap-1">
+                                  {isAdmin && (
+                                    <button 
+                                      onClick={() => fetchHistory('links', link.id)}
+                                      className="p-1.5 bg-white/80 backdrop-blur-sm rounded-lg text-zinc-400 hover:text-blue-500 transition-colors shadow-sm"
+                                    >
+                                      <HistoryIcon className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                  <button 
+                                    onClick={() => handleUpdateLink(link.id, { active: !link.active })}
+                                    className="p-1.5 bg-white/80 backdrop-blur-sm rounded-lg text-[#A3E635] shadow-sm"
+                                  >
+                                    {link.active ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5 text-zinc-300" />}
+                                  </button>
+                                </div>
                                 <label className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 cursor-pointer">
                                   <Plus className="w-5 h-5 text-white" />
                                   <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', link.id)} accept="image/*" />
@@ -1229,7 +1283,17 @@ const Dashboard: React.FC = () => {
                                   onChange={(e) => handleUpdateLink(link.id, { url: e.target.value })}
                                 />
                               </div>
-                                <Trash2 className="w-4 h-4 text-red-300 opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity" onClick={() => handleDeleteLink(link.id)} />
+                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  {isAdmin && (
+                                    <button 
+                                      onClick={() => fetchHistory('links', link.id)}
+                                      className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                                    >
+                                      <HistoryIcon className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                  <Trash2 className="w-4 h-4 text-red-300 cursor-pointer" onClick={() => handleDeleteLink(link.id)} />
+                                </div>
                               </div>
                             ))}
                           </div>

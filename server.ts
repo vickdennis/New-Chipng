@@ -490,6 +490,9 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         You are the Chip NG "AI Designer", a professional profile engineer. 
         Your goal is to help users set up their perfect link-in-bio profile instantly.
         
+        NEW CAPABILITY:
+        You can now update the **Cover Image** as part of 'updateProfile'. Recommend abstract patterns or high-quality background images if users want to change their look.
+        
         CURRENT CONTEXT:
         ${JSON.stringify(userContext)}
 
@@ -505,14 +508,15 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
           functionDeclarations: [
             {
               name: "updateProfile",
-              description: "Update the user's profile details like display name, bio, or username.",
+              description: "Update the user's profile details like display name, bio, cover image, or username.",
               parameters: {
                 type: "OBJECT",
                 properties: {
                   displayName: { type: "STRING" },
                   bio: { type: "STRING" },
                   username: { type: "STRING" },
-                  textColor: { type: "STRING" }
+                  textColor: { type: "STRING" },
+                  coverImage: { type: "STRING", description: "URL of the cover image" }
                 }
               }
             },
@@ -589,7 +593,12 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       const response = await result.response;
       
       const functionCalls = response.functionCalls();
-      const text = response.text();
+      let text = "";
+      try {
+        text = response.text();
+      } catch (e) {
+        // No text returned, likely just function calls
+      }
 
       res.json({
         text: text || "",

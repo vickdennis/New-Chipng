@@ -11,8 +11,48 @@ import {
   Link as LinkIcon, AlertCircle,
   Mail, MessageSquare, ChevronLeft, ChevronRight,
   Image as ImageIcon,
-  Plus, AtSign, User as UserIcon, UserPlus, Megaphone
+  Plus, AtSign, User as UserIcon, UserPlus, Megaphone,
+  CheckCircle2, ArrowUpRight, Send, Camera,
+  Instagram, Twitter, Facebook, Youtube, Github, Linkedin, Globe
 } from 'lucide-react';
+
+const SocialIcon = ({ platform, username, className }: { platform: string; username: string; className?: string }) => {
+  const getIcon = () => {
+    switch (platform.toLowerCase()) {
+      case 'instagram': return <Instagram className="w-full h-full" />;
+      case 'twitter': return <Twitter className="w-full h-full" />;
+      case 'facebook': return <Facebook className="w-full h-full" />;
+      case 'youtube': return <Youtube className="w-full h-full" />;
+      case 'github': return <Github className="w-full h-full" />;
+      case 'linkedin': return <Linkedin className="w-full h-full" />;
+      default: return <Globe className="w-full h-full" />;
+    }
+  };
+
+  const getUrl = () => {
+    switch (platform.toLowerCase()) {
+      case 'instagram': return `https://instagram.com/${username}`;
+      case 'twitter': return `https://twitter.com/${username}`;
+      case 'facebook': return `https://facebook.com/${username}`;
+      case 'youtube': return `https://youtube.com/@${username}`;
+      case 'github': return `https://github.com/${username}`;
+      case 'linkedin': return `https://linkedin.com/in/${username}`;
+      default: return `https://${username}`;
+    }
+  };
+
+  return (
+    <a 
+      href={getUrl()} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className={className}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {getIcon()}
+    </a>
+  );
+};
 import Logo from '../components/Logo';
 import { toast } from 'sonner';
 import { User, Link as LinkType, Shout, Media } from '../types';
@@ -209,32 +249,63 @@ END:VCARD`;
   const [showBottomBar, setShowBottomBar] = useState(true);
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-[#A020F0] selection:text-white font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-black text-white selection:bg-[#A3E635] selection:text-black font-sans overflow-x-hidden">
       <Helmet>
         <title>{profile.displayName || profile.username} (@{profile.username}) | Chip NG</title>
       </Helmet>
 
-      {/* Top Header */}
+      {/* Top Fixed Header */}
+      <motion.div 
+        style={{ opacity: headerOpacity }}
+        className="fixed top-0 left-0 right-0 z-[60] bg-black/80 backdrop-blur-xl border-b border-white/5 px-6 h-20 flex items-center justify-between"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl overflow-hidden bg-zinc-900 border border-white/10 group-hover:scale-105 transition-transform">
+             {profile.photoURL ? (
+               <img src={profile.photoURL} alt="" className="w-full h-full object-cover" />
+             ) : (
+               <div className="w-full h-full flex items-center justify-center text-zinc-700">
+                 <UserIcon className="w-5 h-5" />
+               </div>
+             )}
+          </div>
+          <div className="flex flex-col -space-y-1">
+             <span className="font-black text-sm truncate max-w-[120px]">{profile.displayName || profile.username}</span>
+             <span className="text-[10px] font-bold text-[#A3E635] italic">@{profile.username}</span>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+           <button onClick={copyLink} className="p-2.5 bg-zinc-900 rounded-xl border border-white/5 active:scale-95 transition-transform">
+             <Share2 className="w-4 h-4 text-zinc-400" />
+           </button>
+           <button onClick={handleSaveContact} className="px-5 py-2.5 bg-[#A3E635] text-black font-black rounded-xl text-xs active:scale-95 transition-transform">
+             Save Contact
+           </button>
+        </div>
+      </motion.div>
+
+      {/* Initial Transparent Header */}
       <div className="fixed top-0 left-0 right-0 z-50 px-6 h-20 flex items-center justify-between pointer-events-none">
-        <RouterLink to="/" className="p-3 bg-black/20 backdrop-blur-xl rounded-2xl pointer-events-auto border border-white/5 active:scale-95 transition-transform">
-          <ChevronLeft className="w-6 h-6 text-white" />
+        <RouterLink to="/" className="p-3 bg-black/40 backdrop-blur-xl rounded-2xl pointer-events-auto border border-white/5 active:scale-95 transition-transform">
+          <Logo size="sm" variant="favicon" color="neon" />
         </RouterLink>
         
         <button 
           onClick={handleSaveContact}
-          className="p-3 bg-black/20 backdrop-blur-xl rounded-2xl pointer-events-auto border border-white/5 active:scale-95 transition-transform flex items-center gap-2 group"
+          className="p-3 bg-black/40 backdrop-blur-xl rounded-2xl pointer-events-auto border border-white/5 active:scale-95 transition-transform flex items-center gap-2 group"
         >
           <div className="relative">
-            <UserPlus className="w-6 h-6 text-white" />
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#A020F0] rounded-full border-2 border-black" />
+            <UserPlus className="w-6 h-6 text-white group-hover:text-[#A3E635] transition-colors" />
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#A3E635] rounded-full border-2 border-black" />
           </div>
         </button>
       </div>
 
       {/* Main Container */}
-      <main className="w-full max-w-lg mx-auto pb-32">
+      <main className="w-full max-w-lg mx-auto pb-48">
         {/* Hero Section */}
-        <div className="relative h-[40vh] min-h-[350px] w-full overflow-hidden">
+        <div className="relative h-[55vh] min-h-[450px] w-full overflow-hidden">
           <motion.div 
             style={{ opacity: coverOpacity }}
             className="w-full h-full relative"
@@ -247,327 +318,355 @@ END:VCARD`;
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="w-full h-full bg-[#1a0f0a]" />
+              <div className="w-full h-full bg-gradient-to-br from-zinc-900 via-zinc-950 to-black relative">
+                 <div className="absolute inset-0 bg-[#A3E635]/5 blur-3xl rounded-full translate-y-1/2" />
+              </div>
             )}
-            
-            {/* Visual Gradients & Overlays */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.4)_100%)]" />
-            
-            {/* Centered Text Overlay */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center pt-20 px-6 text-center">
-               <motion.div
-                 initial={{ opacity: 0, y: 20 }}
-                 animate={{ opacity: 1, y: 0 }}
-                 className="space-y-1"
-               >
-                 <div className="flex items-center gap-2 justify-center">
-                   <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-white drop-shadow-2xl">
-                     {profile.displayName || profile.username}
-                   </h1>
-                   {profile.isVerified && (
-                     <BadgeCheck className="w-8 h-8 text-[#A020F0] fill-white mt-1" />
-                   )}
-                 </div>
-                 <p className="text-white/80 text-xl font-medium tracking-tight">
-                   @{profile.username}
-                 </p>
-               </motion.div>
-
-               {/* Social Connections Under Handle */}
-               <motion.div 
-                 initial={{ opacity: 0 }}
-                 animate={{ opacity: 1 }}
-                 transition={{ delay: 0.2 }}
-                 className="flex items-center gap-4 mt-6"
-               >
-                 {profile.socialLinks && Object.entries(profile.socialLinks).slice(0, 4).map(([id, url]) => {
-                   const Icon = BrandIcons[id as keyof typeof BrandIcons];
-                   return (
-                     <a 
-                       key={id} 
-                       href={url} 
-                       target="_blank" 
-                       rel="noopener noreferrer"
-                       className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10 hover:bg-white/20 transition-all hover:scale-110 active:scale-90"
-                     >
-                       {Icon ? <Icon className="w-5 h-5 text-white" /> : <AtSign className="w-5 h-5 text-white" />}
-                     </a>
-                   );
-                 })}
-                 
-                 {/* Custom 'Me' Icon */}
-                 <div className="w-10 h-10 bg-[#A020F0]/20 backdrop-blur-md rounded-full flex items-center justify-center border border-[#A020F0]/30 cursor-pointer hover:bg-[#A020F0]/30 transition-all">
-                    <span className="text-[10px] font-black text-[#A020F0] uppercase tracking-tighter">me</span>
-                 </div>
-               </motion.div>
-            </div>
+            {/* High-End Shadow Overlay */}
+            <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/40 to-transparent" />
+            <div className="absolute inset-0 bg-black/10" />
           </motion.div>
+
+          {/* Profile Content Overlay */}
+          <div className="absolute inset-0 flex flex-col justify-end p-8 pb-12">
+            <motion.div 
+              style={{ scale: avatarScale, y: avatarY }}
+              className="relative inline-block mb-8 group"
+            >
+              <div className="w-28 h-28 rounded-[2.2rem] border-[5px] border-black overflow-hidden bg-zinc-900 shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative z-10">
+                {profile.photoURL ? (
+                  <img src={profile.photoURL} alt={profile.displayName} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-zinc-700 bg-zinc-800">
+                    <UserIcon className="w-12 h-12" />
+                  </div>
+                )}
+              </div>
+              <div className="absolute -inset-1 bg-gradient-to-tr from-[#A3E635] to-transparent rounded-[2.4rem] opacity-40 group-hover:opacity-100 transition-opacity blur-sm" />
+              
+              {profile.isVerified && (
+                <div className="absolute -bottom-2 -right-2 p-1.5 bg-[#A3E635] rounded-xl border-[3px] border-black z-20 shadow-xl">
+                  <BadgeCheck className="w-6 h-6 text-black" />
+                </div>
+              )}
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="space-y-4"
+            >
+              <div className="space-y-1">
+                <h1 className="text-5xl font-black tracking-tighter leading-none mb-2">
+                  {profile.displayName || profile.username}
+                </h1>
+                <div className="flex items-center gap-3">
+                  <span className="text-[#A3E635] font-black text-lg tracking-tight italic">@{profile.username}</span>
+                  <div className="w-1.5 h-1.5 bg-zinc-800 rounded-full" />
+                  <span className="text-zinc-500 text-sm font-bold uppercase tracking-widest">Brand Ambassador</span>
+                </div>
+              </div>
+              
+              {profile.bio && (
+                <p className="text-zinc-400 text-[15px] leading-relaxed max-w-sm font-medium font-sans">
+                  {profile.bio}
+                </p>
+              )}
+
+              {/* Social Pills */}
+              {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
+                <div className="flex flex-wrap gap-3 pt-4">
+                  {Object.entries(profile.socialLinks).map(([platform, username]) => (
+                    <SocialIcon 
+                      key={platform} 
+                      platform={platform} 
+                      username={username as string} 
+                      className="w-10 h-10 p-2.5 bg-white/5 backdrop-blur-xl border border-white/5 rounded-xl text-zinc-400 hover:text-[#A3E635] hover:bg-white/10 transition-all hover:-translate-y-1" 
+                    />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </div>
         </div>
 
-        {/* Bio Section */}
-        <div className="px-8 -mt-6 relative z-10 space-y-10">
-          {profile.bio && (
-            <p className="text-white/60 text-lg leading-relaxed text-center font-medium">
-              {profile.bio}
-            </p>
-          )}
-
-          {/* Lead Capture Horizontal Bar */}
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-[#A020F0] to-[#E4405F] rounded-[2rem] blur opacity-25 group-hover:opacity-40 transition-opacity" />
-            <div className="relative flex items-center bg-white rounded-[2rem] p-1.5 h-16 shadow-2xl overflow-hidden">
-              <input 
-                type="email" 
-                placeholder="your@email.com"
-                className="flex-1 bg-transparent px-6 text-zinc-900 font-medium outline-none placeholder:text-zinc-400"
-              />
-              <button className="h-full bg-zinc-900 text-white pl-6 pr-4 rounded-[1.8rem] flex items-center gap-3 active:scale-95 transition-transform">
-                <span className="font-bold text-sm">Connect with</span>
-                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white/10 flex-shrink-0">
-                  {profile.photoURL ? (
-                    <img src={profile.photoURL} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  ) : (
-                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                      <UserIcon className="w-5 h-5 text-zinc-500" />
-                    </div>
-                  )}
-                </div>
-              </button>
-            </div>
+        {/* Links & Content Section */}
+        <div className="px-6 space-y-16 mt-8">
+          
+          {/* Main Action Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <button 
+              onClick={copyLink}
+              className="group flex flex-col items-center justify-center gap-3 py-6 bg-zinc-900 hover:bg-zinc-800 rounded-[2rem] border border-white/5 transition-all active:scale-95 shadow-xl"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center group-hover:bg-zinc-700 transition-colors">
+                {copied ? <CheckCircle2 className="w-6 h-6 text-[#A3E635]" /> : <Share2 className="w-6 h-6 text-zinc-400" />}
+              </div>
+              <span className="font-black text-xs uppercase tracking-widest">{copied ? 'Copied' : 'Share Bio'}</span>
+            </button>
+            <button 
+              onClick={() => setShowContactForm(true)}
+              className="group flex flex-col items-center justify-center gap-3 py-6 bg-zinc-900 hover:bg-zinc-800 rounded-[2rem] border border-white/5 transition-all active:scale-95 shadow-xl"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center group-hover:bg-zinc-700 transition-colors">
+                <Mail className="w-6 h-6 text-zinc-400 group-hover:text-[#A3E635]" />
+              </div>
+              <span className="font-black text-xs uppercase tracking-widest text-zinc-400">Message</span>
+            </button>
           </div>
 
-          {/* Content Sections */}
-          <div className="space-y-8 pt-4">
-            {/* Tabs */}
-            <div className="flex items-center justify-center gap-12 border-b border-white/5 pb-4">
-              <button 
-                onClick={() => setActiveTab('shouts')}
-                className={`text-sm font-black uppercase tracking-[0.2em] transition-all relative ${activeTab === 'shouts' ? 'text-white' : 'text-zinc-600'}`}
-              >
-                Shouts
-                {activeTab === 'shouts' && (
-                  <motion.div layoutId="activeTab" className="absolute -bottom-4 left-0 right-0 h-1 bg-[#A020F0] rounded-full" />
-                )}
-              </button>
-              <button 
-                onClick={() => setActiveTab('media')}
-                className={`text-sm font-black uppercase tracking-[0.2em] transition-all relative ${activeTab === 'media' ? 'text-white' : 'text-zinc-600'}`}
-              >
-                Media
-                {activeTab === 'media' && (
-                  <motion.div layoutId="activeTab" className="absolute -bottom-4 left-0 right-0 h-1 bg-[#A020F0] rounded-full" />
-                )}
-              </button>
+          {/* Featured Content Group */}
+          <section className="space-y-8">
+            <div className="flex items-center justify-between px-2">
+              <h2 className="text-2xl font-black tracking-tighter">Spotlight</h2>
+              <div className="flex-1 h-px bg-zinc-900 ml-6" />
             </div>
 
-            {/* Tab Content */}
-            <div className="min-h-[300px]">
-              <AnimatePresence mode="wait">
-                {activeTab === 'shouts' ? (
-                  <motion.div 
-                    key="shouts"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="space-y-6 flex flex-col items-center"
-                  >
-                    {shouts.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-20 text-center">
-                        <div className="relative mb-8 group cursor-default">
-                          <div className="absolute inset-0 bg-[#A020F0]/20 blur-3xl rounded-full scale-150 animate-pulse" />
-                          <div className="relative transform hover:scale-110 transition-transform duration-500 rotate-12">
-                            <div className="bg-gradient-to-br from-[#A020F0] to-[#601090] p-8 rounded-[2rem] shadow-[0_20px_50px_rgba(160,32,240,0.3)] border border-white/10">
-                              <Megaphone className="w-16 h-16 text-white drop-shadow-[0_10px_10px_rgba(0,0,0,0.3)]" />
-                            </div>
-                            <div className="absolute top-2 left-2 inset-0 border border-white/20 rounded-[2rem] pointer-events-none" />
+            <div className="grid grid-cols-1 gap-6">
+              {links.filter(l => l.active).map((link, idx) => {
+                // Feature big links with rich previews
+                const isBig = idx === 0 || (idx === 1 && links.length > 3);
+                
+                if (isBig) {
+                  return (
+                    <motion.a
+                      key={link.id}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => handleLinkClick(link.id)}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      className="group relative block bg-zinc-900 border border-white/5 rounded-[2.8rem] overflow-hidden shadow-2xl hover:border-[#A3E635]/30 transition-all active:scale-[0.98]"
+                    >
+                      <div className="aspect-[16/10] relative overflow-hidden">
+                        {link.icon ? (
+                          <img 
+                            src={link.icon} 
+                            alt={link.title} 
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                            referrerPolicy="no-referrer" 
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-zinc-800 to-zinc-950 flex items-center justify-center">
+                            <LinkIcon className="w-16 h-16 text-zinc-800" />
                           </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent group-hover:opacity-20 transition-opacity" />
+                        
+                        <div className="absolute inset-0 p-8 flex flex-col justify-end">
+                           <div className="inline-flex py-1 px-3 bg-[#A3E635] text-black text-[10px] font-black uppercase tracking-widest rounded-full self-start mb-3">Featured</div>
+                           <h3 className="text-3xl font-black leading-tight text-white group-hover:text-[#A3E635] transition-colors">{link.title}</h3>
+                           <p className="text-zinc-400 text-sm font-medium mt-1 truncate opacity-70 group-hover:opacity-100">{link.url.replace(/^https?:\/\//, '')}</p>
                         </div>
-                        <h2 className="text-2xl font-black text-white mb-2">No Shouts yet!</h2>
-                        <p className="text-zinc-500 font-medium">Shouts posted by {profile.displayName || profile.username} will appear here</p>
-                      </div>
-                    ) : (
-                      shouts.map(shout => (
-                        <div key={shout.id} className="w-full bg-zinc-900/40 backdrop-blur-sm border border-white/5 p-6 rounded-[2rem] space-y-4">
-                           <p className="text-lg text-white/90 font-medium leading-relaxed">{shout.content}</p>
-                           {shout.image && (
-                             <img src={shout.image} alt="" className="w-full rounded-2xl object-cover max-h-96" referrerPolicy="no-referrer" />
-                           )}
-                           <div className="flex items-center justify-between pt-2">
-                             <div className="flex items-center gap-2">
-                               <Logo size="sm" variant="icon-only" className="opacity-50" />
-                               <span className="text-[10px] font-black uppercase tracking-widest text-[#A020F0]">Chip Shout</span>
-                             </div>
-                             <span className="text-[10px] text-white/30 font-bold uppercase">{format(new Date(shout.createdAt), 'MMM d, yyyy')}</span>
-                           </div>
+                        
+                        <div className="absolute top-8 right-8 w-12 h-12 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 border border-white/20">
+                          <ArrowUpRight className="w-6 h-6 text-white" />
                         </div>
-                      ))
-                    )}
-                  </motion.div>
-                ) : (
-                  <motion.div 
-                    key="media"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                  >
-                    {media.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-20 text-center">
-                        <div className="w-24 h-24 bg-zinc-900 rounded-[2rem] flex items-center justify-center mb-6 border border-white/5">
-                          <ImageIcon className="w-10 h-10 text-zinc-700" />
-                        </div>
-                        <h2 className="text-2xl font-black text-white mb-2">Gallery is empty</h2>
-                        <p className="text-zinc-500 font-medium">Check back later for photos and videos.</p>
                       </div>
-                    ) : (
-                      <div className="grid grid-cols-2 gap-4">
-                        {media.map(m => (
-                          <div key={m.id} className="aspect-square rounded-[2rem] overflow-hidden bg-zinc-900 border border-white/5 group relative">
-                            {m.type === 'image' ? (
-                              <img src={m.url} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" referrerPolicy="no-referrer" />
-                            ) : (
-                              <video src={m.url} className="w-full h-full object-cover" />
-                            )}
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                               <Plus className="w-8 h-8 text-white/50" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                    </motion.a>
+                  );
+                }
 
-            {/* Links / Featured Section (Optional but kept for functionality) */}
-            {links.length > 0 && (
-              <div className="space-y-4 pt-12">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="h-px flex-1 bg-white/5" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-600">Featured Links</span>
-                  <div className="h-px flex-1 bg-white/5" />
-                </div>
-                {links.map((link) => (
-                  <motion.a 
-                    key={link.id} 
+                return (
+                  <motion.a
+                    key={link.id}
                     href={link.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={() => handleLinkClick(link.id)}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="block p-4 bg-zinc-900/50 backdrop-blur-sm border border-white/5 rounded-3xl hover:bg-zinc-900 transition-all group"
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    className="flex items-center gap-5 p-5 bg-zinc-900 border border-white/5 rounded-[2rem] hover:bg-zinc-800 transition-all active:scale-[0.98] group"
                   >
-                    <div className="flex items-center gap-4">
-                      {link.icon ? (
-                        <img src={link.icon} alt="" className="w-12 h-12 rounded-2xl object-cover" />
-                      ) : (
-                        <div className="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-700">
-                          <LinkIcon className="w-6 h-6" />
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <span className="block text-[15px] font-bold text-white group-hover:text-[#A3E635] transition-colors">{link.title}</span>
-                        <span className="block text-[11px] text-zinc-500 truncate max-w-[200px]">{link.url.replace('https://', '')}</span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-zinc-700 group-hover:text-white transition-colors" />
+                    <div className="w-16 h-16 rounded-[1.2rem] bg-zinc-800 flex items-center justify-center overflow-hidden border border-white/5 shadow-inner">
+                       {link.icon ? (
+                         <img src={link.icon} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" referrerPolicy="no-referrer" />
+                       ) : (
+                         <LinkIcon className="w-6 h-6 text-zinc-600" />
+                       )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                       <h3 className="font-bold text-lg text-white group-hover:text-[#A3E635] transition-colors truncate">{link.title}</h3>
+                       <p className="text-[11px] text-zinc-500 font-bold tracking-tight truncate uppercase">{link.url.replace(/^https?:\/\//, '')}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center group-hover:bg-[#A3E635] transition-all group-hover:rotate-12">
+                       <ArrowUpRight className="w-5 h-5 group-hover:text-black transition-colors" />
                     </div>
                   </motion.a>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Shouts Section - Horizontal Scroll */}
+          {shouts.length > 0 && (
+            <section className="space-y-8">
+              <div className="flex items-center justify-between px-2">
+                <h2 className="text-2xl font-black tracking-tighter">Public Shouts</h2>
+                <div className="flex-1 h-px bg-zinc-900 ml-6" />
+              </div>
+              
+              <div className="flex overflow-x-auto no-scrollbar gap-5 px-1 pb-6 -mx-6 px-6">
+                {shouts.map(shout => (
+                  <motion.div 
+                    key={shout.id}
+                    whileHover={{ y: -6 }}
+                    className="min-w-[300px] w-[300px] bg-zinc-900/40 backdrop-blur-md p-8 rounded-[2.5rem] border border-white/5 relative shadow-2xl flex flex-col"
+                  >
+                    <div className="absolute -top-3 -right-3 p-3 bg-[#A3E635] text-black rounded-2xl shadow-xl rotate-[8deg]">
+                      <Megaphone className="w-5 h-5 font-black" />
+                    </div>
+                    
+                    <div className="flex-1 mb-6">
+                      <p className="text-[16px] font-medium text-white/90 leading-relaxed italic">"{shout.content}"</p>
+                    </div>
+
+                    {shout.image && (
+                      <div className="aspect-square rounded-[1.8rem] overflow-hidden mb-6 border border-white/10 shadow-lg">
+                        <img src={shout.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between mt-auto">
+                      <div className="flex items-center gap-2">
+                         <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center">
+                            <Logo variant="favicon" size="sm" color="neon" />
+                         </div>
+                         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#A3E635]">Verified Shout</span>
+                      </div>
+                      <span className="text-[9px] font-bold uppercase text-zinc-600 tracking-widest">
+                        {shout.createdAt ? format(new Date(shout.createdAt), 'MMM d') : 'Recently'}
+                      </span>
+                    </div>
+                  </motion.div>
                 ))}
               </div>
-            )}
-          </div>
+            </section>
+          )}
+
+          {/* Media Discovery - Bento Grid Style */}
+          {media.length > 0 && (
+            <section className="space-y-8">
+              <div className="flex items-center justify-between px-2">
+                <h2 className="text-2xl font-black tracking-tighter">Lifestyle</h2>
+                <div className="flex-1 h-px bg-zinc-900 ml-6" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {media.map((item, i) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    className={`rounded-[2.2rem] overflow-hidden group cursor-pointer relative shadow-2xl bg-zinc-900 ${i % 3 === 0 ? 'col-span-2 aspect-video' : 'aspect-square'}`}
+                  >
+                    {item.type === 'image' ? (
+                      <img src={item.url} alt="" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" referrerPolicy="no-referrer" />
+                    ) : (
+                      <video src={item.url} className="w-full h-full object-cover" loop muted playsInline />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500" />
+                    <div className="absolute bottom-6 left-6 opacity-0 group-hover:opacity-100 transition-all translate-y-4 group-hover:translate-y-0">
+                       <span className="text-[10px] font-black uppercase text-[#A3E635] tracking-widest">Snapshot • {format(new Date(item.createdAt), 'yyyy')}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
-        <footer className="py-20 flex flex-col items-center gap-4 opacity-30">
-          <Logo size="sm" variant="icon-only" className="grayscale" />
-          <span className="text-[11px] font-black tracking-[0.2em] uppercase">Verified Chip NG profile</span>
+        <footer className="py-32 flex flex-col items-center gap-6">
+           <div className="p-4 bg-zinc-900 rounded-[1.5rem] border border-white/5 mb-4 group cursor-pointer hover:border-[#A3E635]/50 transition-colors">
+              <Logo size="md" variant="icon-only" color="neon" />
+           </div>
+           <div className="flex flex-col items-center gap-1">
+             <span className="text-xs font-black tracking-[0.4em] uppercase text-zinc-600">This profile is</span>
+             <span className="text-xl font-black text-white italic">Chip NG <span className="text-[#A3E635]">Verified</span></span>
+           </div>
         </footer>
       </main>
 
-      {/* Persistent Bottom Bar */}
+      {/* High-End Glass Floating CTA Bar */}
       <AnimatePresence>
         {showBottomBar && (
           <motion.div 
-            initial={{ y: 100 }}
+            initial={{ y: 150 }}
             animate={{ y: 0 }}
-            exit={{ y: 100 }}
-            className="fixed bottom-0 left-0 right-0 z-[100] p-4 sm:p-6"
+            exit={{ y: 150 }}
+            className="fixed bottom-0 left-0 right-0 z-[100] px-6 sm:px-8 pb-8 sm:pb-12 pointer-events-none"
           >
-            <div className="max-w-xl mx-auto bg-white rounded-2xl sm:rounded-[2rem] px-6 h-16 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-              <div className="flex items-center gap-3">
-                <Logo size="sm" />
-                <div className="h-4 w-px bg-zinc-200" />
-                <span className="text-[#A020F0] font-black italic">NG</span>
+            <div className="max-w-xl mx-auto w-full bg-white/5 backdrop-blur-[40px] rounded-[2.5rem] sm:rounded-[3.5rem] p-3 sm:p-4 border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex items-center justify-between pointer-events-auto">
+              <div className="flex items-center gap-4 pl-4 sm:pl-6">
+                 <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center p-2 border border-white/5">
+                    <Logo variant="favicon" size="sm" color="neon" />
+                 </div>
+                 <div className="flex flex-col -space-y-1">
+                    <span className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">Built with</span>
+                    <span className="text-lg font-black text-white leading-none">Chip <span className="text-[#A3E635]">NG</span></span>
+                 </div>
               </div>
               
-              <p className="hidden sm:block text-zinc-900 font-bold text-sm">
-                Join today and start making money
-              </p>
-              <p className="sm:hidden text-zinc-900 font-bold text-[12px]">
-                Join today & earn
-              </p>
-
-              <div className="flex items-center gap-4">
-                <RouterLink to="/signup" className="hidden sm:block px-6 py-2 bg-black text-white rounded-full text-sm font-black active:scale-95 transition-transform">
-                  Sign Up
-                </RouterLink>
-                <button 
-                  onClick={() => setShowBottomBar(false)}
-                  className="p-1 hover:bg-zinc-100 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-zinc-400" />
-                </button>
-              </div>
+              <RouterLink to="/signup" className="group px-8 sm:px-10 h-14 bg-[#A3E635] hover:bg-lime-300 text-black font-black rounded-[1.8rem] sm:rounded-[2.2rem] text-sm flex items-center gap-3 transition-all active:scale-95 shadow-2xl">
+                 Claim Yours <ArrowUpRight className="w-5 h-5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </RouterLink>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Contact Form Modal */}
+      {/* Modern High-End Contact Modal */}
       <AnimatePresence>
         {showContactForm && (
-          <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowContactForm(false)}
-              className="absolute inset-0 bg-black/80 backdrop-blur-md"
+              className="absolute inset-0 bg-black/90 backdrop-blur-xl"
             />
             <motion.div 
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              className="relative w-full max-w-lg bg-[#0a0a0a] rounded-t-[2.5rem] sm:rounded-[3rem] p-8 pb-12 shadow-2xl border border-white/5"
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-lg bg-zinc-950 rounded-[3rem] p-10 shadow-3xl border border-white/5 overflow-hidden"
             >
-              <div className="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-8 sm:hidden" />
-              <div className="flex justify-between items-start mb-8">
-                <div>
-                  <h2 className="text-3xl font-black text-white">Contact {profile.displayName || profile.username}</h2>
-                  <p className="text-white/40 text-sm mt-2">Send a direct message or inquiry.</p>
+              {/* Modal Background Detail */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#A3E635]/10 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2" />
+              
+              <div className="flex justify-between items-start mb-10 relative z-10">
+                <div className="space-y-1">
+                  <h2 className="text-4xl font-black tracking-tighter text-white">Direct Message</h2>
+                  <p className="text-zinc-500 font-medium">Inquiry for @{profile.username}</p>
                 </div>
-                <button onClick={() => setShowContactForm(false)} className="p-3 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors">
-                  <X className="w-5 h-5 text-white/50" />
+                <button onClick={() => setShowContactForm(false)} className="p-3 bg-zinc-900 rounded-2xl hover:bg-zinc-800 transition-colors border border-white/5">
+                  <X className="w-5 h-5 text-zinc-500" />
                 </button>
               </div>
 
-              <form className="space-y-5" onSubmit={(e) => { e.preventDefault(); toast.success("Message sent!"); setShowContactForm(false); }}>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Your Name</label>
-                  <input type="text" required className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl px-5 text-white focus:border-[#A020F0]/50 outline-none transition-all" />
+              <form className="space-y-6 relative z-10" onSubmit={(e) => { e.preventDefault(); toast.success("Message deliverd!"); setShowContactForm(false); }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Your Alias</label>
+                    <input type="text" required placeholder="Alex" className="w-full h-14 bg-zinc-900 border border-white/5 rounded-2xl px-6 text-white focus:border-[#A3E635]/40 outline-none transition-all placeholder:text-zinc-800" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Email</label>
+                    <input type="email" required placeholder="alex@me.com" className="w-full h-14 bg-zinc-900 border border-white/5 rounded-2xl px-6 text-white focus:border-[#A3E635]/40 outline-none transition-all placeholder:text-zinc-800" />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Your Email</label>
-                  <input type="email" required className="w-full h-14 bg-white/5 border border-white/5 rounded-2xl px-5 text-white focus:border-[#A020F0]/50 outline-none transition-all" />
+                  <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Context</label>
+                  <textarea required rows={4} placeholder="Let's collaborate..." className="w-full bg-zinc-900 border border-white/5 rounded-[2rem] p-6 text-white focus:border-[#A3E635]/40 outline-none transition-all resize-none placeholder:text-zinc-800" />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest ml-1">Message</label>
-                  <textarea required rows={4} className="w-full bg-white/5 border border-white/5 rounded-2xl p-5 text-white focus:border-[#A020F0]/50 outline-none transition-all resize-none" />
-                </div>
-                <button className="w-full h-16 bg-[#A020F0] text-white rounded-[2rem] font-black uppercase tracking-widest text-sm mt-6 shadow-2xl shadow-[#A020F0]/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
-                  Send Message
+                <button className="w-full h-16 bg-[#A3E635] text-black rounded-[2rem] font-black uppercase tracking-widest text-sm mt-4 shadow-2xl shadow-[#A3E635]/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group">
+                  Send Inquiry <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                 </button>
               </form>
             </motion.div>

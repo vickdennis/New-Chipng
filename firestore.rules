@@ -1,83 +1,125 @@
 // Deployment sync: 2026-04-26T11:40:00Z
-rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function isAuthenticated() { return request.auth != null; }
-    function isOwner(userId) { return isAuthenticated() && request.auth.uid == userId; }
-    function isAdmin() {
-      return isAuthenticated() && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    // ---------------------------------------------------------
+    // PART 0: THE MASTER DENY
+    // ---------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
     }
+
+    // ---------------------------------------------------------
+    // PART 1: GLOBAL HELPERS & PRIMITIVES
+    // ---------------------------------------------------------
+    function isSignedIn() { return request.auth != null; }
+    function isEmailVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     
-    // Internal bypass via API Key + Specific Field
-    function isInternal() {
-        return request.resource.data.get('_is_internal', false) == true;
+    // Admin check: No custom claims, explicit lookup required
+    function isAdmin() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
+
+    // Internal bypass for server-side operations (safe if used with specific field)
+    function isInternal() {
+      return request.resource.data.get('_is_internal', false) == true || 
+             request.auth.token.get('internal', false) == true;
+    }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
 
     function isValidId(id) { 
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
     }
 
+    // ---------------------------------------------------------
+    // PART 2: ENTITY VALIDATIONS
+    // ---------------------------------------------------------
+    
+    function isValidUser(data) {
+      return data.keys().hasAll(['username']) &&
+             data.username is string && data.username.size() >= 3 && data.username.size() <= 30 &&
+             data.get('displayName', '') is string && data.get('displayName', '').size() <= 100 &&
+             data.get('bio', '') is string && data.get('bio', '').size() <= 500;
+    }
+
+    function isValidLink(data) {
+      return data.keys().hasAll(['userId', 'title', 'url']) &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() <= 100 &&
+             data.url is string && data.url.size() <= 2000;
+    }
+
+    function isValidShout(data) {
+      return data.keys().hasAll(['userId', 'content']) &&
+             data.userId == request.auth.uid &&
+             data.content is string && data.content.size() <= 1000;
+    }
+
+    // ---------------------------------------------------------
+    // PART 3: COLLECTION MATCH BLOCKS
+    // ---------------------------------------------------------
+
     match /users/{userId} {
-      allow read: if true;
-      allow write: if isOwner(userId) || isInternal() || isAdmin();
+      allow get: if true;
+      allow list: if false; // Prevention of user scraping
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'bio', 'photoURL', 'coverImage', 'socialLinks', 'theme', 'backgroundType', 'backgroundColor', 'backgroundImage', 'textColor', 'buttonStyle', 'updatedAt']) ||
+        isAdmin()
+      );
     }
-    
+
     match /users_backup/{id} {
-      allow read: if isAdmin() || isInternal();
-      allow create: if isOwner(request.resource.data.originalId) || isInternal() || isAdmin();
-      allow update, delete: if isInternal() || isAdmin();
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isOwner(incoming().performedBy);
+      allow update, delete: if isAdmin();
     }
-    
-    match /blogs/{blogId} {
-      allow read: if true;
-      allow write: if isAdmin() || isInternal();
-    }
-    
-    match /blogs_backup/{id} {
-      allow read: if isAdmin() || isInternal();
-      allow create: if isAdmin() || isInternal();
-      allow update, delete: if isInternal() || isAdmin();
-    }
-    
+
     match /links/{linkId} {
-        allow read: if true;
-        allow write: if isOwner(resource.data.userId) || 
-                      (request.resource != null && isOwner(request.resource.data.userId)) || 
-                      isInternal() || isAdmin();
+      allow get: if true;
+      allow list: if isAdmin() || (isSignedIn() && request.query.limit <= 100); 
+      allow create: if isSignedIn() && isValidLink(incoming());
+      allow update: if (isOwner(existing().userId) || isAdmin()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'url', 'icon', 'active', 'position', 'isDeleted', 'deletedAt', 'updatedAt']) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin(); // Prefer soft-delete
     }
-    
+
     match /links_backup/{id} {
-        allow read: if isAdmin() || isInternal();
-        allow create: if (request.resource.data.data.userId != null && isOwner(request.resource.data.data.userId)) || 
-                        isInternal() || isAdmin();
-        allow update, delete: if isInternal() || isAdmin();
-    }
-
-    match /products/{productId} {
-      allow read: if true;
-      allow write: if isAdmin() || isInternal();
-    }
-
-    match /products_backup/{id} {
-      allow read, write: if isAdmin() || isInternal();
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isOwner(incoming().performedBy);
+      allow update, delete: if isAdmin();
     }
 
     match /shouts/{shoutId} {
-      allow read: if true;
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && isValidShout(incoming());
+      allow update: if (isOwner(existing().userId) || isAdmin()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['content', 'image', 'isDeleted', 'deletedAt', 'updatedAt']) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
     }
 
     match /media/{mediaId} {
-      allow read: if true;
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow get: if true;
+      allow list: if true;
+      allow create: if isSignedIn() && isOwner(incoming().userId);
+      allow update: if (isOwner(existing().userId) || isAdmin()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['isDeleted', 'deletedAt', 'updatedAt']) ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
     }
 
-    match /{document=**} {
-      allow read: if true;
-      allow write: if isAuthenticated() || isInternal();
+    match /admins/{userId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Managed via console or CLI
     }
   }
 }
