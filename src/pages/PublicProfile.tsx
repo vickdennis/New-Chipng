@@ -15,6 +15,12 @@ import {
   CheckCircle2, ArrowUpRight, Send, Camera, MapPin,
   Instagram, Twitter, Facebook, Youtube, Github, Linkedin, Globe
 } from 'lucide-react';
+import Logo from '../components/Logo';
+import { BrandIcons } from '../components/icons/BrandIcons';
+import { toast } from 'sonner';
+import { User, Link as LinkType, Shout, Media } from '../types';
+import { Helmet } from 'react-helmet-async';
+import { format } from 'date-fns';
 
 const SocialIcon = ({ platform, username, className }: { platform: string; username: string; className?: string }) => {
   const getBrandInfo = () => {
@@ -66,13 +72,6 @@ const SocialIcon = ({ platform, username, className }: { platform: string; usern
     </a>
   );
 };
-import Logo from '../components/Logo';
-import { toast } from 'sonner';
-import { User, Link as LinkType, Shout, Media } from '../types';
-import { Helmet } from 'react-helmet-async';
-import { format } from 'date-fns';
-
-import { BrandIcons } from '../components/icons/BrandIcons';
 
 const PublicProfile: React.FC = () => {
   const { username } = useParams<{ username: string }>();

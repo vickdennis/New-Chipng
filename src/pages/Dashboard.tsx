@@ -67,15 +67,6 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
   const style = { transform: CSS.Transform.toString(transform), transition };
   const [showSettings, setShowSettings] = useState(false);
 
-  const getFavicon = (url: string) => {
-    try {
-      const domain = new URL(url).hostname;
-      return `https://icon.horse/icon/${domain}?size=large`;
-    } catch (e) {
-      return null;
-    }
-  };
-
   return (
     <div ref={setNodeRef} style={style} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl flex flex-col gap-4 group">
       <div className="flex items-center gap-4">
@@ -226,6 +217,15 @@ const CATEGORIES = [
   { id: 'entertainment', label: 'Entertainment', icon: Play },
   { id: 'lifestyle', label: 'Lifestyle', icon: Heart },
 ] as const;
+
+const getFavicon = (url: string) => {
+  try {
+    const domain = new URL(url).hostname;
+    return `https://icon.horse/icon/${domain}?size=large`;
+  } catch (e) {
+    return null;
+  }
+};
 
 const PLATFORMS = {
   socials: [
@@ -2078,6 +2078,7 @@ const Dashboard: React.FC = () => {
                              tiktok: '#000000',
                              whatsapp: '#25D366'
                            };
+                           const IconComponent = BrandIcons[platform.toLowerCase() as keyof typeof BrandIcons] || Globe;
                            return (
                              <div 
                                key={platform} 
@@ -2085,8 +2086,7 @@ const Dashboard: React.FC = () => {
                                style={{ color: colors[platform.toLowerCase()] || '#6366f1' }}
                              >
                                <div className="w-4 h-4">
-                                 {/* We can use small dots or generic icons here for performance in preview */}
-                                 <BrandIcons[platform.toLowerCase() as keyof typeof BrandIcons] className="w-full h-full" />
+                                 <IconComponent className="w-full h-full" />
                                </div>
                              </div>
                            );
