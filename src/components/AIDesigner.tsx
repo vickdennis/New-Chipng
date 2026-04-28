@@ -193,7 +193,7 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
     setIsLoading(true);
 
     try {
-      const response = await axios.post('/api/ai/design', {
+      const response = await axios.post('/api/ai-designer', {
         messages: newMessages,
         userContext: {
           profile: profile || {},

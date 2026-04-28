@@ -406,7 +406,7 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
   });
 
   // AI Designer Proxy Endpoint
-  app.post("/api/ai/design", async (req, res) => {
+  app.post("/api/ai-designer", async (req, res) => {
     try {
       const { messages, userContext } = req.body;
       const key = process.env.GEMINI_API_KEY;
@@ -526,6 +526,45 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       res.json({ text: text || "", functionCalls: functionCalls || [] });
     } catch (error: any) {
       console.error("AI Designer Proxy failed:", error.message);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Handle generic file uploads via proxy (to bypass CORS or handle permissions)
+  app.post("/api/upload", upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const filePath = req.body.path;
+      if (!filePath) {
+        return res.status(400).json({ error: "No path provided" });
+      }
+
+      // Initialize bucket if not already done
+      const bucketName = firebaseConfig.storageBucket;
+      if (!bucketName) {
+        throw new Error("Storage bucket not configured in firebase-applet-config.json");
+      }
+
+      const bucket = admin.storage().bucket(bucketName);
+      const file = bucket.file(filePath);
+
+      await file.save(req.file.buffer, {
+        metadata: {
+          contentType: req.file.mimetype,
+        }
+      });
+
+      // Make the file public (or use signed URL, but here we want public for profile pictures)
+      await file.makePublic();
+      const publicUrl = `https://storage.googleapis.com/${bucketName}/${filePath}`;
+
+      console.log(`✅ File uploaded successfully: ${publicUrl}`);
+      res.json({ url: publicUrl });
+    } catch (error: any) {
+      console.error("❌ Upload proxy failed:", error.message);
       res.status(500).json({ error: error.message });
     }
   });
@@ -652,6 +691,27 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
   });
 
 // 3. Subscription Expiry Logic
+  app.post("/api/track", async (req, res) => {
+    try {
+      const { collection: collectionName, id, field } = req.body;
+      if (!collectionName || !id || !field) {
+        return res.status(400).json({ error: "Missing required fields: collection, id, field" });
+      }
+
+      // Increment value using Firestore increment
+      const docRef = admin.firestore().collection(collectionName).doc(id);
+      await docRef.update({
+        [field]: admin.firestore.FieldValue.increment(1),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+
+      res.json({ status: "success" });
+    } catch (error: any) {
+      console.error("❌ Tracking failed:", error.message);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/cron/check-subscriptions", async (req, res) => {
     const now = new Date().toISOString();
     try {

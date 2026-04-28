@@ -383,13 +383,13 @@ END:VCARD`;
 
               {/* Social Pills */}
               {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
-                <div className="flex flex-wrap gap-3 pt-4">
+                <div className="flex overflow-x-auto no-scrollbar gap-4 pt-6 pb-2 -mx-2 px-2 mask-linear-right">
                   {Object.entries(profile.socialLinks).map(([platform, username]) => (
                     <SocialIcon 
                       key={platform} 
                       platform={platform} 
                       username={username as string} 
-                      className="w-10 h-10 p-2.5 bg-white/5 backdrop-blur-xl border border-white/5 rounded-xl text-zinc-400 hover:text-[#A3E635] hover:bg-white/10 transition-all hover:-translate-y-1" 
+                      className="shrink-0 w-12 h-12 p-3 bg-zinc-900/50 backdrop-blur-xl border border-white/10 rounded-2xl text-zinc-400 hover:text-[#A3E635] hover:bg-zinc-800 transition-all hover:scale-110 shadow-lg" 
                     />
                   ))}
                 </div>

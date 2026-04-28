@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { db, storage, getUserByUsername, handleFirestoreError, OperationType } from '../firebase';
+import { db, storage, getUserByUsername, handleFirestoreError, OperationType, uploadImage } from '../firebase';
 import { 
   collection, query, where, orderBy, onSnapshot, 
   addDoc, updateDoc, deleteDoc, doc, writeBatch, getDoc
@@ -77,26 +77,26 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl flex flex-col gap-4 group">
-      <div className="flex items-center gap-4">
+    <div ref={setNodeRef} style={style} className="w-full bg-[#F3F4F6] dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-[2.5rem] flex flex-col gap-6 group hover:shadow-xl transition-all">
+      <div className="flex items-center gap-5">
         <button {...attributes} {...listeners} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 cursor-grab active:cursor-grabbing">
-          <GripVertical className="w-5 h-5" />
+          <GripVertical className="w-6 h-6" />
         </button>
         
-        <div className="flex-1 space-y-3">
-          <div className="flex items-center gap-4">
-            <div className="relative group/icon">
-              <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
+        <div className="flex-1 space-y-4">
+          <div className="flex items-center gap-5">
+            <div className="relative group/icon shrink-0">
+              <div className="w-14 h-14 bg-white dark:bg-zinc-800 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-700 flex items-center justify-center shadow-sm">
                 {link.icon ? (
                   <img src={link.icon} alt="" className="w-full h-full object-cover" />
                 ) : getFavicon(link.url) ? (
-                  <img src={getFavicon(link.url)!} alt="" className="w-6 h-6" referrerPolicy="no-referrer" />
+                  <img src={getFavicon(link.url)!} alt="" className="w-8 h-8" referrerPolicy="no-referrer" />
                 ) : (
-                  <ImageIcon className="w-5 h-5 text-zinc-400" />
+                  <ImageIcon className="w-6 h-6 text-zinc-400" />
                 )}
               </div>
-              <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-lg opacity-0 group-hover/icon:opacity-100 cursor-pointer transition-opacity">
-                <Plus className="w-4 h-4" />
+              <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-2xl opacity-0 group-hover/icon:opacity-100 cursor-pointer transition-opacity">
+                <Plus className="w-5 h-5" />
                 <input 
                   type="file" 
                   className="hidden" 
@@ -106,56 +106,53 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
                 />
               </label>
             </div>
-            <input 
-              type="text" 
-              value={link.title}
-              onChange={(e) => onUpdate(link.id, { title: e.target.value })}
-              className="flex-1 bg-transparent font-bold text-zinc-900 dark:text-white outline-none"
-              placeholder="Link Title"
-            />
-            <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+               <input 
+                 type="text" 
+                 value={link.title}
+                 onChange={(e) => onUpdate(link.id, { title: e.target.value })}
+                 className="w-full bg-transparent font-black text-xl text-zinc-900 dark:text-white outline-none tracking-tight"
+                 placeholder="Link Title"
+               />
+               <input 
+                 type="text" 
+                 value={link.url}
+                 onChange={(e) => onUpdate(link.id, { url: e.target.value })}
+                 className="w-full bg-transparent text-[11px] font-bold uppercase tracking-wider text-zinc-500 outline-none mt-1"
+                 placeholder="https://example.com"
+               />
+            </div>
+            <div className="flex items-center gap-3">
               <button 
                 onClick={() => setShowSettings(!showSettings)}
-                className={`p-2 rounded-lg transition-colors ${showSettings ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600'}`}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${showSettings ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-950' : 'bg-white dark:bg-zinc-800 text-zinc-400 hover:text-zinc-600 shadow-sm'}`}
               >
-                <Settings className="w-4 h-4" />
+                <Settings className="w-5 h-5" />
               </button>
-              {isAdmin && (
-                <button 
-                  onClick={() => onViewHistory('links', link.id)}
-                  className="p-2 rounded-lg text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                  title="View History"
-                >
-                  <HistoryIcon className="w-4 h-4" />
-                </button>
-              )}
               <button 
                 onClick={() => onUpdate(link.id, { active: !link.active })}
-                className={`transition-colors ${link.active ? 'text-lime-500' : 'text-zinc-400'}`}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${link.active ? 'bg-lime-400 text-zinc-950 shadow-lg shadow-lime-400/20' : 'bg-white dark:bg-zinc-800 text-zinc-400 shadow-sm'}`}
               >
                 {link.active ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
               </button>
             </div>
           </div>
-          <input 
-            type="text" 
-            value={link.url}
-            onChange={(e) => onUpdate(link.id, { url: e.target.value })}
-            className="w-full bg-transparent text-sm text-zinc-500 outline-none"
-            placeholder="https://example.com"
-          />
         </div>
 
         <button 
           onClick={() => onDelete(link.id)}
-          className="text-zinc-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+          className="w-10 h-10 rounded-xl flex items-center justify-center bg-white dark:bg-zinc-800 text-zinc-400 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 shadow-sm"
         >
           <Trash2 className="w-5 h-5" />
         </button>
       </div>
 
       {showSettings && (
-        <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="pt-6 border-t border-zinc-200 dark:border-zinc-800 grid grid-cols-1 md:grid-cols-2 gap-8"
+        >
           {/* Link Type */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Link Type</label>
@@ -212,7 +209,7 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );
@@ -553,28 +550,11 @@ const Dashboard: React.FC = () => {
 
     setIsUploading(true);
     const folder = type === 'profile' ? 'profiles' : type === 'cover' ? 'covers' : type === 'background' ? 'backgrounds' : 'link-icons';
-    const timestamp = Date.now();
-    const storagePath = `${folder}/${user.uid}/${timestamp}_${file.name}`;
     
-    console.log(`Starting server-side upload proxy to: ${storagePath}`);
-
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('path', storagePath);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      const { url } = await response.json();
-      console.log('Upload successful via proxy, URL:', url);
+      console.log(`Uploading ${type}...`);
+      const url = await uploadImage(file, user.uid, folder);
+      console.log('Upload successful, URL:', url);
       
       if (type === 'profile') {
         await handleUpdateProfile({ photoURL: url });
@@ -592,6 +572,13 @@ const Dashboard: React.FC = () => {
     } finally {
       setIsUploading(false);
       e.target.value = '';
+    }
+  };
+
+  const handleCoverUrlUpdate = () => {
+    const url = window.prompt('Enter cover image URL:');
+    if (url && url.startsWith('http')) {
+      handleUpdateProfile({ coverImage: url });
     }
   };
 
