@@ -23,21 +23,33 @@ import { Helmet } from 'react-helmet-async';
 import { format } from 'date-fns';
 
 const SocialIcon = ({ platform, username, className }: { platform: string; username: string; className?: string }) => {
+  const brandKey = platform.toLowerCase() as keyof typeof BrandIcons;
+  const brandIcon = BrandIcons[brandKey];
+  
   const getBrandInfo = () => {
-    switch (platform.toLowerCase()) {
-      case 'instagram': return { icon: <BrandIcons.instagram className="w-full h-full" />, color: '#E1306C' };
-      case 'twitter': return { icon: <BrandIcons.x className="w-full h-full" />, color: '#1DA1F2' };
-      case 'x': return { icon: <BrandIcons.x className="w-full h-full" />, color: '#000000' };
-      case 'facebook': return { icon: <BrandIcons.facebook className="w-full h-full" />, color: '#4267B2' };
-      case 'youtube': return { icon: <BrandIcons.youtube className="w-full h-full" />, color: '#FF0000' };
-      case 'github': return { icon: <BrandIcons.github className="w-full h-full" />, color: '#181717' };
-      case 'linkedin': return { icon: <BrandIcons.linkedin className="w-full h-full" />, color: '#0077B5' };
-      case 'tiktok': return { icon: <BrandIcons.tiktok className="w-full h-full" />, color: '#000000' };
-      case 'whatsapp': return { icon: <BrandIcons.whatsapp className="w-full h-full" />, color: '#25D366' };
-      case 'reddit': return { icon: <BrandIcons.reddit className="w-full h-full" />, color: '#FF4500' };
-      case 'spotify': return { icon: <BrandIcons.spotify className="w-full h-full" />, color: '#1DB954' };
-      default: return { icon: <Globe className="w-full h-full" />, color: '#6366f1' };
+    if (brandIcon) {
+       // Define colors for common brands
+       const brandColors: Record<string, string> = {
+         instagram: '#E1306C',
+         twitter: '#1DA1F2',
+         facebook: '#4267B2',
+         youtube: '#FF0000',
+         linkedin: '#0077B5',
+         github: '#181717',
+         tiktok: '#000000',
+         whatsapp: '#25D366',
+         spotify: '#1DB954',
+         twitch: '#9146FF',
+         discord: '#5865F2',
+         snapchat: '#FFFC00',
+         reddit: '#FF4500'
+       };
+       return { 
+         icon: React.createElement(brandIcon, { className: "w-full h-full" }), 
+         color: brandColors[platform.toLowerCase()] || '#A3E635' 
+       };
     }
+    return { icon: <Globe className="w-full h-full" />, color: '#6366f1' };
   };
 
   const { icon, color } = getBrandInfo();
@@ -87,13 +99,19 @@ const PublicProfile: React.FC = () => {
   const [showBottomBar, setShowBottomBar] = useState(true);
 
   const handleSaveContact = () => {
+    // Priority: contactEmail > email, phone
+    const email = profile?.contactEmail || profile?.email || '';
+    const phone = profile?.phone || '';
+    const displayName = profile?.displayName || profile?.username || '';
+    
     const vcard = `BEGIN:VCARD
 VERSION:3.0
-FN:${profile?.displayName || profile?.username}
-N:${profile?.displayName || profile?.username};;;;
-EMAIL;TYPE=INTERNET;TYPE=WORK:${profile?.contactEmail || profile?.email}
+FN:${displayName}
+N:${displayName};;;;
+TEL;TYPE=CELL:${phone}
+EMAIL;TYPE=INTERNET;TYPE=WORK:${email}
 NOTE:${profile?.bio || ''}
-URL:${window.location.host}/${profile?.username}
+URL:${window.location.protocol}//${window.location.host}/${profile?.username}
 END:VCARD`;
     
     const blob = new Blob([vcard], { type: 'text/vcard' });

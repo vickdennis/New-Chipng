@@ -505,17 +505,20 @@ const Dashboard: React.FC = () => {
         data.username = cleanUsername;
       }
 
-      // Ensure we don't accidentally remove required fields if they are missing in the local state
-      // but required by security rules. We fetch the current doc to be sure.
+      // Merge with current data
       const userRef = doc(db, 'users', user.uid);
       const currentDoc = await getDoc(userRef);
       const currentData = (currentDoc.exists() ? currentDoc.data() : {}) as UserType;
-
-      // Merge with default values if missing (for legacy users)
       const updatePayload: any = { ...data };
+      
+      // Ensure we don't accidentally remove required fields
       if (!currentData.backgroundType) updatePayload.backgroundType = 'solid';
       if (!currentData.theme) updatePayload.theme = 'minimal';
       if (!currentData.buttonStyle) updatePayload.buttonStyle = 'rounded';
+      
+      // Sync form values if they are being updated
+      if (data.phone !== undefined) updatePayload.phone = data.phone;
+      if (data.contactEmail !== undefined) updatePayload.contactEmail = data.contactEmail;
 
       const success = await safeWrite('users', user.uid, updatePayload, 'update');
       if (success) {
@@ -546,8 +549,11 @@ const Dashboard: React.FC = () => {
 
     setIsUploading(true);
     const folder = type === 'profile' ? 'profiles' : type === 'cover' ? 'covers' : type === 'background' ? 'backgrounds' : 'link-icons';
+    
+    // Sanitize filename to avoid "string did not match expected pattern" if there are weird characters
+    const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const timestamp = Date.now();
-    const storagePath = `${folder}/${user.uid}/${timestamp}_${file.name}`;
+    const storagePath = `${folder}/${user.uid}/${timestamp}_${safeFileName}`;
     
     console.log(`Starting server-side upload proxy to: ${storagePath}`);
 
@@ -558,6 +564,9 @@ const Dashboard: React.FC = () => {
 
       const response = await fetch('/api/upload', {
         method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+        },
         body: formData
       });
 
@@ -1136,16 +1145,42 @@ const Dashboard: React.FC = () => {
                   </div>
 
                   <div className="py-4 border-b border-[#F3F4F6]">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[15px] font-medium">Email Contact Form</span>
+                    <div className="flex items-center justify-between mb-2">
+                       <div className="flex items-center gap-2">
+                         <span className="text-[15px] font-medium">Phone Number</span>
+                         <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">(vCard support)</span>
+                       </div>
+                       <button 
+                         onClick={() => {
+                           const phone = window.prompt("Enter phone number", profile?.phone || "");
+                           if (phone !== null) handleUpdateProfile({ phone });
+                         }}
+                         className="text-[#A3E635] font-bold text-[13px]"
+                       >
+                         {profile?.phone ? 'Edit' : '+5% Speed'}
+                       </button>
+                    </div>
+                    <p className="text-[#6B7280] text-[14px] truncate">
+                      {profile?.phone || 'Add phone for "Save Contact" button'}
+                    </p>
+                  </div>
+
+                  <div className="py-4 border-b border-[#F3F4F6]">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[15px] font-medium">Public Email</span>
                       <button 
-                        onClick={() => handleUpdateProfile({ emailContactEnabled: !profile?.emailContactEnabled })}
-                        className={`w-12 h-6 rounded-full relative transition-colors ${profile?.emailContactEnabled ? 'bg-[#A3E635]' : 'bg-[#E5E7EB]'}`}
+                         onClick={() => {
+                           const email = window.prompt("Enter public email", profile?.contactEmail || "");
+                           if (email !== null) handleUpdateProfile({ contactEmail: email });
+                         }}
+                         className="text-[#A3E635] font-bold text-[13px]"
                       >
-                        <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-all ${profile?.emailContactEnabled ? 'right-0.5' : 'left-0.5'}`} />
+                        {profile?.contactEmail ? 'Edit' : '+5% Influence'}
                       </button>
                     </div>
-                    <p className="text-[#6B7280] text-[11px] leading-snug">Visitors can share their email with you through a contact form on your profile.</p>
+                    <p className="text-[#6B7280] text-[14px] truncate">
+                      {profile?.contactEmail || 'Add email for your profile'}
+                    </p>
                   </div>
                 </div>
 
@@ -1212,17 +1247,24 @@ const Dashboard: React.FC = () => {
 
                           return (
                             <div key={link.id} className="flex items-center gap-4 p-4 bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-[2rem] group hover:scale-[1.01] transition-all">
-                              <div className="w-16 h-16 rounded-2xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-800 relative group/icon shrink-0">
-                                 {link.icon ? (
-                                   <img src={link.icon} alt="" className="w-full h-full object-cover" />
-                                 ) : (
-                                   <LinkIcon className="w-6 h-6 text-zinc-300" />
-                                 )}
+                                 <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
+                                    {link.icon ? (
+                                      <img src={link.icon} alt="" className="w-full h-full object-cover" />
+                                    ) : (
+                                       (() => {
+                                          const domain = link.url.includes('http') ? new URL(link.url).hostname : '';
+                                          const platform = Object.values(PLATFORMS).flat().find(p => domain.includes(p.id));
+                                          if (platform) {
+                                            return <platform.icon className="w-6 h-6" style={{ color: platform.color }} />;
+                                          }
+                                          return <LinkIcon className="w-6 h-6 text-zinc-300" />;
+                                       })()
+                                    )}
+                                 </div>
                                  <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/icon:opacity-100 cursor-pointer transition-opacity">
-                                   <Plus className="w-4 h-4 text-white" />
-                                   <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', link.id)} accept="image/*" />
+                                    <Plus className="w-4 h-4 text-white" />
+                                    <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', link.id)} accept="image/*" />
                                  </label>
-                              </div>
                               <div className="flex-1 min-w-0">
                                  <input 
                                    className="w-full bg-transparent border-none p-0 font-bold text-base dark:text-white outline-none" 
@@ -1587,16 +1629,38 @@ const Dashboard: React.FC = () => {
 
                     {/* Location Management */}
                     <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center">
-                          <MapPin className="w-5 h-5 text-amber-500" />
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center">
+                            <MapPin className="w-5 h-5 text-amber-500" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-bold text-sm dark:text-white">Find Us</h4>
+                              <span className="text-[10px] bg-lime-400 text-zinc-950 px-2 py-0.5 rounded-full font-black uppercase tracking-wider">₦10,000 PRO</span>
+                            </div>
+                            <p className="text-xs text-zinc-500">Show your office or store on a map.</p>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-bold text-sm dark:text-white">Business Location</h4>
-                          <p className="text-xs text-zinc-500">Show your office or store on a map.</p>
-                        </div>
+                        <button 
+                          onClick={() => {
+                            if (!checkFeatureAccess('pro', 'Find Us (Maps)')) return;
+                            handleUpdateProfile({ mapEnabled: !profile?.mapEnabled });
+                          }}
+                          className={`w-12 h-6 rounded-full p-1 transition-colors ${profile?.mapEnabled ? 'bg-lime-400' : 'bg-zinc-200 dark:bg-zinc-700'}`}
+                        >
+                          <div className={`w-4 h-4 bg-white rounded-full transition-transform ${profile?.mapEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
+                        </button>
                       </div>
-                      <div className="space-y-3">
+                      
+                      {(!hasAccess('pro')) && (
+                        <div className="p-4 bg-lime-400/5 rounded-2xl border border-lime-400/20">
+                          <p className="text-xs text-zinc-600 dark:text-zinc-400 font-medium">This is a premium feature available for <span className="font-black text-zinc-900 dark:text-white">₦10,000</span>. Please upgrade to unlock.</p>
+                          <button onClick={() => setShowUpgradeModal(true)} className="mt-2 text-xs font-black text-lime-600 hover:underline">Upgrade Now</button>
+                        </div>
+                      )}
+
+                      <div className={`space-y-3 ${!hasAccess('pro') ? 'opacity-50 pointer-events-none' : ''}`}>
                         <input 
                           type="text"
                           value={profile?.address || ''}
@@ -2220,29 +2284,39 @@ const Dashboard: React.FC = () => {
                 ))}
               </div>
 
-              {/* Platforms Grid */}
-              <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-1 gap-2 pr-1">
+              <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-2 gap-3 pr-1 pb-4">
                 {filteredPlatforms.length > 0 ? (
-                  filteredPlatforms.map(platform => (
-                    <button
-                      key={platform.id}
-                      onClick={() => handleSelectPlatform(platform.id, platform.urlPrefix)}
-                      className="w-full flex items-center justify-between p-4 bg-white border border-[#F3F4F6] rounded-2xl group hover:border-[#A3E635] hover:bg-lime-50 transition-all text-left"
-                    >
-                      <div className="flex items-center gap-4">
+                  filteredPlatforms.map(platform => {
+                    const isAdded = profile?.socialLinks && !!profile.socialLinks[platform.id as keyof typeof profile.socialLinks];
+                    return (
+                      <button
+                        key={platform.id}
+                        onClick={() => handleSelectPlatform(platform.id, platform.urlPrefix)}
+                        className={cn(
+                          "flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] border transition-all hover:scale-105 active:scale-95 group relative",
+                          isAdded 
+                            ? "bg-lime-50 border-lime-200" 
+                            : "bg-white border-zinc-100 hover:border-lime-200"
+                        )}
+                      >
                         <div 
-                          className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm"
+                          className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-lime-900/5 group-hover:rotate-6 transition-transform"
                           style={{ backgroundColor: platform.color }}
                         >
-                          <platform.icon className="w-6 h-6" />
+                          <platform.icon className="w-8 h-8" />
                         </div>
-                        <span className="font-bold text-[15px]">{platform.label}</span>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-zinc-300 group-hover:text-[#A3E635] transition-colors" />
-                    </button>
-                  ))
+                        <span className="font-black text-xs uppercase tracking-tight text-zinc-900">{platform.label}</span>
+                        
+                        {isAdded && (
+                          <div className="absolute top-3 right-3 w-6 h-6 bg-lime-400 rounded-full flex items-center justify-center">
+                            <Check className="w-3 h-3 text-zinc-950 font-black" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })
                 ) : (
-                  <div className="py-12 text-center">
+                  <div className="col-span-2 py-12 text-center">
                     <p className="text-zinc-400 font-medium italic">No platforms found for "{searchQuery}"</p>
                   </div>
                 )}

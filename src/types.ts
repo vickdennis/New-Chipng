@@ -52,6 +52,7 @@ export interface User {
   address?: string;
   contactEmail?: string;
   emailContactEnabled?: boolean;
+  mapEnabled?: boolean;
   profileLayout?: LayoutType;
   profileFont?: FontType;
   textColor?: string;
