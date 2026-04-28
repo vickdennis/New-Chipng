@@ -282,6 +282,7 @@ const Dashboard: React.FC = () => {
     const unsubLinks = onSnapshot(q, (snapshot) => {
       const sortedLinks = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() } as Link))
+        .filter(link => !link.isDeleted)
         .sort((a, b) => (a.position || 0) - (b.position || 0));
       setLinks(sortedLinks);
       setLoading(false);
@@ -313,14 +314,14 @@ const Dashboard: React.FC = () => {
   const handleAddLink = async () => {
     if (!user) return;
     try {
-      await addDoc(collection(db, 'links'), {
+      await safeWrite('links', null, {
         userId: user.uid,
         title: 'New Link',
         url: 'https://',
         active: true,
         position: links.length,
         clicks: 0
-      });
+      }, 'create');
       toast.success('Link added');
     } catch (error) {
       console.error('Error adding link:', error);
@@ -330,7 +331,7 @@ const Dashboard: React.FC = () => {
 
   const handleUpdateLink = async (id: string, data: Partial<Link>) => {
     try {
-      await updateDoc(doc(db, 'links', id), data);
+      await safeWrite('links', id, data, 'update');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `links/${id}`);
     }
@@ -338,7 +339,7 @@ const Dashboard: React.FC = () => {
 
   const handleDeleteLink = async (id: string) => {
     try {
-      await deleteDoc(doc(db, 'links', id));
+      await safeWrite('links', id, null, 'delete');
       toast.success('Link deleted');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `links/${id}`);

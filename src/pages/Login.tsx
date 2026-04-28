@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db, getUserByUsername } from '../firebase';
+import { auth, db, getUserByUsername, handleFirestoreError, OperationType } from '../firebase';
+import { safeWrite } from '../services/backupService';
 import { toast } from 'sonner';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 import Logo from '../components/Logo';
@@ -51,22 +52,28 @@ const Login: React.FC = () => {
         }
 
         // Create user doc with all profile data merged
-        await setDoc(doc(db, 'users', user.uid), {
-          uid: user.uid,
-          email: user.email,
-          username: finalUsername,
-          displayName: user.displayName || finalUsername,
-          photoURL: user.photoURL || null,
-          bio: 'Welcome to my Chip NG profile!',
-          role: 'user',
-          createdAt: serverTimestamp(),
-          status: 'active',
-          theme: 'minimal',
-          buttonStyle: 'rounded',
-          backgroundType: 'solid',
-          backgroundColor: '#ffffff',
-          totalClicks: 0
-        });
+        try {
+          await safeWrite('users', user.uid, {
+            uid: user.uid,
+            email: user.email,
+            username: finalUsername,
+            displayName: user.displayName || finalUsername,
+            photoURL: user.photoURL || null,
+            bio: 'Welcome to my Chip NG profile!',
+            role: 'user',
+            createdAt: new Date().toISOString(),
+            status: 'active',
+            theme: 'minimal',
+            buttonStyle: 'rounded',
+            backgroundType: 'solid',
+            backgroundColor: '#ffffff',
+            totalClicks: 0,
+            plan: 'basic',
+            subscriptionStatus: 'active'
+          }, 'create');
+        } catch (error) {
+          handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}`);
+        }
       }
 
       toast.success('Welcome back!');

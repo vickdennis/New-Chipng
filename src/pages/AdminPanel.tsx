@@ -93,7 +93,9 @@ const AdminPanel: React.FC = () => {
 
     const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setUsers(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User)));
+      const allUsers = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User));
+      const activeUsers = allUsers.filter(u => !u.isDeleted);
+      setUsers(activeUsers);
     }, (error) => {
       console.error('Admin users listener error:', error);
       toast.error('Failed to load users');
@@ -140,18 +142,12 @@ const AdminPanel: React.FC = () => {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!window.confirm('Are you sure you want to delete this user? This action is irreversible.')) return;
+    if (!window.confirm('Are you sure you want to delete this user? This will be a soft-delete.')) return;
     try {
-      // 1. Delete links
-      const linksSnapshot = await getDocs(query(collection(db, 'links'), where('userId', '==', userId)));
-      const batch = writeBatch(db);
-      linksSnapshot.docs.forEach(doc => batch.delete(doc.ref));
-      await batch.commit();
-
-      // 2. Delete user
-      await deleteDoc(doc(db, 'users', userId));
+      // 1. Soft delete user (using safeWrite which does this)
+      await safeWrite('users', userId, null, 'delete');
       
-      toast.success('User and all associated data deleted');
+      toast.success('User soft-deleted');
     } catch (error) {
       console.error('Error deleting user:', error);
       toast.error('Failed to delete user');
@@ -253,9 +249,6 @@ const AdminPanel: React.FC = () => {
 
   const handleSaveUser = async (userId: string, data: Partial<User>) => {
     try {
-      // Create backup before batch operation
-      await createBackup('users', userId, 'update');
-
       // Sanitize data for updateDoc - remove fields that shouldn't be in the document body
       const { uid, id, ...updateData } = data as any;
       
@@ -264,11 +257,12 @@ const AdminPanel: React.FC = () => {
         updateData.socialLinks = {};
       }
 
-      await updateDoc(doc(db, 'users', userId), updateData);
+      await safeWrite('users', userId, updateData, 'update');
       
       // Save links if any were modified
       const batch = writeBatch(db);
 
+      // สำหรับ links เราอาจจะยังไม่ได้ใช้ safeWrite ใน batch แต่ AdminPanel.tsx มี history ของ data ดั้งเดิมอยู่แล้ว
       // Delete links that were removed
       deletedLinkIds.forEach(linkId => {
         batch.delete(doc(db, 'links', linkId));
@@ -327,7 +321,7 @@ const AdminPanel: React.FC = () => {
         socialLinks: userForm.socialLinks || {}
       };
 
-      await addDoc(collection(db, 'users'), newUser);
+      await safeWrite('users', null, newUser, 'create');
       toast.success('User added successfully');
       setIsAddingUser(false);
       setUserForm({

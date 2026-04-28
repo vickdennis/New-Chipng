@@ -60,6 +60,9 @@ export interface User {
   };
   appointmentsEnabled?: boolean;
   appointments?: Appointment[];
+  isDeleted?: boolean;
+  deletedAt?: string;
+  updatedAt?: string;
   socialLinks?: {
     instagram?: string;
     twitter?: string;
@@ -107,6 +110,9 @@ export interface Link {
   scheduledStart?: string;
   scheduledEnd?: string;
   type?: 'standard' | 'youtube' | 'tiktok';
+  isDeleted?: boolean;
+  deletedAt?: string;
+  updatedAt?: string;
 }
 
 export interface ThemeConfig {

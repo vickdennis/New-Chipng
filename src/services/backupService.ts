@@ -27,18 +27,19 @@ export interface BackupData {
 /**
  * Creates a backup snapshot of a document before a mutation
  */
-export const createBackup = async (collectionName: string, documentId: string, action: 'create' | 'update' | 'delete' | 'rollback') => {
+export const createBackup = async (collectionName: string, documentId: string | null, action: 'create' | 'update' | 'delete' | 'rollback') => {
   try {
-    const docRef = doc(db, collectionName, documentId);
-    const docSnap = await getDoc(docRef);
+    let existingData = null;
     
-    // For update and delete, we need existing data
-    // For create, there is no existing data, so we might just log the attempt or the post-create state
-    const existingData = docSnap.exists() ? docSnap.data() : null;
+    if (documentId && action !== 'create') {
+      const docRef = doc(db, collectionName, documentId);
+      const docSnap = await getDoc(docRef);
+      existingData = docSnap.exists() ? docSnap.data() : null;
+    }
 
     const backupRef = doc(collection(db, `${collectionName}_backup`));
     const backupData: BackupData = {
-      originalId: documentId,
+      originalId: documentId || 'new-document',
       collectionName,
       data: existingData || {},
       action,
@@ -57,22 +58,43 @@ export const createBackup = async (collectionName: string, documentId: string, a
 /**
  * Safe write wrapper that performs a backup before writing
  */
-export const safeWrite = async (collectionName: string, documentId: string, data: any, action: 'update' | 'create' | 'delete') => {
+export const safeWrite = async (collectionName: string, documentId: string | null, data: any, action: 'update' | 'create' | 'delete'): Promise<string | boolean> => {
   try {
-    // 1. Create Backup
-    await createBackup(collectionName, documentId, action);
+    let finalDocId = documentId;
 
-    // 2. Perform Write
-    const docRef = doc(db, collectionName, documentId);
+    // 1. For non-create actions, ensure we have an ID
+    if (action !== 'create' && !finalDocId) {
+      throw new Error(`ID required for ${action} operation on ${collectionName}`);
+    }
+
+    // 2. For create actions, generate an ID if not provided
+    if (action === 'create' && !finalDocId) {
+      const newDocRef = doc(collection(db, collectionName));
+      finalDocId = newDocRef.id;
+    }
+
+    // 3. Create Backup
+    await createBackup(collectionName, finalDocId, action);
+
+    // 4. Perform Write
+    const docRef = doc(db, collectionName, finalDocId!);
     
     if (action === 'delete') {
       // Soft Delete
-      await updateDoc(docRef, { isDeleted: true, deletedAt: serverTimestamp() });
+      await updateDoc(docRef, { 
+        isDeleted: true, 
+        deletedAt: serverTimestamp(),
+        updatedAt: serverTimestamp() 
+      });
     } else {
-      await setDoc(docRef, data, { merge: true });
+      await setDoc(docRef, {
+        ...data,
+        isDeleted: false,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
     }
 
-    return true;
+    return action === 'create' ? finalDocId! : true;
   } catch (error) {
     console.error(`Safe write failed for ${collectionName}/${documentId}:`, error);
     throw error;
