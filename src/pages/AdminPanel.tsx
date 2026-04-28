@@ -2,16 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { 
   collection, query, orderBy, onSnapshot, 
-  doc, updateDoc, deleteDoc, getDocs, getDoc, where, writeBatch, limit, addDoc, serverTimestamp
+  doc, updateDoc, deleteDoc, getDocs, getDoc, where, writeBatch, limit, addDoc
 } from 'firebase/firestore';
 import { 
   Users, Shield, Trash2, Ban, CheckCircle, 
-  Search, ArrowLeft, BarChart2, TrendingUp, ExternalLink, Eye, X,
+  Search, ArrowLeft, BarChart2, TrendingUp, ExternalLink,
   DollarSign, Crown, BadgeCheck, FileText, ShoppingBag, Plus, Edit, Package, History, RotateCcw, Share2,
   Link as LinkIcon, Instagram, Twitter, Linkedin, Youtube, Facebook, MessageCircle, Music2, MessageSquare, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash, Github, Twitch, Ghost, Mail
 } from 'lucide-react';
 import Logo from '../components/Logo';
-import { BrandIcons } from '../components/icons/BrandIcons';
 import ThemeToggle from '../components/ThemeToggle';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
@@ -23,7 +22,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { rollbackToVersion, BackupData, safeWrite, createBackup } from '../services/backupService';
+import { rollbackDocument, BackupData, safeWrite, createBackup } from '../services/backupService';
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -34,7 +33,6 @@ const AdminPanel: React.FC = () => {
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'users' | 'revenue' | 'brand' | 'blog' | 'shop' | 'backups'>('users');
   const [backupCollection, setBackupCollection] = useState<'users' | 'blogs' | 'links'>('users');
-  const [selectedBackup, setSelectedBackup] = useState<BackupData | null>(null);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -142,21 +140,21 @@ const AdminPanel: React.FC = () => {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (!window.confirm('Are you sure you want to delete this user? This will soft-delete their account and associated data.')) return;
+    if (!window.confirm('Are you sure you want to delete this user? This action is irreversible.')) return;
     try {
-      // 1. Soft Delete links with backups
+      // 1. Delete links
       const linksSnapshot = await getDocs(query(collection(db, 'links'), where('userId', '==', userId)));
-      for (const linkDoc of linksSnapshot.docs) {
-        await safeWrite('links', linkDoc.id, null, 'delete');
-      }
+      const batch = writeBatch(db);
+      linksSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
 
-      // 2. Soft Delete user with backup
-      await safeWrite('users', userId, null, 'delete');
+      // 2. Delete user
+      await deleteDoc(doc(db, 'users', userId));
       
-      toast.success('User and all associated data soft-deleted with backups');
+      toast.success('User and all associated data deleted');
     } catch (error) {
       console.error('Error deleting user:', error);
-      toast.error('Failed to delete user safely');
+      toast.error('Failed to delete user');
     }
   };
 
@@ -167,15 +165,11 @@ const AdminPanel: React.FC = () => {
     }
   };
 
-  const handleRollback = async (collectionName: string, originalId: string, backupId: string) => {
-    if (!window.confirm(`Rollback this document to this specific version?`)) return;
-    try {
-      const success = await rollbackToVersion(collectionName, originalId, backupId);
-      if (success) {
-        toast.success('Rollback successful');
-      }
-    } catch (error) {
-      toast.error('Rollback failed');
+  const handleRollback = async (collectionName: string, originalId: string) => {
+    if (!window.confirm(`Rollback this document to this version?`)) return;
+    const success = await rollbackDocument(collectionName, originalId);
+    if (success) {
+      toast.success('Rollback successful');
     }
   };
 
@@ -185,31 +179,19 @@ const AdminPanel: React.FC = () => {
 
     setIsUploadingProductImage(true);
     const timestamp = Date.now();
-    const storagePath = `products/${user?.uid || 'admin'}/${timestamp}_${file.name}`;
+    // Include user UID in path for better security rule compatibility
+    const storageRef = ref(storage, `products/${user?.uid || 'admin'}/${timestamp}_${file.name}`);
 
     try {
-      console.log('Uploading product image via proxy...', storagePath);
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('path', storagePath);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      const { url } = await response.json();
-      console.log('Product image uploaded successfully via proxy:', url);
+      console.log('Uploading product image...', file.name);
+      const snapshot = await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(snapshot.ref);
+      console.log('Product image uploaded successfully:', url);
       setProductForm(prev => ({ ...prev, image: url }));
       toast.success('Product image uploaded');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Product image upload error:', error);
-      toast.error(`Failed to upload product image: ${error.message}`);
+      toast.error('Failed to upload product image. Please check your connection and permissions.');
     } finally {
       setIsUploadingProductImage(false);
     }
@@ -226,7 +208,7 @@ const AdminPanel: React.FC = () => {
     { id: 'threads', icon: MessageSquare, label: 'Threads' },
     { id: 'discord', icon: Disc, label: 'Discord' },
     { id: 'telegram', icon: Send, label: 'Telegram' },
-    { id: 'snapchat', icon: () => <BrandIcons.snapchat className="w-4 h-4" />, label: 'Snapchat' },
+    { id: 'snapchat', icon: Ghost, label: 'Snapchat' },
     { id: 'pinterest', icon: Pin, label: 'Pinterest' },
     { id: 'spotify', icon: Music, label: 'Spotify' },
     { id: 'appleMusic', icon: Apple, label: 'Apple Music' },
@@ -271,7 +253,10 @@ const AdminPanel: React.FC = () => {
 
   const handleSaveUser = async (userId: string, data: Partial<User>) => {
     try {
-      // Use safeWrite for user profile update - this handles backup automatically
+      // Create backup before batch operation
+      await createBackup('users', userId, 'update');
+
+      // Sanitize data for updateDoc - remove fields that shouldn't be in the document body
       const { uid, id, ...updateData } = data as any;
       
       // Ensure socialLinks is an object
@@ -279,40 +264,44 @@ const AdminPanel: React.FC = () => {
         updateData.socialLinks = {};
       }
 
-      const userSuccess = await safeWrite('users', userId, updateData, 'update');
-      if (!userSuccess) throw new Error('Failed to update user profile safely');
+      await updateDoc(doc(db, 'users', userId), updateData);
       
-      // Handle links with backups for each modification
-      // Delete links that were removed
-      for (const linkId of deletedLinkIds) {
-        await safeWrite('links', linkId, null, 'delete');
-      }
+      // Save links if any were modified
+      const batch = writeBatch(db);
 
-      for (const link of editingUserLinks) {
+      // Delete links that were removed
+      deletedLinkIds.forEach(linkId => {
+        batch.delete(doc(db, 'links', linkId));
+      });
+
+      editingUserLinks.forEach(link => {
         if (link.id.startsWith('new-')) {
+          const newLinkRef = doc(collection(db, 'links'));
           const { id: _, ...linkData } = link;
-          await safeWrite('links', null, {
+          batch.set(newLinkRef, {
             ...linkData,
             userId: userId
-          }, 'create');
+          });
         } else {
+          const linkRef = doc(db, 'links', link.id);
           const { id: _, ...linkData } = link;
-          await safeWrite('links', link.id, {
+          batch.update(linkRef, {
             title: linkData.title,
             url: linkData.url,
             active: linkData.active,
             position: linkData.position
-          }, 'update');
+          });
         }
-      }
+      });
+      await batch.commit();
 
-      toast.success('User and links updated safely with backups');
+      toast.success('User and links updated successfully');
       setEditingUser(null);
       setEditingUserLinks([]);
       setDeletedLinkIds([]);
     } catch (error) {
       console.error('Error updating user:', error);
-      toast.error('Failed to update user safely. Please check permissions.');
+      toast.error('Failed to update user. Please check permissions.');
     }
   };
 
@@ -915,7 +904,7 @@ const AdminPanel: React.FC = () => {
                           <div className="flex items-center gap-3">
                             <History className="w-4 h-4 text-zinc-400" />
                             <div className="font-bold dark:text-white">
-                              {backup.timestamp?.toDate ? backup.timestamp.toDate().toLocaleString() : new Date(backup.timestamp).toLocaleString()}
+                              {new Date(backup.timestamp).toLocaleString()}
                             </div>
                           </div>
                         </td>
@@ -933,25 +922,16 @@ const AdminPanel: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-8 py-6">
-                          <div className="text-sm text-zinc-500 truncate max-w-[150px]">{backup.performedBy}</div>
+                          <div className="text-sm text-zinc-500">{backup.performedBy}</div>
                         </td>
                         <td className="px-8 py-6">
-                          <div className="flex items-center gap-2">
-                            <button 
-                              onClick={() => setSelectedBackup(backup)}
-                              className="p-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
-                              title="View Details"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={() => handleRollback(backup.collectionName, backup.originalId, backup.id!)}
-                              className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-xl text-xs font-bold hover:bg-lime-400 hover:text-zinc-950 transition-all"
-                            >
-                              <RotateCcw className="w-3 h-3" />
-                              Restore
-                            </button>
-                          </div>
+                          <button 
+                            onClick={() => handleRollback(backup.collectionName, backup.originalId)}
+                            className="flex items-center gap-2 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-xl text-xs font-bold hover:bg-lime-400 hover:text-zinc-950 transition-all"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            Restore
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -1392,64 +1372,6 @@ const AdminPanel: React.FC = () => {
               >
                 Cancel
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Backup Details Modal */}
-      {selectedBackup && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-zinc-950/40 backdrop-blur-sm" onClick={() => setSelectedBackup(null)} />
-          <div className="relative w-full max-w-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] shadow-2xl p-8 max-h-[80vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h3 className="text-2xl font-bold dark:text-white">Backup Details</h3>
-                <p className="text-zinc-500 font-mono text-xs">{selectedBackup.id}</p>
-              </div>
-              <button onClick={() => setSelectedBackup(null)} className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
-                <X className="w-6 h-6 dark:text-white" />
-              </button>
-            </div>
-
-            <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl">
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">Action</p>
-                  <p className="font-bold dark:text-white uppercase tracking-wider">{selectedBackup.action}</p>
-                </div>
-                <div className="p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl">
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase mb-1">Collection</p>
-                  <p className="font-bold dark:text-white capitalize">{selectedBackup.collectionName}</p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-[10px] font-bold text-zinc-500 uppercase mb-2">Document Snapshot</p>
-                <div className="bg-zinc-50 dark:bg-zinc-900 p-6 rounded-2xl overflow-x-auto max-h-96">
-                  <pre className="text-xs font-mono text-zinc-600 dark:text-zinc-300">
-                    {JSON.stringify(selectedBackup.data, null, 2)}
-                  </pre>
-                </div>
-              </div>
-
-              <div className="flex gap-4">
-                <button 
-                  onClick={() => {
-                    handleRollback(selectedBackup.collectionName, selectedBackup.originalId, selectedBackup.id!);
-                    setSelectedBackup(null);
-                  }}
-                  className="flex-1 py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all flex items-center justify-center gap-2"
-                >
-                  <RotateCcw className="w-5 h-5" />
-                  Restore this version
-                </button>
-                <button 
-                  onClick={() => setSelectedBackup(null)}
-                  className="px-8 py-4 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-2xl font-bold hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all"
-                >
-                  Close
-                </button>
-              </div>
             </div>
           </div>
         </div>

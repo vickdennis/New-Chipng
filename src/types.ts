@@ -47,15 +47,12 @@ export interface User {
   isVerified?: boolean;
   plan: PlanType;
   subscriptionStatus: 'active' | 'inactive';
-  onboardingCompleted?: boolean;
   phone?: string;
   address?: string;
   contactEmail?: string;
-  emailContactEnabled?: boolean;
   profileLayout?: LayoutType;
   profileFont?: FontType;
   textColor?: string;
-  brandColor?: string;
   location?: {
     lat: number;
     lng: number;
@@ -110,22 +107,6 @@ export interface Link {
   scheduledStart?: string;
   scheduledEnd?: string;
   type?: 'standard' | 'youtube' | 'tiktok';
-}
-
-export interface Shout {
-  id: string;
-  userId: string;
-  content: string;
-  image?: string;
-  createdAt: string;
-}
-
-export interface Media {
-  id: string;
-  userId: string;
-  url: string;
-  type: 'image' | 'video';
-  createdAt: string;
 }
 
 export interface ThemeConfig {

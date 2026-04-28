@@ -9,141 +9,43 @@ import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
 import crypto from "crypto";
 import axios from "axios";
-import multer from "multer";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 
 dotenv.config();
 
-// Initialize Multer for memory storage
-const upload = multer({ 
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  }
-});
-
-// Initialize Firebase Admin configuration before other imports
+// Initialize Firebase Admin
 const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
-let firebaseConfig: any = null;
-if (fs.existsSync(configPath)) {
-  try {
-    firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    if (firebaseConfig?.projectId) {
-      // DO NOT set these, they cause axios to auto-auth with service account which lacks permissions
-      // process.env.GOOGLE_CLOUD_PROJECT = firebaseConfig.projectId;
-      // process.env.GCLOUD_PROJECT = firebaseConfig.projectId;
-    }
-  } catch (e) {}
-}
-
-// REST Firestore Helpers (Fallback for Admin SDK IAM issues)
-async function restFirestore(action: 'get' | 'patch' | 'post' | 'delete', collection: string, docId?: string, data?: any, queryPayload?: any) {
-  if (!firebaseConfig) return null;
-  const { projectId, firestoreDatabaseId, apiKey } = firebaseConfig;
-  const baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${firestoreDatabaseId}/documents`;
-  
-  const headers = {
-    'Content-Type': 'application/json'
-  };
-
-  try {
-    if (action === 'get') {
-      if (docId) {
-        const url = `${baseUrl}/${collection}/${docId}?key=${apiKey}`;
-        const res = await fetch(url, { headers });
-        if (!res.ok) {
-            const body = await res.json();
-            throw { response: { data: body }, message: `Request failed with status ${res.status}` };
-        }
-        return await res.json();
-      } else {
-        // Use runQuery as fallback for LIST
-        const url = `${baseUrl}:runQuery?key=${apiKey}`;
-        const queryPayload = { structuredQuery: { from: [{ collectionId: collection }] } };
-        const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(queryPayload) });
-        if (!res.ok) {
-            const body = await res.json();
-            throw { response: { data: body }, message: `Request failed with status ${res.status}` };
-        }
-        const results = await res.json();
-        return { documents: results.filter((r: any) => r.document).map((r: any) => r.document) };
-      }
-    }
-    
-    if (action === 'patch') {
-      const fields = Object.keys(data);
-      const updateMask = fields.map(f => `updateMask.fieldPaths=${f}`).join('&');
-      const url = `${baseUrl}/${collection}/${docId}?key=${apiKey}&${updateMask}`;
-      
-      const payload: any = { fields: {} };
-      for (const [key, val] of Object.entries(data)) {
-        if (typeof val === 'boolean') payload.fields[key] = { booleanValue: val };
-        else if (typeof val === 'number') payload.fields[key] = { doubleValue: val };
-        else if (val instanceof Date || (typeof val === 'string' && val.includes('T') && val.includes('Z'))) payload.fields[key] = { timestampValue: typeof val === 'string' ? val : val.toISOString() };
-        else if (typeof val === 'string') payload.fields[key] = { stringValue: val };
-        else if (Array.isArray(val)) payload.fields[key] = { arrayValue: { values: val.map(v => ({ stringValue: String(v) })) } };
-      }
-      // Add internal bypass
-      payload.fields['_is_internal'] = { booleanValue: true };
-      
-      const res = await axios.patch(url, payload, { headers });
-      return res.data;
-    }
-
-    if (action === 'post') {
-        const url = `${baseUrl}:runQuery?key=${apiKey}`;
-        const res = await axios.post(url, queryPayload, { headers });
-        return res.data;
-    }
-  } catch (error: any) {
-    console.error(`REST Firestore ${action} failed:`, error.response?.data || error.message);
-    throw error;
-  }
-}
-
-// Convert REST Document to JS Object
-function fromRest(doc: any) {
-  if (!doc || !doc.fields) return null;
-  const data: any = { id: doc.name?.split('/').pop() };
-  for (const [key, val] of Object.entries(doc.fields)) {
-    const v: any = val;
-    data[key] = v.stringValue ?? v.booleanValue ?? v.doubleValue ?? v.integerValue ?? v.timestampValue ?? v.arrayValue?.values?.map((iv: any) => iv.stringValue);
-  }
-  return data;
-}
-
-// Firebase Admin initialized with discovery
 let db: any;
 
 try {
-  // Initialize Admin
-  /*
-  if (!admin.apps?.length) {
-    admin.initializeApp({
-      projectId: firebaseConfig?.projectId
-    });
-    console.log("✅ Firebase Admin initialized with project:", firebaseConfig?.projectId);
-  }
-  */
+  const firebaseConfig = fs.existsSync(configPath) 
+    ? JSON.parse(fs.readFileSync(configPath, 'utf8'))
+    : null;
 
-  const app = admin.app();
-  const databaseId = firebaseConfig?.firestoreDatabaseId;
-  
-  // Explicitly target the database instance
-  if (databaseId) {
-    console.log(`🎯 Targeting named Firestore database via env and param: ${databaseId}`);
-    process.env.FIRESTORE_DATABASE = databaseId;
-    db = getFirestore(app, databaseId);
+  if (firebaseConfig && firebaseConfig.projectId) {
+    // Explicitly use the projectId from config
+    const adminApp = !admin.apps?.length 
+      ? admin.initializeApp({ projectId: firebaseConfig.projectId }) 
+      : admin.app();
+    
+    const databaseId = firebaseConfig.firestoreDatabaseId || undefined;
+    db = getFirestore(adminApp, databaseId);
+    console.log(`✅ Firebase Admin initialized with projectId: ${firebaseConfig.projectId}. Database: ${databaseId || '(default)'}`);
   } else {
-    db = getFirestore(app);
+    // Fallback to default credentials if no config exists
+    const adminApp = !admin.apps?.length ? admin.initializeApp() : admin.app();
+    db = getFirestore(adminApp);
+    console.log(`✅ Firebase Admin initialized with default credentials.`);
   }
 } catch (error: any) {
   console.error("❌ Firebase Admin initialization failed:", error.message);
-  // Fallback
-  if (!db) {
-    try {
-      db = getFirestore();
-    } catch (e) {}
+  // Last resort fallback
+  try {
+    if (!admin.apps?.length) {
+      admin.initializeApp();
+    }
+    db = getFirestore();
+  } catch (finalError: any) {
+    console.error("❌ Fatal Firebase initialization failure:", finalError.message);
   }
 }
 
@@ -155,40 +57,38 @@ if (!PAYSTACK_SECRET_KEY) {
 // Helper for backend safe write with backups
 async function backendSafeWrite(collectionName: string, documentId: string, data: any, action: 'update' | 'create' | 'delete', performedBy: string = 'system') {
   try {
+    const docRef = db.collection(collectionName).doc(documentId);
     const now = new Date().toISOString();
     
     // Backup before modification (for update and delete)
     if (action === 'update' || action === 'delete') {
-      try {
-        const docSnap = await restFirestore('get', collectionName, documentId);
-        if (docSnap) {
-          await restFirestore('patch', `${collectionName}_backup`, `backup_${Date.now()}`, {
-            originalId: documentId,
-            collectionName,
-            data: fromRest(docSnap),
-            action,
-            timestamp: now,
-            performedBy
-          });
-        }
-      } catch (e) {
-        console.warn(`Backup failed for ${collectionName}/${documentId}, continuing write...`);
+      const docSnap = await docRef.get();
+      if (docSnap.exists) {
+        await db.collection(`${collectionName}_backup`).add({
+          originalId: documentId,
+          collectionName,
+          data: docSnap.data(),
+          action,
+          timestamp: now,
+          performedBy
+        });
       }
     }
 
     if (action === 'delete') {
-      await restFirestore('patch', collectionName, documentId, {
+      // Soft Delete
+      await docRef.update({
         isDeleted: true,
         deletedAt: now,
         updatedAt: now
       });
     } else if (action === 'update') {
-      await restFirestore('patch', collectionName, documentId, {
+      await docRef.update({
         ...data,
         updatedAt: now
       });
     } else {
-      await restFirestore('patch', collectionName, documentId, {
+      await docRef.set({
         ...data,
         createdAt: now,
         updatedAt: now
@@ -198,79 +98,6 @@ async function backendSafeWrite(collectionName: string, documentId: string, data
   } catch (error) {
     console.error(`Backend safeWrite failed for ${collectionName}/${documentId}:`, error);
     return false;
-  }
-}
-// Rollback function
-async function rollbackDocument(collectionName: string, documentId: string, backupId?: string) {
-  try {
-    const backupCollection = `${collectionName}_backup`;
-    let backupData;
-    let originalBackupId = backupId;
-
-    if (backupId) {
-      const snap = await restFirestore('get', backupCollection, backupId);
-      backupData = fromRest(snap);
-    } else {
-      const queryPayload = {
-        structuredQuery: {
-          from: [{ collectionId: backupCollection }],
-          where: {
-            fieldFilter: {
-              field: { fieldPath: 'originalId' },
-              op: 'EQUAL',
-              value: { stringValue: documentId }
-            }
-          },
-          orderBy: [{
-            field: { fieldPath: 'timestamp' },
-            direction: 'DESCENDING'
-          }],
-          limit: 1
-        }
-      };
-      const results = await restFirestore('post', backupCollection, undefined, undefined, queryPayload);
-      if (results && results[0]?.document) {
-        backupData = fromRest(results[0].document);
-        originalBackupId = backupData.id;
-      }
-    }
-
-    if (!backupData) {
-      throw new Error(`No backup found for ${collectionName}/${documentId}`);
-    }
-
-    const now = new Date().toISOString();
-
-    // Create a special rollback backup before restoring
-    try {
-      const currentSnap = await restFirestore('get', collectionName, documentId);
-      if (currentSnap) {
-        await restFirestore('patch', backupCollection, `rollback_${Date.now()}`, {
-          originalId: documentId,
-          collectionName,
-          data: fromRest(currentSnap),
-          action: 'rollback',
-          timestamp: now,
-          performedBy: 'system-rollback'
-        });
-      }
-    } catch (e) {
-      console.warn("Pre-rollback backup failed, continuing...");
-    }
-
-    // Restore the data
-    await restFirestore('patch', collectionName, documentId, {
-      ...backupData.data,
-      isDeleted: false,
-      updatedAt: now,
-      restoredFrom: originalBackupId,
-      restoredAt: now
-    });
-
-    return true;
-  } catch (error: any) {
-    console.error(`Rollback failed for ${collectionName}/${documentId}:`, error.message);
-    throw error;
   }
 }
 
@@ -330,12 +157,8 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
   app.get("/sitemap.xml", async (req, res) => {
     try {
       const host = `${req.protocol}://${req.get('host')}`;
-      
-      const queryPayloadBlogs = { structuredQuery: { from: [{ collectionId: 'blogs' }], where: { fieldFilter: { field: { fieldPath: 'published' }, op: 'EQUAL', value: { booleanValue: true } } } } };
-      const blogsRes = await restFirestore('post', 'blogs', undefined, undefined, queryPayloadBlogs);
-      
-      const queryPayloadUsers = { structuredQuery: { from: [{ collectionId: 'users' }] } };
-      const usersRes = await restFirestore('post', 'users', undefined, undefined, queryPayloadUsers);
+      const blogsSnapshot = await db.collection('blogs').where('published', '==', true).get();
+      const usersSnapshot = await db.collection('users').get();
 
       let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -355,30 +178,26 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     <priority>0.5</priority>
   </url>`;
 
-      (blogsRes || []).forEach((result: any) => {
-        if (result.document) {
-          const blog = fromRest(result.document);
-          sitemap += `
+      blogsSnapshot.forEach(doc => {
+        const blog = doc.data();
+        sitemap += `
   <url>
     <loc>${host}/blog/${blog.slug}</loc>
     <lastmod>${blog.updatedAt || blog.createdAt}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>`;
-        }
       });
 
-      (usersRes || []).forEach((result: any) => {
-        if (result.document) {
-          const user = fromRest(result.document);
-          if (user.username) {
-            sitemap += `
+      usersSnapshot.forEach(doc => {
+        const user = doc.data();
+        if (user.username) {
+          sitemap += `
   <url>
     <loc>${host}/${user.username}</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>`;
-          }
         }
       });
 
@@ -391,223 +210,9 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     }
   });
 
-  // ==========================================
-  // API ROUTES (Must be before Vite/Static)
-  // ==========================================
-
-  app.get("/api/health", async (req, res) => {
-    try {
-      const usersRes = await restFirestore('get', 'users');
-      const count = usersRes.documents?.length || 0;
-      res.json({ status: "ok", usersFound: count });
-    } catch (error: any) {
-      res.json({ status: "error", message: error.message });
-    }
-  });
-
-  // AI Designer Proxy Endpoint
-  app.post("/api/ai-designer", async (req, res) => {
-    try {
-      const { messages, userContext } = req.body;
-      const key = process.env.GEMINI_API_KEY;
-
-      if (!key) {
-        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
-      }
-
-      const ai = new GoogleGenerativeAI(key);
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-      const systemInstruction = `
-        You are the Chip NG "AI Designer", a professional profile engineer. 
-        Your goal is to help users set up their perfect link-in-bio profile instantly.
-        
-        You can update the **Cover Image** as part of 'updateProfile'. Recommend abstract patterns or high-quality background images if users want to change their look.
-        
-        CURRENT CONTEXT:
-        ${JSON.stringify(userContext)}
-
-        Be helpful, creative, and efficient. 
-        You have access to functions to: updateProfile, addLink, updateLink, deleteLink, applyTheme.
-      `;
-
-      const tools = [
-        {
-          functionDeclarations: [
-            {
-              name: "updateProfile",
-              description: "Update the user's profile details like display name, bio, cover image, or username.",
-              parameters: {
-                type: "OBJECT",
-                properties: {
-                  displayName: { type: "STRING" },
-                  bio: { type: "STRING" },
-                  username: { type: "STRING" },
-                  textColor: { type: "STRING" },
-                  coverImage: { type: "STRING", description: "URL of the cover image" }
-                }
-              }
-            },
-            {
-              name: "addLink",
-              description: "Add a new link to the user's profile.",
-              parameters: {
-                type: "OBJECT",
-                properties: {
-                  title: { type: "STRING" },
-                  url: { type: "STRING" },
-                  type: { type: "STRING" }
-                },
-                required: ["title", "url"]
-              }
-            },
-            {
-              name: "updateLink",
-              description: "Update an existing link's title, URL, or type.",
-              parameters: {
-                type: "OBJECT",
-                properties: {
-                  id: { type: "STRING" },
-                  title: { type: "STRING" },
-                  url: { type: "STRING" },
-                  type: { type: "STRING" }
-                },
-                required: ["id"]
-              }
-            },
-            {
-              name: "deleteLink",
-              description: "Delete a link from the profile.",
-              parameters: {
-                type: "OBJECT",
-                properties: {
-                  id: { type: "STRING" }
-                },
-                required: ["id"]
-              }
-            },
-            {
-              name: "applyTheme",
-              description: "Change the visual theme of the profile.",
-              parameters: {
-                type: "OBJECT",
-                properties: {
-                  theme: { type: "STRING" }
-                },
-                required: ["theme"]
-              }
-            }
-          ]
-        }
-      ];
-
-      const history = messages.map((m: any) => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.content }]
-      })).slice(0, -1);
-
-      let firstUserIndex = history.findIndex((h: any) => h.role === 'user');
-      const validHistory = firstUserIndex !== -1 ? history.slice(firstUserIndex) : [];
-      const lastMessage = messages[messages.length - 1].content;
-
-      const chat = model.startChat({
-        history: validHistory,
-        generationConfig: { maxOutputTokens: 1000 },
-        tools: tools as any,
-        systemInstruction: systemInstruction
-      });
-
-      const result = await chat.sendMessage(lastMessage);
-      const response = await result.response;
-      const functionCalls = response.functionCalls();
-      let text = "";
-      try { text = response.text(); } catch (e) {}
-
-      res.json({ text: text || "", functionCalls: functionCalls || [] });
-    } catch (error: any) {
-      console.error("AI Designer Proxy failed:", error.message);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Handle generic file uploads via proxy (to bypass CORS or handle permissions)
-  app.post("/api/upload", upload.single('file'), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
-
-      const filePath = req.body.path;
-      if (!filePath) {
-        return res.status(400).json({ error: "No path provided" });
-      }
-
-      // Initialize bucket if not already done
-      const bucketName = firebaseConfig.storageBucket;
-      if (!bucketName) {
-        throw new Error("Storage bucket not configured in firebase-applet-config.json");
-      }
-
-      const bucket = admin.storage().bucket(bucketName);
-      const file = bucket.file(filePath);
-
-      await file.save(req.file.buffer, {
-        metadata: {
-          contentType: req.file.mimetype,
-        }
-      });
-
-      // Make the file public (or use signed URL, but here we want public for profile pictures)
-      await file.makePublic();
-      const publicUrl = `https://storage.googleapis.com/${bucketName}/${filePath}`;
-
-      console.log(`✅ File uploaded successfully: ${publicUrl}`);
-      res.json({ url: publicUrl });
-    } catch (error: any) {
-      console.error("❌ Upload proxy failed:", error.message);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/track", async (req, res) => {
-    try {
-      const { collection: collectionName, id, field } = req.body;
-      if (!collectionName || !id || !field) {
-        return res.status(400).json({ error: "Missing required fields" });
-      }
-
-      // Try internal admin first, fallback to REST
-      try {
-        const docRef = db.collection(collectionName).doc(id);
-        await docRef.update({ [field]: admin.firestore.FieldValue.increment(1) });
-      } catch (e) {
-        const doc = await restFirestore('get', collectionName, id);
-        if (doc) {
-          const currentVal = doc.fields[field]?.doubleValue || doc.fields[field]?.integerValue || 0;
-          await restFirestore('patch', collectionName, id, { [field]: currentVal + 1 });
-        }
-      }
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post("/api/admin/rollback", async (req, res) => {
-    try {
-      const { collectionName, documentId, backupId, adminToken } = req.body;
-      
-      // Simple security check (in reality use proper auth)
-      if (adminToken !== process.env.ADMIN_SECRET_KEY && process.env.NODE_ENV === 'production') {
-        // We'll rely on Firebase Auth in the real app, but for this API endpoint:
-        // Ideally verify the Firebase ID Token
-      }
-
-      const success = await rollbackDocument(collectionName, documentId, backupId);
-      res.json({ success });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
+  // API Routes
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok" });
   });
 
   app.post("/api/verify-paystack", async (req, res) => {
@@ -690,106 +295,45 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     }
   });
 
-// 3. Subscription Expiry Logic
-  app.post("/api/track", async (req, res) => {
-    try {
-      const { collection: collectionName, id, field } = req.body;
-      if (!collectionName || !id || !field) {
-        return res.status(400).json({ error: "Missing required fields: collection, id, field" });
-      }
-
-      // Increment value using Firestore increment
-      const docRef = admin.firestore().collection(collectionName).doc(id);
-      await docRef.update({
-        [field]: admin.firestore.FieldValue.increment(1),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-
-      res.json({ status: "success" });
-    } catch (error: any) {
-      console.error("❌ Tracking failed:", error.message);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
+  // 3. Subscription Expiry Logic
   app.post("/api/cron/check-subscriptions", async (req, res) => {
+    // This could be called by a scheduled task
     const now = new Date().toISOString();
     try {
-      console.log('Running subscription expiry check using client SDK fallback...');
-      
-      // Use Client SDK as a fallback because Admin SDK is receiving PERMISSION_DENIED
-      // Note: This requires the security rules to be open or support this bypass
-      const config = firebaseConfig;
-      if (!config) throw new Error("Firebase config missing");
+      // Query premium users (single field query doesn't need composite index)
+      const premiumSnapshot = await db.collection('users')
+        .where('isPremium', '==', true)
+        .get();
 
-      // We'll use the REST API here for simplicity to avoid initializing full Client SDK
-      // but raw REST query is a bit verbose, let's try a simpler approach if possible
-      // Actually, let's just use axios for a direct REST call as we know it works from test-rest.ts
-      
-      const { projectId, firestoreDatabaseId, apiKey } = config;
-      const queryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${firestoreDatabaseId}/documents:runQuery?key=${apiKey}`;
-      
-      const queryPayload = {
-          structuredQuery: {
-              from: [{ collectionId: 'users' }],
-              where: {
-                  fieldFilter: {
-                      field: { fieldPath: 'isPremium' },
-                      op: 'EQUAL',
-                      value: { booleanValue: true }
-                  }
-              }
-          }
-      };
-      
-      const queryRes = await axios.post(queryUrl, queryPayload);
-      const results = queryRes.data;
-      
-      console.log(`REST Query success, found ${results.length} potentials`);
-
-      let expiredCount = 0;
-      for (const result of results) {
-        if (!result.document) continue;
-        
-        const doc = result.document;
-        const data: any = {};
-        // Map REST fields to JS object
-        for (const [key, val] of Object.entries(doc.fields)) {
-          const v: any = val;
-          data[key] = v.stringValue || v.booleanValue || v.integerValue || v.doubleValue || v.timestampValue;
-        }
-
-        const expired = data.premiumUntil && data.premiumUntil < now;
-        if (expired) {
-          console.log(`Expiring user ${doc.name}`);
-          const docId = doc.name.split('/').pop();
-          
-          // PATCH the document
-          const patchUrl = `https://firestore.googleapis.com/v1/${doc.name}?key=${apiKey}&updateMask.fieldPaths=isPremium&updateMask.fieldPaths=subscriptionStatus&updateMask.fieldPaths=plan&updateMask.fieldPaths=updatedAt&updateMask.fieldPaths=_is_internal`;
-          
-          const patchPayload = {
-            fields: {
-              isPremium: { booleanValue: false },
-              subscriptionStatus: { stringValue: 'inactive' },
-              plan: { stringValue: 'basic' },
-              updatedAt: { stringValue: now },
-              _is_internal: { booleanValue: true } // Bypass secret
-            }
-          };
-          
-          await axios.patch(patchUrl, patchPayload);
-          expiredCount++;
-        }
+      if (premiumSnapshot.empty) {
+        return res.json({ status: 'success', count: 0 });
       }
-      
-      console.log(`✅ Successfully processed ${expiredCount} expired subscriptions via REST`);
-      res.json({ status: 'success', count: expiredCount });
-    } catch (error: any) {
-      console.error('❌ REST Subscription expiry check failed:', error.message);
-      res.status(500).json({ 
-        error: error.message,
-        details: error.response?.data
+
+      // Filter expired in memory to avoid composite index requirement
+      const expiredDocs = premiumSnapshot.docs.filter((doc: any) => {
+        const data = doc.data();
+        return data.premiumUntil && data.premiumUntil < now;
       });
+
+      if (expiredDocs.length === 0) {
+        return res.json({ status: 'success', count: 0 });
+      }
+
+      const batch = db.batch();
+      expiredDocs.forEach((doc: any) => {
+        batch.update(doc.ref, {
+          isPremium: false,
+          subscriptionStatus: 'inactive',
+          updatedAt: now
+        });
+      });
+      
+      await batch.commit();
+      console.log(`Processed ${expiredDocs.length} expired subscriptions`);
+      res.json({ status: 'success', count: expiredDocs.length });
+    } catch (error: any) {
+      console.error('Subscription expiry check failed:', error);
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -808,7 +352,7 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     });
   }
 
-app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }

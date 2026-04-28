@@ -8,8 +8,6 @@ import { Mail, Lock, ArrowRight } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
 
-import { motion } from 'motion/react';
-
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,42 +18,7 @@ const Login: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      const user = result.user;
-
-      // Check if user doc exists
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (!userDoc.exists()) {
-        // Create user doc if it's missing for some reason
-        let baseUsername = user.email?.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user';
-        let finalUsername = baseUsername;
-        
-        while (true) {
-          const usernameCheck = await getUserByUsername(finalUsername);
-          if (!usernameCheck) break;
-          finalUsername = `${baseUsername}${Math.floor(Math.random() * 10000)}`;
-        }
-
-        await setDoc(doc(db, 'users', user.uid), {
-          uid: user.uid,
-          email: user.email,
-          username: finalUsername,
-          displayName: user.displayName || finalUsername,
-          photoURL: user.photoURL || null,
-          bio: 'Welcome to my Chip NG profile!',
-          role: 'user',
-          createdAt: serverTimestamp(),
-          status: 'active',
-          theme: 'minimal',
-          buttonStyle: 'rounded',
-          backgroundType: 'solid',
-          backgroundColor: '#ffffff',
-          totalClicks: 0,
-          plan: 'basic',
-          subscriptionStatus: 'active'
-        });
-      }
-
+      await signInWithEmailAndPassword(auth, email, password);
       toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (error: any) {
@@ -109,39 +72,21 @@ const Login: React.FC = () => {
       toast.success('Welcome back!');
       navigate('/dashboard');
     } catch (error: any) {
-      if (error.code === 'auth/unauthorized-domain') {
-        toast.error('This domain is not authorized in Firebase Console. Please add chipng.com to your Firebase Auth Allowed Domains.');
-      } else {
-        toast.error(error.message || 'Failed to login with Google');
-      }
+      toast.error(error.message || 'Failed to login with Google');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-white flex items-center justify-center p-6 transition-colors duration-300 relative overflow-hidden">
-      {/* Decorative background gradients */}
-      <div className="absolute top-0 left-0 w-96 h-96 bg-lime-400/5 blur-[100px] rounded-full -translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#A020F0]/5 blur-[100px] rounded-full translate-x-1/2 translate-y-1/2" />
-
-      <div className="fixed top-6 right-6 z-50">
+    <div className="min-h-screen bg-white dark:bg-zinc-950 text-zinc-950 dark:text-white flex items-center justify-center p-6 transition-colors duration-300">
+      <div className="fixed top-6 right-6">
         <ThemeToggle />
       </div>
-
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md relative z-10"
-      >
+      <div className="w-full max-w-md">
         <div className="text-center mb-12">
           <Link to="/">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Logo size="lg" className="mb-6" />
-            </motion.div>
+            <Logo size="lg" className="mb-6" />
           </Link>
           <h1 className="text-4xl font-bold tracking-tighter mb-2 text-zinc-950 dark:text-white">Welcome back</h1>
           <p className="text-zinc-500">Log in to manage your Chip NG profile</p>
@@ -178,15 +123,13 @@ const Login: React.FC = () => {
             </div>
           </div>
 
-          <motion.button 
+          <button 
             type="submit" 
             disabled={loading}
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-            className="w-full bg-lime-400 text-zinc-950 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-lime-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-lime-400/10"
+            className="w-full bg-lime-400 text-zinc-950 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-lime-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Logging in...' : 'Log in'} <ArrowRight className="w-5 h-5" />
-          </motion.button>
+          </button>
         </form>
 
         <div className="relative my-8">
@@ -227,7 +170,7 @@ const Login: React.FC = () => {
         <p className="text-center mt-8 text-zinc-500">
           Don't have an account? <Link to="/signup" className="text-lime-400 font-bold hover:underline">Sign up</Link>
         </p>
-      </motion.div>
+      </div>
     </div>
   );
 };
