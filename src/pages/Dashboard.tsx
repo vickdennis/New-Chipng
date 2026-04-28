@@ -986,15 +986,8 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Navigation Bar for Mobile */}
-          <div className="flex lg:hidden overflow-x-auto no-scrollbar gap-2 pb-4">
-             {CATEGORIES.map(cat => (
-               <button key={cat.id} className="whitespace-nowrap px-6 py-3 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl font-bold text-[13px] shadow-sm">
-                  {cat.label}
-               </button>
-             ))}
-          </div>
-
+          {/* Category Tabs Deleted as requested */}
+          
           {/* Active Tab Content */}
           <div className="relative">
             <AnimatePresence mode="wait">
@@ -1083,24 +1076,22 @@ const Dashboard: React.FC = () => {
                     </span>
                   </button>
 
-                  <div className="mt-4 flex flex-wrap gap-4 justify-center">
+                  <div className="mt-4 flex overflow-x-auto no-scrollbar gap-4 py-2 px-2 -mx-2">
                     {profile?.socialLinks && Object.entries(profile.socialLinks).map(([id, url]) => {
                       const platform = Object.values(PLATFORMS).flat().find(p => p.id === id);
                       if (!platform) return null;
                       
                       const Icon = platform.icon;
-                      const platformName = platform.label;
                       
                       return (
-                        <div key={id} className="relative group flex flex-col items-center gap-1.5 min-w-[64px]">
+                        <div key={id} className="relative group flex flex-col items-center gap-1.5 shrink-0">
                           <button 
                             onClick={() => handleSelectPlatform(platform.id, platform.urlPrefix)}
-                            className="w-12 h-12 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all active:scale-95"
+                            className="w-14 h-14 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all active:scale-95 shadow-sm"
                             title={`Edit ${platform.label}`}
                           >
-                             <Icon className="w-5 h-5" />
+                             <Icon className="w-6 h-6" />
                           </button>
-                          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-tight">{platformName}</span>
                           <button 
                             onClick={async (e) => {
                               e.stopPropagation();
@@ -1157,154 +1148,102 @@ const Dashboard: React.FC = () => {
                     <Plus className="w-6 h-6 text-[#A3E635] cursor-pointer" onClick={handleAddLink} />
                   </div>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                     {links.length === 0 ? (
                       <button 
                         onClick={handleAddLink}
-                        className="w-full p-6 border-2 border-dashed border-[#D1D5DB] rounded-[16px] flex flex-col items-center gap-2 group hover:border-[#A3E635] transition-colors"
+                        className="w-full p-6 border-2 border-dashed border-zinc-200 rounded-[2rem] flex flex-col items-center gap-2 group hover:border-lime-400 transition-all"
                       >
-                        <Plus className="w-8 h-8 text-[#A3E635]" />
-                        <span className="text-[14px] font-bold text-zinc-900">Add Big Thumbnail Link</span>
+                        <Plus className="w-8 h-8 text-lime-500" />
+                        <span className="text-sm font-bold text-zinc-900">Add Spotlight Link</span>
                       </button>
                     ) : (
-                      <div className="space-y-4">
-                        {/* Big Link (First one) */}
-                        {links[0] && (
-                          <div className="bg-white border-2 border-[#F3F4F6] rounded-[20px] p-4 flex flex-col gap-3 group relative shadow-sm hover:shadow-md transition-shadow">
-                            <div className="aspect-video bg-[#F9FAFB] rounded-[16px] overflow-hidden relative">
-                              {links[0].icon ? (
-                                <img src={links[0].icon} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-[#D1D5DB]">
-                                  <ImageIcon className="w-12 h-12" />
-                                </div>
-                              )}
-                              <label className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 cursor-pointer">
-                                <Camera className="w-6 h-6 text-white" />
-                                <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', links[0].id)} accept="image/*" />
-                              </label>
-                            </div>
-                            <div className="flex items-start justify-between">
-                              <div className="flex flex-col gap-1 flex-1">
-                                <input 
-                                  className="font-bold text-[16px] bg-transparent outline-none w-full" 
-                                  value={links[0].title} 
-                                  placeholder="Title"
-                                  onChange={(e) => handleUpdateLink(links[0].id, { title: e.target.value })}
-                                />
-                                <input 
-                                  className="text-[12px] text-zinc-400 bg-transparent outline-none w-full" 
-                                  value={links[0].url} 
-                                  placeholder="https://..."
-                                  onChange={(e) => handleUpdateLink(links[0].id, { url: e.target.value })}
-                                />
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {isAdmin && (
-                                  <button 
-                                    onClick={() => fetchHistory('links', links[0].id)}
-                                    className="p-2 rounded-lg text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                                    title="View History"
-                                  >
-                                    <HistoryIcon className="w-4 h-4" />
-                                  </button>
-                                )}
-                                <Eye className={`w-5 h-5 cursor-pointer ${links[0].active ? 'text-[#A3E635]' : 'text-[#D1D5DB]'}`} onClick={() => handleUpdateLink(links[0].id, { active: !links[0].active })} />
-                                <Trash2 className="w-5 h-5 text-red-400 cursor-pointer" onClick={() => handleDeleteLink(links[0].id)} />
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Smaller Links Grid */}
-                        <div className="grid grid-cols-2 gap-4">
-                          {links.slice(1, 3).map((link) => (
-                            <div key={link.id} className="bg-white border-2 border-[#F3F4F6] rounded-[20px] p-3 flex flex-col gap-2 group relative shadow-sm hover:shadow-md transition-shadow">
-                              <div className="aspect-square bg-[#F9FAFB] rounded-[12px] overflow-hidden relative">
+                      <div className="space-y-6">
+                        {links.map((link, idx) => {
+                          const isBig = idx === 0 || (idx === 1 && links.length > 3);
+                          
+                          if (isBig) {
+                            return (
+                              <div key={link.id} className="relative aspect-[16/10] bg-zinc-900 rounded-[2.8rem] overflow-hidden border border-zinc-800 shadow-2xl group">
                                 {link.icon ? (
-                                  <img src={link.icon} alt="" className="w-full h-full object-cover" />
+                                  <img src={link.icon} className="w-full h-full object-cover opacity-60 transition-transform duration-700 group-hover:scale-110" alt="" />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-[#D1D5DB]">
-                                    <ImageIcon className="w-8 h-8" />
+                                  <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                                    <LinkIcon className="w-12 h-12 text-zinc-700" />
                                   </div>
                                 )}
-                                <div className="absolute top-2 right-2 flex items-center gap-1">
-                                  {isAdmin && (
-                                    <button 
-                                      onClick={() => fetchHistory('links', link.id)}
-                                      className="p-1.5 bg-white/80 backdrop-blur-sm rounded-lg text-zinc-400 hover:text-blue-500 transition-colors shadow-sm"
-                                    >
-                                      <HistoryIcon className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                  <button 
-                                    onClick={() => handleUpdateLink(link.id, { active: !link.active })}
-                                    className="p-1.5 bg-white/80 backdrop-blur-sm rounded-lg text-[#A3E635] shadow-sm"
-                                  >
-                                    {link.active ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5 text-zinc-300" />}
+                                <div className="absolute inset-0 p-8 flex flex-col justify-end bg-gradient-to-t from-black via-black/40 to-transparent">
+                                  <div className="flex flex-col gap-2">
+                                     <input 
+                                       className="w-full bg-transparent border-none p-0 text-2xl font-black text-white outline-none" 
+                                       value={link.title}
+                                       onChange={(e) => handleUpdateLink(link.id, { title: e.target.value })}
+                                     />
+                                     <input 
+                                       className="w-full bg-transparent border-none p-0 text-xs text-zinc-400 font-bold outline-none truncate" 
+                                       value={link.url}
+                                       onChange={(e) => handleUpdateLink(link.id, { url: e.target.value })}
+                                     />
+                                  </div>
+                                </div>
+                                <div className="absolute top-6 right-6 flex gap-2">
+                                  <label className="p-3 bg-white/10 backdrop-blur-md rounded-2xl cursor-pointer hover:bg-white/20 transition-all">
+                                    <Camera className="w-4 h-4 text-white" />
+                                    <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', link.id)} accept="image/*" />
+                                  </label>
+                                  <button onClick={() => handleUpdateLink(link.id, { active: !link.active })} className={`p-3 backdrop-blur-md rounded-2xl transition-all ${link.active ? 'bg-lime-400 text-zinc-950' : 'bg-white/10 text-white'}`}>
+                                    {link.active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                  </button>
+                                  <button onClick={() => handleDeleteLink(link.id)} className="p-3 bg-red-500/80 backdrop-blur-md rounded-2xl hover:bg-red-500 transition-all">
+                                    <Trash2 className="w-4 h-4 text-white" />
                                   </button>
                                 </div>
-                                <label className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 cursor-pointer">
-                                  <Plus className="w-5 h-5 text-white" />
-                                  <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', link.id)} accept="image/*" />
-                                </label>
                               </div>
-                              <input 
-                                className="font-bold text-[13px] bg-transparent outline-none truncate" 
-                                value={link.title}
-                                onChange={(e) => handleUpdateLink(link.id, { title: e.target.value })}
-                              />
-                            </div>
-                          ))}
-                          {links.length < 3 && (
-                            <button 
-                              onClick={handleAddLink}
-                              className="aspect-square border-2 border-dashed border-[#D1D5DB] rounded-[20px] flex flex-col items-center justify-center gap-2 hover:border-[#A3E635] transition-colors"
-                            >
-                              <Plus className="w-6 h-6 text-[#A3E635]" />
-                              <span className="text-[12px] font-bold">Small Link</span>
-                            </button>
-                          )}
-                        </div>
+                            );
+                          }
 
-                        {/* Standard Links List (remaining) */}
-                        {links.length > 3 && (
-                          <div className="space-y-3 pt-4 border-t border-[#F3F4F6]">
-                            <h4 className="text-[14px] font-bold text-[#6B7280]">Other Links</h4>
-                            {links.slice(3).map(link => (
-                              <div key={link.id} className="flex items-center gap-3 p-3 bg-white border border-[#F3F4F6] rounded-xl group">
-                                <div className="w-10 h-10 rounded-lg bg-[#F9FAFB] flex items-center justify-center overflow-hidden flex-shrink-0">
-                                  {link.icon ? <img src={link.icon} alt="" className="w-full h-full object-cover" /> : <LinkIcon className="w-5 h-5 text-[#D1D5DB]" />}
-                                </div>
-                              <div className="flex-1 space-y-0.5">
-                                <input 
-                                  className="font-bold text-[14px] bg-transparent outline-none w-full" 
-                                  value={link.title}
-                                  placeholder="Link Title"
-                                  onChange={(e) => handleUpdateLink(link.id, { title: e.target.value })}
-                                />
-                                <input 
-                                  className="text-[11px] text-zinc-400 bg-transparent outline-none w-full" 
-                                  value={link.url}
-                                  placeholder="https://..."
-                                  onChange={(e) => handleUpdateLink(link.id, { url: e.target.value })}
-                                />
+                          return (
+                            <div key={link.id} className="flex items-center gap-4 p-4 bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-[2rem] group hover:scale-[1.01] transition-all">
+                              <div className="w-16 h-16 rounded-2xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-800 relative group/icon shrink-0">
+                                 {link.icon ? (
+                                   <img src={link.icon} alt="" className="w-full h-full object-cover" />
+                                 ) : (
+                                   <LinkIcon className="w-6 h-6 text-zinc-300" />
+                                 )}
+                                 <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/icon:opacity-100 cursor-pointer transition-opacity">
+                                   <Plus className="w-4 h-4 text-white" />
+                                   <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', link.id)} accept="image/*" />
+                                 </label>
                               </div>
-                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  {isAdmin && (
-                                    <button 
-                                      onClick={() => fetchHistory('links', link.id)}
-                                      className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
-                                    >
-                                      <HistoryIcon className="w-4 h-4" />
-                                    </button>
-                                  )}
-                                  <Trash2 className="w-4 h-4 text-red-300 cursor-pointer" onClick={() => handleDeleteLink(link.id)} />
-                                </div>
+                              <div className="flex-1 min-w-0">
+                                 <input 
+                                   className="w-full bg-transparent border-none p-0 font-bold text-base dark:text-white outline-none" 
+                                   value={link.title}
+                                   onChange={(e) => handleUpdateLink(link.id, { title: e.target.value })}
+                                 />
+                                 <input 
+                                   className="w-full bg-transparent border-none p-0 text-[10px] text-zinc-400 font-bold uppercase tracking-widest outline-none truncate" 
+                                   value={link.url}
+                                   onChange={(e) => handleUpdateLink(link.id, { url: e.target.value })}
+                                 />
                               </div>
-                            ))}
-                          </div>
-                        )}
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => handleUpdateLink(link.id, { active: !link.active })} className={`p-2 rounded-xl transition-all ${link.active ? 'text-lime-500' : 'text-zinc-300'}`}>
+                                  {link.active ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                                </button>
+                                <button onClick={() => handleDeleteLink(link.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
+                                  <Trash2 className="w-5 h-5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <button 
+                          onClick={handleAddLink}
+                          className="w-full py-4 border-2 border-dashed border-zinc-100 dark:border-zinc-800 rounded-[2rem] flex items-center justify-center gap-2 text-zinc-400 hover:border-lime-400 hover:text-lime-500 transition-all font-black text-xs uppercase tracking-widest"
+                        >
+                          <Plus className="w-5 h-5" /> Add Standard Link
+                        </button>
                       </div>
                     )}
                   </div>
@@ -1739,18 +1678,67 @@ const Dashboard: React.FC = () => {
                    </div>
                 </div>
 
-                <div className="space-y-4">
-                   <h3 className="text-[22px] font-bold">Themes</h3>
+                <div className="space-y-6">
+                   <div className="flex items-center justify-between px-2">
+                     <h3 className="text-[22px] font-black">Verification</h3>
+                     {profile?.isVerified && (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-[#1D9BF0] rounded-full text-[10px] font-black uppercase">
+                          <Check className="w-3 h-3" /> Verified
+                        </div>
+                     )}
+                   </div>
+                   
+                   <div className="bg-zinc-900 text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-[#1D9BF0]/20 blur-[50px] rounded-full" />
+                      <div className="relative z-10 space-y-4">
+                         <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 bg-[#1D9BF0] rounded-2xl flex items-center justify-center shadow-lg shadow-[#1D9BF0]/30 transform group-hover:rotate-12 transition-transform">
+                               <BadgeCheck className="w-8 h-8 text-white fill-white stroke-[#1D9BF0]" />
+                            </div>
+                            <div>
+                               <h4 className="text-xl font-black">Official Verification</h4>
+                               <p className="text-zinc-400 text-xs font-medium">Add the prestigious blue tick to your bio.</p>
+                            </div>
+                         </div>
+                         <div className="pt-4 flex items-center justify-between">
+                            <div className="flex flex-col">
+                               <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Investment</span>
+                               <span className="text-2xl font-black">₦2,000</span>
+                            </div>
+                            {!profile?.isVerified && (
+                               <button 
+                                 onClick={triggerVerification}
+                                 className="px-8 py-3 bg-white text-black font-black rounded-2xl text-xs hover:bg-[#1D9BF0] hover:text-white transition-all shadow-xl"
+                               >
+                                 Get Verified
+                               </button>
+                            )}
+                         </div>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="space-y-6">
+                   <h3 className="text-[22px] font-black">Themes & Identity</h3>
                    <div className="grid grid-cols-2 gap-4">
-                      {['minimal', 'modern', 'brutalist', 'gradient'].map(t => (
+                      {[
+                        { id: 'minimal', name: 'Cloud Minimal', color: 'bg-white' },
+                        { id: 'modern', name: 'Shadow Modern', color: 'bg-zinc-950' },
+                        { id: 'brutalist', name: 'Raw Brutalist', color: 'bg-yellow-400' },
+                        { id: 'gradient', name: 'Neon Gradient', color: 'bg-gradient-to-br from-purple-500 to-pink-500' },
+                      ].map(t => (
                         <button 
-                          key={t}
-                          onClick={() => handleUpdateProfile({ theme: t as ThemeType })}
-                          className={`aspect-video rounded-2xl border-2 transition-all p-3 flex flex-col gap-2 ${profile?.theme === t ? 'border-[#A3E635] bg-lime-50' : 'border-[#F3F4F6]'}`}
+                          key={t.id}
+                          onClick={() => handleUpdateProfile({ theme: t.id as ThemeType })}
+                          className={`aspect-[4/3] rounded-[2.5rem] border-4 transition-all p-4 flex flex-col gap-3 relative overflow-hidden ${profile?.theme === t.id ? 'border-lime-400 scale-102 shadow-2xl' : 'border-zinc-100 dark:border-zinc-800'}`}
                         >
-                          <div className="w-full h-2 bg-zinc-200 rounded" />
-                          <div className="w-2/3 h-2 bg-zinc-100 rounded" />
-                          <span className="mt-auto text-[12px] font-bold capitalize">{t}</span>
+                          <div className={`absolute inset-0 opacity-10 ${t.color}`} />
+                          <div className="w-full h-3 bg-zinc-200 dark:bg-zinc-700 rounded-full" />
+                          <div className="w-2/3 h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
+                          <div className="mt-auto flex items-center justify-between">
+                             <span className="text-[13px] font-black leading-tight max-w-[80px]">{t.name}</span>
+                             <div className={`w-6 h-6 rounded-lg ${t.color} border border-white/20`} />
+                          </div>
                         </button>
                       ))}
                    </div>

@@ -391,85 +391,17 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     }
   });
 
-  // API Routes
+  // ==========================================
+  // API ROUTES (Must be before Vite/Static)
+  // ==========================================
+
   app.get("/api/health", async (req, res) => {
     try {
-      // Test REST connection
       const usersRes = await restFirestore('get', 'users');
       const count = usersRes.documents?.length || 0;
-      
-      res.json({ 
-        status: "ok", 
-        message: "Backend is healthy and connected to Firestore via REST fallback",
-        database: firebaseConfig?.firestoreDatabaseId,
-        projectId: firebaseConfig?.projectId,
-        usersFound: count
-      });
+      res.json({ status: "ok", usersFound: count });
     } catch (error: any) {
-      res.json({ 
-        status: "error", 
-        message: error.message,
-        details: error.response?.data,
-        database: firebaseConfig?.firestoreDatabaseId,
-        projectId: firebaseConfig?.projectId
-      });
-    }
-  });
-
-  // Admin Rollback APIs
-  app.get("/api/admin/backups/:collection/:id", async (req, res) => {
-    try {
-      const { collection, id } = req.params;
-      const snapshots = await db.collection(`${collection}_backup`)
-        .where('originalId', '==', id)
-        .orderBy('timestamp', 'desc')
-        .get();
-      
-      const backups = snapshots.docs.map((doc: any) => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-
-      res.json({ backups });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // Server-side upload proxy to bypass storage/unauthorized issues
-  app.post("/api/upload", upload.single("file"), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
-      }
-
-      const { path: storagePath } = req.body;
-      if (!storagePath) {
-        return res.status(400).json({ error: "Storage path is required" });
-      }
-
-      const bucket = admin.storage().bucket(firebaseConfig?.storageBucket);
-      const file = bucket.file(storagePath);
-
-      await file.save(req.file.buffer, {
-        metadata: {
-          contentType: req.file.mimetype,
-        }
-      });
-
-      // Try to make the file public so it can be viewed by anyone
-      try {
-        await file.makePublic();
-      } catch (e) {
-        console.warn("Could not make file public, URLs might require authentication:", e);
-      }
-
-      const publicUrl = `https://firebasestorage.googleapis.com/v1/b/${bucket.name}/o/${encodeURIComponent(storagePath)}?alt=media`;
-
-      res.json({ url: publicUrl });
-    } catch (error: any) {
-      console.error("Upload proxy failed:", error.message);
-      res.status(500).json({ error: error.message });
+      res.json({ status: "error", message: error.message });
     }
   });
 
@@ -490,19 +422,15 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         You are the Chip NG "AI Designer", a professional profile engineer. 
         Your goal is to help users set up their perfect link-in-bio profile instantly.
         
-        NEW CAPABILITY:
-        You can now update the **Cover Image** as part of 'updateProfile'. Recommend abstract patterns or high-quality background images if users want to change their look.
+        You can update the **Cover Image** as part of 'updateProfile'. Recommend abstract patterns or high-quality background images if users want to change their look.
         
         CURRENT CONTEXT:
         ${JSON.stringify(userContext)}
 
         Be helpful, creative, and efficient. 
-        If a user mentions their social media, ask if they want you to add links for them.
-        
         You have access to functions to: updateProfile, addLink, updateLink, deleteLink, applyTheme.
       `;
 
-      // Tools config
       const tools = [
         {
           functionDeclarations: [
@@ -578,38 +506,24 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         parts: [{ text: m.content }]
       })).slice(0, -1);
 
-      // GEMINI API REQUIREMENT: First message in history must be 'user'
-      // If history starts with 'model', remove it (and any subsequent non-user messages until we find one)
       let firstUserIndex = history.findIndex((h: any) => h.role === 'user');
       const validHistory = firstUserIndex !== -1 ? history.slice(firstUserIndex) : [];
-
       const lastMessage = messages[messages.length - 1].content;
 
       const chat = model.startChat({
         history: validHistory,
-        generationConfig: {
-          maxOutputTokens: 1000,
-        },
+        generationConfig: { maxOutputTokens: 1000 },
         tools: tools as any,
         systemInstruction: systemInstruction
       });
 
       const result = await chat.sendMessage(lastMessage);
       const response = await result.response;
-      
       const functionCalls = response.functionCalls();
       let text = "";
-      try {
-        text = response.text();
-      } catch (e) {
-        // No text returned, likely just function calls
-      }
+      try { text = response.text(); } catch (e) {}
 
-      res.json({
-        text: text || "",
-        functionCalls: functionCalls || []
-      });
-
+      res.json({ text: text || "", functionCalls: functionCalls || [] });
     } catch (error: any) {
       console.error("AI Designer Proxy failed:", error.message);
       res.status(500).json({ error: error.message });
@@ -623,17 +537,19 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      // Use REST Patch to increment field
-      const doc = await restFirestore('get', collectionName, id);
-      if (doc) {
-        const currentVal = doc.fields[field]?.doubleValue || doc.fields[field]?.integerValue || 0;
-        const newData = { [field]: currentVal + 1 };
-        await restFirestore('patch', collectionName, id, newData);
+      // Try internal admin first, fallback to REST
+      try {
+        const docRef = db.collection(collectionName).doc(id);
+        await docRef.update({ [field]: admin.firestore.FieldValue.increment(1) });
+      } catch (e) {
+        const doc = await restFirestore('get', collectionName, id);
+        if (doc) {
+          const currentVal = doc.fields[field]?.doubleValue || doc.fields[field]?.integerValue || 0;
+          await restFirestore('patch', collectionName, id, { [field]: currentVal + 1 });
+        }
       }
-
       res.json({ success: true });
     } catch (error: any) {
-      console.error("Track API failed:", error.message);
       res.status(500).json({ error: error.message });
     }
   });
@@ -831,34 +747,6 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
-
-  // Tracking endpoint
-app.post("/api/track", async (req, res) => {
-  try {
-    const { collection, id, field } = req.body;
-    if (!collection || !id || !field) {
-      return res.status(400).json({ error: "Missing required fields" });
-    }
-
-    if (!['users', 'links'].includes(collection)) {
-      return res.status(400).json({ error: "Invalid collection" });
-    }
-
-    if (!['totalClicks', 'clicks'].includes(field)) {
-      return res.status(400).json({ error: "Invalid tracking field" });
-    }
-
-    const docRef = admin.firestore().collection(collection).doc(id);
-    await docRef.update({
-      [field]: admin.firestore.FieldValue.increment(1)
-    });
-
-    res.json({ success: true });
-  } catch (error: any) {
-    console.error('Tracking error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
 
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
