@@ -239,9 +239,9 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
   };
 
   return (
-    <div className="flex flex-col h-full lg:h-[70vh] bg-white dark:bg-zinc-900 rounded-t-[2.5rem] lg:rounded-[2.5rem] border-t lg:border border-zinc-200 dark:border-zinc-800 overflow-hidden relative">
+    <div className="flex flex-col h-[75vh] lg:h-[70vh] bg-white dark:bg-zinc-900 rounded-t-[2.5rem] lg:rounded-[2.5rem] border-t lg:border border-zinc-200 dark:border-zinc-800 overflow-hidden relative shadow-2xl">
       {/* Header */}
-      <div className="p-6 border-bottom border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex items-center justify-between">
+      <div className="p-4 sm:p-6 border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-lime-400 rounded-xl flex items-center justify-center shadow-lg shadow-lime-400/20">
             <Wand2 className="w-5 h-5 text-zinc-950" />

@@ -70,7 +70,7 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
   const getFavicon = (url: string) => {
     try {
       const domain = new URL(url).hostname;
-      return `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+      return `https://icon.horse/icon/${domain}?size=large`;
     } catch (e) {
       return null;
     }
@@ -440,14 +440,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const getFavicon = (url: string) => {
-    try {
-      const domain = new URL(url).hostname;
-      return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
-    } catch (e) {
-      return null;
-    }
-  };
+  // Replaced by top-level getFavicon helper
 
   const handleUpdateLink = async (id: string, data: Partial<Link>) => {
     try {
@@ -1067,26 +1060,31 @@ const Dashboard: React.FC = () => {
 
                 {/* Edit Sections List */}
                 <div className="w-full space-y-0.5 mb-10">
-                  <button 
+                  <motion.button 
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
                     onClick={() => setIsAddPlatformModalOpen(true)}
-                    className="w-full flex items-center justify-between py-6 border-b border-[#F3F4F6] group hover:bg-zinc-50 transition-colors px-4 -mx-4 rounded-2xl"
+                    className="w-full relative overflow-hidden group py-8 px-6 rounded-[2.5rem] bg-zinc-950 text-white flex items-center justify-between shadow-2xl transition-all"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-lime-400 flex items-center justify-center text-zinc-950 shadow-lg shadow-lime-400/20">
-                        <Plus className="w-6 h-6" />
+                    <div className="absolute inset-0 bg-gradient-to-tr from-lime-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="flex items-center gap-5 relative z-10">
+                      <div className="w-14 h-14 rounded-2xl bg-[#A3E635] text-black flex items-center justify-center shadow-xl shadow-lime-400/20 group-hover:rotate-6 transition-transform">
+                        <Plus className="w-8 h-8 font-black" />
                       </div>
                       <div className="text-left">
-                        <span className="text-[17px] font-black block">Add Platforms</span>
-                        <span className="text-[11px] text-zinc-500 font-bold uppercase tracking-widest">Social icons & Handles</span>
+                        <h3 className="text-xl font-black tracking-tight">Add Platforms</h3>
+                        <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest mt-0.5">Social Icons & Handles</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[#A3E635] font-black text-sm">+20%</span>
-                      <ChevronRight className="w-5 h-5 text-zinc-300 group-hover:text-black transition-colors" />
+                    <div className="flex items-center gap-3 relative z-10">
+                      <div className="px-4 py-2 bg-white/5 rounded-xl border border-white/10">
+                         <span className="text-[#A3E635] font-black text-sm tracking-tighter">+20% Influence</span>
+                      </div>
+                      <ChevronRight className="w-6 h-6 text-zinc-700 group-hover:text-[#A3E635] transition-colors" />
                     </div>
-                  </button>
+                  </motion.button>
 
-                  <div className="mt-4 flex overflow-x-auto no-scrollbar gap-4 py-2 px-2 -mx-2">
+                  <div className="mt-8 flex overflow-x-auto no-scrollbar gap-4 py-2 px-2 -mx-2">
                     {profile?.socialLinks && Object.entries(profile.socialLinks).map(([id, url]) => {
                       const platform = Object.values(PLATFORMS).flat().find(p => p.id === id);
                       if (!platform) return null;
@@ -2056,18 +2054,44 @@ const Dashboard: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 to-transparent" />
                  </div>
 
+                 {/* Hide Avatar as per user request */}
                  <div className="p-6 space-y-6 flex flex-col items-center pt-8">
                     <div className="text-center space-y-1 relative z-10">
                        <h3 className="font-black text-lg flex items-center justify-center gap-1 text-white">
                          {profile?.displayName || '@username'}
-                         {profile?.isVerified && <BadgeCheck className="w-4 h-4 text-[#1D9BF0] fill-[#1D9BF0] stroke-white stroke-[1px]" />}
+                         {profile?.isVerified && <BadgeCheck className="w-4 h-4 text-[#1D9BF0] fill-[#1D9BF0] stroke-white stroke-[1.5px]" />}
                        </h3>
                        <p className="text-[10px] font-black text-[#A3E635] tracking-tight">@{profile?.username || 'handle'}</p>
                     </div>
 
-                    {/* Mock Social Icons */}
-                    <div className="flex gap-2 justify-center relative z-10">
-                       {[1,2,3,4,5,6].map(i => (
+                     {/* Mock Social Icons */}
+                    <div className="flex gap-2.5 justify-center relative z-10 w-full overflow-hidden px-4">
+                       {profile?.socialLinks && Object.keys(profile.socialLinks).length > 0 ? 
+                         Object.entries(profile.socialLinks).slice(0, 6).map(([platform, username]) => {
+                           const colors: {[key: string]: string} = {
+                             instagram: '#E1306C',
+                             twitter: '#1DA1F2',
+                             x: '#000000',
+                             facebook: '#4267B2',
+                             youtube: '#FF0000',
+                             linkedin: '#0077B5',
+                             tiktok: '#000000',
+                             whatsapp: '#25D366'
+                           };
+                           return (
+                             <div 
+                               key={platform} 
+                               className="w-7 h-7 rounded-lg bg-zinc-900 border border-white/5 flex items-center justify-center shrink-0"
+                               style={{ color: colors[platform.toLowerCase()] || '#6366f1' }}
+                             >
+                               <div className="w-4 h-4">
+                                 {/* We can use small dots or generic icons here for performance in preview */}
+                                 <BrandIcons[platform.toLowerCase() as keyof typeof BrandIcons] className="w-full h-full" />
+                               </div>
+                             </div>
+                           );
+                         })
+                       : [1,2,3].map(i => (
                          <div key={i} className="w-7 h-7 rounded-lg bg-zinc-900 border border-white/5" />
                        ))}
                     </div>

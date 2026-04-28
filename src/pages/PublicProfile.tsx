@@ -17,26 +17,35 @@ import {
 } from 'lucide-react';
 
 const SocialIcon = ({ platform, username, className }: { platform: string; username: string; className?: string }) => {
-  const getIcon = () => {
+  const getBrandInfo = () => {
     switch (platform.toLowerCase()) {
-      case 'instagram': return <Instagram className="w-full h-full" />;
-      case 'twitter': return <Twitter className="w-full h-full" />;
-      case 'facebook': return <Facebook className="w-full h-full" />;
-      case 'youtube': return <Youtube className="w-full h-full" />;
-      case 'github': return <Github className="w-full h-full" />;
-      case 'linkedin': return <Linkedin className="w-full h-full" />;
-      default: return <Globe className="w-full h-full" />;
+      case 'instagram': return { icon: <BrandIcons.instagram className="w-full h-full" />, color: '#E1306C' };
+      case 'twitter': return { icon: <BrandIcons.x className="w-full h-full" />, color: '#1DA1F2' };
+      case 'x': return { icon: <BrandIcons.x className="w-full h-full" />, color: '#000000' };
+      case 'facebook': return { icon: <BrandIcons.facebook className="w-full h-full" />, color: '#4267B2' };
+      case 'youtube': return { icon: <BrandIcons.youtube className="w-full h-full" />, color: '#FF0000' };
+      case 'github': return { icon: <BrandIcons.github className="w-full h-full" />, color: '#181717' };
+      case 'linkedin': return { icon: <BrandIcons.linkedin className="w-full h-full" />, color: '#0077B5' };
+      case 'tiktok': return { icon: <BrandIcons.tiktok className="w-full h-full" />, color: '#000000' };
+      case 'whatsapp': return { icon: <BrandIcons.whatsapp className="w-full h-full" />, color: '#25D366' };
+      case 'reddit': return { icon: <BrandIcons.reddit className="w-full h-full" />, color: '#FF4500' };
+      case 'spotify': return { icon: <BrandIcons.spotify className="w-full h-full" />, color: '#1DB954' };
+      default: return { icon: <Globe className="w-full h-full" />, color: '#6366f1' };
     }
   };
+
+  const { icon, color } = getBrandInfo();
 
   const getUrl = () => {
     switch (platform.toLowerCase()) {
       case 'instagram': return `https://instagram.com/${username}`;
-      case 'twitter': return `https://twitter.com/${username}`;
+      case 'twitter': 
+      case 'x': return `https://twitter.com/${username}`;
       case 'facebook': return `https://facebook.com/${username}`;
       case 'youtube': return `https://youtube.com/@${username}`;
       case 'github': return `https://github.com/${username}`;
       case 'linkedin': return `https://linkedin.com/in/${username}`;
+      case 'whatsapp': return `https://wa.me/${username}`;
       default: return `https://${username}`;
     }
   };
@@ -46,10 +55,14 @@ const SocialIcon = ({ platform, username, className }: { platform: string; usern
       href={getUrl()} 
       target="_blank" 
       rel="noopener noreferrer"
-      className={className}
+      className={`${className} group/icon relative overflow-hidden`}
       onClick={(e) => e.stopPropagation()}
+      style={{ '--brand-color': color } as React.CSSProperties}
     >
-      {getIcon()}
+      <div className="absolute inset-0 bg-[var(--brand-color)] opacity-0 group-hover/icon:opacity-10 transition-opacity" />
+      <div className="relative z-10 w-full h-full transition-transform group-hover/icon:scale-110 active:scale-95" style={{ color: color }}>
+        {icon}
+      </div>
     </a>
   );
 };
@@ -356,7 +369,7 @@ END:VCARD`;
             <h1 className="text-4xl font-black tracking-tight leading-none text-white flex items-center justify-center gap-2">
               {profile.displayName || profile.username}
               {profile.isVerified && (
-                <BadgeCheck className="w-8 h-8 text-[#1D9BF0] fill-[#1D9BF0] stroke-white stroke-[2px]" />
+                <BadgeCheck className="w-7 h-7 text-[#1D9BF0] fill-[#1D9BF0] stroke-white stroke-[1.5px]" />
               )}
             </h1>
             <div className="flex items-center justify-center gap-2">
@@ -366,13 +379,13 @@ END:VCARD`;
 
           {/* Social Icons Row */}
           {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
-            <div className="flex overflow-x-auto no-scrollbar max-w-full justify-center gap-4 mb-10 px-6">
+            <div className="flex flex-row items-center justify-center gap-3 mb-12 px-6 w-full max-w-full overflow-x-auto no-scrollbar">
               {Object.entries(profile.socialLinks).slice(0, 6).map(([platform, username]) => (
                 <SocialIcon 
                   key={platform} 
                   platform={platform} 
                   username={username as string} 
-                  className="w-14 h-14 p-4 bg-zinc-950 border border-white/5 rounded-2xl text-zinc-400 hover:text-[#A3E635] hover:bg-zinc-900 transition-all hover:scale-110 active:scale-95 shadow-2xl shrink-0" 
+                  className="w-11 h-11 p-2.5 bg-zinc-950 border border-white/5 rounded-2xl text-zinc-400 hover:bg-zinc-900 transition-all shadow-xl shrink-0" 
                 />
               ))}
             </div>
@@ -646,13 +659,13 @@ END:VCARD`;
           )}
         </div>
 
-        <footer className="py-32 flex flex-col items-center gap-6">
-           <div className="p-4 bg-zinc-900 rounded-[1.5rem] border border-white/5 mb-4 group cursor-pointer hover:border-[#A3E635]/50 transition-colors">
-              <Logo size="md" variant="icon-only" color="neon" />
+        <footer className="py-24 flex flex-col items-center gap-3 opacity-30 select-none">
+           <div className="p-2 bg-zinc-900/50 rounded-xl border border-white/5 mb-1 group cursor-pointer hover:border-[#A3E635]/30 transition-colors scale-75">
+              <Logo size="sm" variant="icon-only" color="neon" className="grayscale contrast-125 opacity-50" />
            </div>
-           <div className="flex flex-col items-center gap-1">
-             <span className="text-xs font-black tracking-[0.4em] uppercase text-zinc-600">This profile is</span>
-             <span className="text-xl font-black text-white italic">Chip NG <span className="text-[#A3E635]">Verified</span></span>
+           <div className="flex flex-col items-center gap-0">
+             <span className="text-[8px] font-black tracking-[0.4em] uppercase text-zinc-800">Powered by</span>
+             <span className="text-[12px] font-black text-zinc-600 italic">Chip NG <span className="text-[#A3E635]/40 italic not-italic">Verified</span></span>
            </div>
         </footer>
       </main>
@@ -667,14 +680,14 @@ END:VCARD`;
             className="fixed bottom-0 left-0 right-0 z-[100] px-6 sm:px-8 pb-8 sm:pb-12 pointer-events-none"
           >
             <div className="max-w-xl mx-auto w-full bg-white/5 backdrop-blur-[40px] rounded-[2.5rem] sm:rounded-[3.5rem] p-3 sm:p-4 border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex items-center justify-between pointer-events-auto">
-              <div className="flex items-center gap-4 pl-4 sm:pl-6">
-                 <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center p-2 border border-white/5">
-                    <Logo variant="favicon" size="sm" color="neon" />
-                 </div>
-                 <div className="flex flex-col -space-y-1">
-                    <span className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">Built with</span>
-                    <span className="text-lg font-black text-white leading-none">Chip <span className="text-[#A3E635]">NG</span></span>
-                 </div>
+              <div className="flex items-center gap-3 pl-4 sm:pl-6">
+                  <div className="w-9 h-9 bg-black rounded-xl flex items-center justify-center p-1.5 border border-white/5">
+                     <Logo variant="favicon" size="sm" color="neon" className="grayscale opacity-50" />
+                  </div>
+                  <div className="flex flex-col -space-y-1">
+                     <span className="text-[8px] font-black uppercase text-zinc-600 tracking-widest">Built with</span>
+                     <span className="text-sm font-black text-white/50 leading-none">Chip <span className="text-[#A3E635]/60">NG</span></span>
+                  </div>
               </div>
               
               <RouterLink to="/signup" className="group px-8 sm:px-10 h-14 bg-[#A3E635] hover:bg-lime-300 text-black font-black rounded-[1.8rem] sm:rounded-[2.2rem] text-sm flex items-center gap-3 transition-all active:scale-95 shadow-2xl">
