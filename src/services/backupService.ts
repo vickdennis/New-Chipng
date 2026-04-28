@@ -27,19 +27,18 @@ export interface BackupData {
 /**
  * Creates a backup snapshot of a document before a mutation
  */
-export const createBackup = async (collectionName: string, documentId: string | null, action: 'create' | 'update' | 'delete' | 'rollback') => {
+export const createBackup = async (collectionName: string, documentId: string, action: 'create' | 'update' | 'delete' | 'rollback') => {
   try {
-    let existingData = null;
+    const docRef = doc(db, collectionName, documentId);
+    const docSnap = await getDoc(docRef);
     
-    if (documentId && action !== 'create') {
-      const docRef = doc(db, collectionName, documentId);
-      const docSnap = await getDoc(docRef);
-      existingData = docSnap.exists() ? docSnap.data() : null;
-    }
+    // For update and delete, we need existing data
+    // For create, there is no existing data, so we might just log the attempt or the post-create state
+    const existingData = docSnap.exists() ? docSnap.data() : null;
 
     const backupRef = doc(collection(db, `${collectionName}_backup`));
     const backupData: BackupData = {
-      originalId: documentId || 'new-document',
+      originalId: documentId,
       collectionName,
       data: existingData || {},
       action,
@@ -58,26 +57,27 @@ export const createBackup = async (collectionName: string, documentId: string | 
 /**
  * Safe write wrapper that performs a backup before writing
  */
-export const safeWrite = async (collectionName: string, documentId: string | null, data: any, action: 'update' | 'create' | 'delete'): Promise<string | boolean> => {
+export const safeWrite = async (collectionName: string, documentId: string | null, data: any, action: 'update' | 'create' | 'delete') => {
   try {
-    let finalDocId = documentId;
-
-    // 1. For non-create actions, ensure we have an ID
-    if (action !== 'create' && !finalDocId) {
-      throw new Error(`ID required for ${action} operation on ${collectionName}`);
+    // 1. Create Backup (if document exists)
+    if (documentId) {
+      await createBackup(collectionName, documentId, action);
     }
 
-    // 2. For create actions, generate an ID if not provided
-    if (action === 'create' && !finalDocId) {
-      const newDocRef = doc(collection(db, collectionName));
-      finalDocId = newDocRef.id;
+    // 2. Perform Write
+    if (action === 'create') {
+      const colRef = collection(db, collectionName);
+      const newDocRef = documentId ? doc(db, collectionName, documentId) : doc(colRef);
+      await setDoc(newDocRef, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), isDeleted: false });
+      
+      // Create an initial snapshot for the new document
+      await createBackup(collectionName, newDocRef.id, 'create');
+      
+      return newDocRef.id;
     }
 
-    // 3. Create Backup
-    await createBackup(collectionName, finalDocId, action);
-
-    // 4. Perform Write
-    const docRef = doc(db, collectionName, finalDocId!);
+    if (!documentId) throw new Error('documentId is required for update or delete');
+    const docRef = doc(db, collectionName, documentId);
     
     if (action === 'delete') {
       // Soft Delete
@@ -87,16 +87,40 @@ export const safeWrite = async (collectionName: string, documentId: string | nul
         updatedAt: serverTimestamp() 
       });
     } else {
-      await setDoc(docRef, {
-        ...data,
-        isDeleted: false,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+      await setDoc(docRef, { ...data, updatedAt: serverTimestamp() }, { merge: true });
     }
 
-    return action === 'create' ? finalDocId! : true;
+    return true;
   } catch (error) {
     console.error(`Safe write failed for ${collectionName}/${documentId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Rollback a document to a specific backup version
+ */
+export const rollbackToVersion = async (collectionName: string, documentId: string, backupId: string) => {
+  try {
+    const backupRef = doc(db, `${collectionName}_backup`, backupId);
+    const backupSnap = await getDoc(backupRef);
+    
+    if (!backupSnap.exists()) {
+      throw new Error(`Backup ${backupId} not found`);
+    }
+
+    const backupData = backupSnap.data() as BackupData;
+
+    // Create a special rollback backup before restoring
+    await createBackup(collectionName, documentId, 'rollback');
+    
+    // Restore the data
+    const docRef = doc(db, collectionName, documentId);
+    await setDoc(docRef, { ...backupData.data, isDeleted: false, updatedAt: serverTimestamp() }, { merge: false });
+
+    return true;
+  } catch (error) {
+    console.error(`Rollback version failed for ${collectionName}/${documentId}:`, error);
     throw error;
   }
 };

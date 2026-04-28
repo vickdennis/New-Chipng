@@ -47,12 +47,15 @@ export interface User {
   isVerified?: boolean;
   plan: PlanType;
   subscriptionStatus: 'active' | 'inactive';
+  onboardingCompleted?: boolean;
   phone?: string;
   address?: string;
   contactEmail?: string;
+  emailContactEnabled?: boolean;
   profileLayout?: LayoutType;
   profileFont?: FontType;
   textColor?: string;
+  brandColor?: string;
   location?: {
     lat: number;
     lng: number;
@@ -60,9 +63,6 @@ export interface User {
   };
   appointmentsEnabled?: boolean;
   appointments?: Appointment[];
-  isDeleted?: boolean;
-  deletedAt?: string;
-  updatedAt?: string;
   socialLinks?: {
     instagram?: string;
     twitter?: string;
@@ -110,9 +110,22 @@ export interface Link {
   scheduledStart?: string;
   scheduledEnd?: string;
   type?: 'standard' | 'youtube' | 'tiktok';
-  isDeleted?: boolean;
-  deletedAt?: string;
-  updatedAt?: string;
+}
+
+export interface Shout {
+  id: string;
+  userId: string;
+  content: string;
+  image?: string;
+  createdAt: string;
+}
+
+export interface Media {
+  id: string;
+  userId: string;
+  url: string;
+  type: 'image' | 'video';
+  createdAt: string;
 }
 
 export interface ThemeConfig {

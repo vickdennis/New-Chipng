@@ -1,21 +1,17 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    match /blog-images/{userId}/{fileName} {
+    match /users/{userId}/{allPaths=**} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
-    match /profiles/{userId}/{fileName} {
+    match /blogs/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && exists(/databases/(default)/documents/admins/$(request.auth.uid));
     }
-    match /backgrounds/{userId}/{fileName} {
+    match /public/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-    match /link-icons/{userId}/{fileName} {
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;
     }
   }
 }

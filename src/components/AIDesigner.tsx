@@ -5,7 +5,7 @@ import {
   CheckCircle2, Plus, Layout, Palette, Link as LinkIcon,
   MessageSquare, Wand2, X, Mic, MicOff, Volume2, VolumeX
 } from 'lucide-react';
-import { GoogleGenAI, Type, FunctionDeclaration, Modality } from "@google/genai";
+import axios from 'axios';
 import { db } from '../firebase';
 import { doc, updateDoc, addDoc, collection, deleteDoc } from 'firebase/firestore';
 import { safeWrite } from '../services/backupService';
@@ -27,14 +27,14 @@ interface AIDesignerProps {
 const AI_DESIGNER_INSTRUCTIONS = `
 You are the Chip NG "AI Designer", a professional profile engineer. 
 Your goal is to help users set up their perfect link-in-bio profile instantly.
-You can update their profile information, add or modify links, and change their theme.
+You can update their profile information (name, bio, username, cover image), add or modify links, and change their theme.
 
 Be helpful, creative, and efficient. 
 If a user mentions their social media, ask if they want you to add links for them.
 If they want a specific look, suggest a theme and apply it.
 
 You have access to the following actions:
-- updateProfile: Changes name, bio, username, and text color.
+- updateProfile: Changes name, bio, username, textColor, and coverImage URL.
 - addLink: Adds a new social or web link.
 - updateLink: Modifies an existing link.
 - deleteLink: Removes a link.
@@ -56,14 +56,6 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
   const audioContextRef = useRef<AudioContext | null>(null);
   const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
   
-  const getAI = () => {
-    const key = process.env.GEMINI_API_KEY;
-    if (!key || key === 'undefined' || key === 'null') {
-      throw new Error('GEMINI_API_KEY is not defined in the environment.');
-    }
-    return new GoogleGenAI({ apiKey: key });
-  };
-
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -109,46 +101,10 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
     if (isMuted) return;
 
     try {
-      if (currentSourceRef.current) {
-        try {
-          currentSourceRef.current.stop();
-        } catch (e) {
-          // Ignore if already stopped
-        }
-      }
-
-      const ai = getAI();
-      const response = await ai.models.generateContent({
-        model: "gemini-3.1-flash-tts-preview",
-        contents: [{ parts: [{ text }] }],
-        config: {
-          responseModalities: [Modality.AUDIO],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' },
-            },
-          },
-        },
-      });
-
-      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (base64Audio) {
-        if (!audioContextRef.current) {
-          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-        }
-        const ctx = audioContextRef.current;
-        if (ctx.state === 'suspended') {
-          await ctx.resume();
-        }
-
-        const arrayBuffer = Uint8Array.from(atob(base64Audio), c => c.charCodeAt(0)).buffer;
-        const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-        const source = ctx.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(ctx.destination);
-        currentSourceRef.current = source;
-        source.start();
-      }
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1;
+      utterance.pitch = 1;
+      window.speechSynthesis.speak(utterance);
     } catch (error) {
       console.error('TTS Error:', error);
     }
@@ -227,153 +183,25 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
     }
   };
 
-  const toolDeclarations: FunctionDeclaration[] = [
-    {
-      name: "updateProfile",
-      description: "Update the user's profile details like display name, bio, or username.",
-      parameters: {
-        type: Type.OBJECT,
-        properties: {
-          displayName: { type: Type.STRING, description: "The new display name" },
-          bio: { type: Type.STRING, description: "The new bio text" },
-          username: { type: Type.STRING, description: "The new unique username" },
-          textColor: { type: Type.STRING, description: "The custom text color in hex format" }
-        }
-      }
-    },
-    {
-      name: "addLink",
-      description: "Add a new link to the user's profile.",
-      parameters: {
-        type: Type.OBJECT,
-        properties: {
-          title: { type: Type.STRING, description: "Title of the link" },
-          url: { type: Type.STRING, description: "The destination URL" },
-          type: { type: Type.STRING, description: "Type of link (e.g., youtube, instagram, tiktok, custom)" }
-        },
-        required: ["title", "url"]
-      }
-    },
-    {
-      name: "updateLink",
-      description: "Update an existing link's title, URL, or type.",
-      parameters: {
-        type: Type.OBJECT,
-        properties: {
-          id: { type: Type.STRING, description: "The document ID of the link to update" },
-          title: { type: Type.STRING, description: "The new title" },
-          url: { type: Type.STRING, description: "The new URL" },
-          type: { type: Type.STRING, description: "The new type" }
-        },
-        required: ["id"]
-      }
-    },
-    {
-      name: "deleteLink",
-      description: "Delete a link from the profile.",
-      parameters: {
-        type: Type.OBJECT,
-        properties: {
-          id: { type: Type.STRING, description: "The document ID of the link to delete" }
-        },
-        required: ["id"]
-      }
-    },
-    {
-      name: "applyTheme",
-      description: "Change the visual theme of the profile.",
-      parameters: {
-        type: Type.OBJECT,
-        properties: {
-          theme: { type: Type.STRING, description: "The theme ID (e.g., 'modern', 'brutal', 'neo', 'glass', 'sunset')" }
-        },
-        required: ["theme"]
-      }
-    }
-  ];
-
   const handleSend = async (overrideInput?: string) => {
     const userMessage = (overrideInput || input).trim();
     if (!userMessage || isLoading) return;
 
     setInput('');
-    // Always add the user message to the UI
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    const newMessages: Message[] = [...messages, { role: 'user', content: userMessage }];
+    setMessages(newMessages);
     setIsLoading(true);
 
     try {
-      // 1. Validate API Key
-      const key = process.env.GEMINI_API_KEY;
-      if (!key || key === 'undefined' || key === 'null') {
-        console.error('❌ AI Designer Error: GEMINI_API_KEY is missing or invalid.');
-        toast.error('AI configuration is incomplete. Please go to Settings and add GEMINI_API_KEY.');
-        setIsLoading(false);
-        return;
-      }
-
-      const ai = new GoogleGenAI({ apiKey: key });
-      
-      // 1. Context as part of the first user message or system instruction
-      const systemContext = `${AI_DESIGNER_INSTRUCTIONS}\n\nCURRENT CONTEXT:\nProfile: ${JSON.stringify(profile || {})}\nLinks: ${JSON.stringify(links || [])}`;
-
-      // 2. Construct conversation history ensuring it strictly alternates roles.
-      // Gemini requires user -> model -> user ...
-      // We start with the system context in the current request or as a systemInstruction.
-      
-      const history = messages.map(m => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.content }]
-      }));
-
-      const contents: any[] = [];
-      
-      // Clean history logic:
-      // - Must start with 'user'
-      // - Must alternate
-      let lastRole: string | null = null;
-      for (const msg of history) {
-        if (lastRole === null) {
-          if (msg.role === 'model') {
-            // Prepend a dummy user message if history starts with model
-            contents.push({ role: 'user', parts: [{ text: 'Settings initialized.' }] });
-          }
-          contents.push(msg);
-          lastRole = msg.role;
-        } else if (lastRole !== msg.role) {
-          contents.push(msg);
-          lastRole = msg.role;
-        } else {
-          // Merge consecutive same-role messages
-          const lastMsg = contents[contents.length - 1];
-          lastMsg.parts[0].text += `\n${msg.parts[0].text}`;
-        }
-      }
-
-      // Add the final user message to the sequence
-      if (lastRole === 'user') {
-        const lastMsg = contents[contents.length - 1];
-        lastMsg.parts[0].text += `\n${userMessage}`;
-      } else {
-        contents.push({ role: 'user', parts: [{ text: userMessage }] });
-      }
-
-      console.log('🚀 AI Designer Sending Request:', { 
-        historyLength: contents.length,
-        hasSystemInstruction: !!systemContext,
-        hasTools: !!toolDeclarations.length
-      });
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: contents,
-        config: {
-          systemInstruction: systemContext,
-          tools: [{ functionDeclarations: toolDeclarations }]
+      const response = await axios.post('/api/ai/design', {
+        messages: newMessages,
+        userContext: {
+          profile: profile || {},
+          links: links || []
         }
       });
 
-      const functionCalls = response.functionCalls;
-      let finalResponse = response.text || "";
+      const { text, functionCalls } = response.data;
 
       if (functionCalls && functionCalls.length > 0) {
         console.log('🛠️ AI Designer executing function calls:', functionCalls.length);
@@ -386,29 +214,25 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
           }
         }
         
-        // If the model didn't provide a textual response, generate one based on the actions
-        if (!finalResponse) {
-          finalResponse = `I've processed your request! ${results.join('. ')}. Is there anything else I can do for your profile?`;
+        if (!text && results.length > 0) {
+          const successMsg = `I've updated your profile! ${results.join('. ')}`;
+          setMessages(prev => [...prev, { role: 'assistant', content: successMsg }]);
+          speakResponse(successMsg);
+          return;
         }
       }
 
-      if (finalResponse) {
-        setMessages(prev => [...prev, { role: 'assistant', content: finalResponse }]);
-        speakResponse(finalResponse);
+      if (text) {
+        setMessages(prev => [...prev, { role: 'assistant', content: text }]);
+        speakResponse(text);
       } else {
-        // Fallback for empty responses
-        const fallback = "I've heard your request! How else can I help customize your profile today?";
+        const fallback = "I've processed your request! Is there anything else I can do for your profile?";
         setMessages(prev => [...prev, { role: 'assistant', content: fallback }]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ AI Designer Error:', error);
-      // More informative error for the user
-      const errorMsg = error instanceof Error ? error.message : 'Unknown AI encounter';
-      if (errorMsg.includes('Safety') || errorMsg.includes('blocked')) {
-        toast.error('The request was blocked by safety filters. Please try rephrasing.');
-      } else {
-        toast.error('The AI Designer is having trouble responding right now. Please try again.');
-      }
+      const errorMsg = error.response?.data?.error || error.message;
+      toast.error(`AI Error: ${errorMsg}`);
     } finally {
       setIsLoading(false);
     }

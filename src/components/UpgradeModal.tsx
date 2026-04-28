@@ -9,12 +9,22 @@ interface UpgradeModalProps {
   onClose: () => void;
   requiredPlan: PlanType;
   featureName: string;
+  onUpgrade?: () => void;
 }
 
-const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, requiredPlan, featureName }) => {
+const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, requiredPlan, featureName, onUpgrade }) => {
   const navigate = useNavigate();
 
   if (!isOpen) return null;
+
+  const handleUpgrade = () => {
+    onClose();
+    if (onUpgrade) {
+      onUpgrade();
+    } else {
+      navigate('/pricing');
+    }
+  };
 
   const planIcon = requiredPlan === 'pro' ? <Star className="w-8 h-8 text-lime-400" /> : <ShieldCheck className="w-8 h-8 text-lime-400" />;
   const planName = requiredPlan.charAt(0).toUpperCase() + requiredPlan.slice(1);
@@ -70,10 +80,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, requiredPl
           </div>
 
           <button
-            onClick={() => {
-              onClose();
-              navigate('/pricing');
-            }}
+            onClick={handleUpgrade}
             className="w-full bg-lime-400 text-zinc-950 py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-lime-300 transition-all"
           >
             See Pricing <ArrowRight className="w-5 h-5" />

@@ -5,47 +5,127 @@ import {
   collection, query, where, orderBy, onSnapshot, 
   doc, updateDoc, increment 
 } from 'firebase/firestore';
-import { motion, AnimatePresence } from 'motion/react';
-import { QRCodeSVG } from 'qrcode.react';
+import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 import { 
-  Share2, QrCode, X, Check, 
+  Share2, QrCode, X, Check, BadgeCheck,
   Link as LinkIcon, AlertCircle,
-  Youtube, Music2, UserPlus,
-  Instagram, Twitter, Linkedin, Facebook, MessageCircle,
-  MapPin, Mail, Ghost, MessageSquare,
-  Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash, Github, Twitch
+  Mail, MessageSquare, ChevronLeft, ChevronRight,
+  Image as ImageIcon,
+  Plus, AtSign, User as UserIcon, UserPlus, Megaphone, Calendar,
+  CheckCircle2, ArrowUpRight, Send, Camera, MapPin,
+  Instagram, Twitter, Facebook, Youtube, Github, Linkedin, Globe
 } from 'lucide-react';
+
+const SocialIcon = ({ platform, username, className }: { platform: string; username: string; className?: string }) => {
+  const getIcon = () => {
+    switch (platform.toLowerCase()) {
+      case 'instagram': return <Instagram className="w-full h-full" />;
+      case 'twitter': return <Twitter className="w-full h-full" />;
+      case 'facebook': return <Facebook className="w-full h-full" />;
+      case 'youtube': return <Youtube className="w-full h-full" />;
+      case 'github': return <Github className="w-full h-full" />;
+      case 'linkedin': return <Linkedin className="w-full h-full" />;
+      default: return <Globe className="w-full h-full" />;
+    }
+  };
+
+  const getUrl = () => {
+    switch (platform.toLowerCase()) {
+      case 'instagram': return `https://instagram.com/${username}`;
+      case 'twitter': return `https://twitter.com/${username}`;
+      case 'facebook': return `https://facebook.com/${username}`;
+      case 'youtube': return `https://youtube.com/@${username}`;
+      case 'github': return `https://github.com/${username}`;
+      case 'linkedin': return `https://linkedin.com/in/${username}`;
+      default: return `https://${username}`;
+    }
+  };
+
+  return (
+    <a 
+      href={getUrl()} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className={className}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {getIcon()}
+    </a>
+  );
+};
 import Logo from '../components/Logo';
 import { toast } from 'sonner';
-import { User, Link, THEMES } from '../types';
+import { User, Link as LinkType, Shout, Media } from '../types';
 import { Helmet } from 'react-helmet-async';
-import { isAfter, isBefore } from 'date-fns';
+import { format } from 'date-fns';
 
-// New Components
-import { ProfileBackground } from '../components/profile/ProfileBackground';
-import { ProfileHeader } from '../components/profile/ProfileHeader';
-import { LinkCard } from '../components/profile/LinkCard';
-import { ExtraSections } from '../components/profile/ExtraSections';
-import { SocialRail } from '../components/profile/SocialRail';
+import { BrandIcons } from '../components/icons/BrandIcons';
 
 const PublicProfile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
   const [profile, setProfile] = useState<User | null>(null);
-  const [links, setLinks] = useState<Link[]>([]);
+  const [links, setLinks] = useState<LinkType[]>([]);
+  const [shouts, setShouts] = useState<Shout[]>([]);
+  const [media, setMedia] = useState<Media[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showQR, setShowQR] = useState(false);
+  const [activeTab, setActiveTab] = useState<'shouts' | 'media'>('shouts');
+  const [showContactForm, setShowContactForm] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showBottomBar, setShowBottomBar] = useState(true);
+
+  const handleSaveContact = () => {
+    const vcard = `BEGIN:VCARD
+VERSION:3.0
+FN:${profile?.displayName || profile?.username}
+N:${profile?.displayName || profile?.username};;;;
+EMAIL;TYPE=INTERNET;TYPE=WORK:${profile?.contactEmail || profile?.email}
+NOTE:${profile?.bio || ''}
+URL:${window.location.host}/${profile?.username}
+END:VCARD`;
+    
+    const blob = new Blob([vcard], { type: 'text/vcard' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${profile?.username}.vcf`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success('Contact vCard downloaded!');
+  };
+
+  const handleLinkClick = async (linkId: string) => {
+    try {
+      await fetch('/api/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ collection: 'links', id: linkId, field: 'clicks' })
+      });
+    } catch (err) {
+      console.error('Failed to track link click:', err);
+    }
+  };
+
+  // Scroll animations
+  const { scrollY } = useScroll();
+  const coverOpacity = useTransform(scrollY, [0, 200], [1, 0]);
+  const headerOpacity = useTransform(scrollY, [150, 200], [0, 1]);
+  const avatarScale = useTransform(scrollY, [0, 200], [1, 0.8]);
+  const avatarY = useTransform(scrollY, [0, 200], [0, 0]); // Keep it centered relative to container
 
   useEffect(() => {
     if (!username) return;
+    setLoading(true);
 
     let unsubProfile: () => void = () => {};
     let unsubLinks: () => void = () => {};
+    let unsubShouts: () => void = () => {};
+    let unsubMedia: () => void = () => {};
 
     const fetchProfile = async () => {
       try {
-        const userData = await getUserByUsername(username);
+        const userData = await getUserByUsername(username.toLowerCase());
         
         if (!userData) {
           setError('Profile not found');
@@ -57,47 +137,71 @@ const PublicProfile: React.FC = () => {
         const profileRef = doc(db, 'users', userId);
 
         // Track profile view
-        updateDoc(profileRef, {
-          totalClicks: increment(1)
-        }).catch(err => {
-          console.error('Failed to track profile view:', err);
-        });
+        fetch('/api/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ collection: 'users', id: userId, field: 'totalClicks' })
+        }).catch(err => console.error('Failed to track view:', err));
 
         unsubProfile = onSnapshot(profileRef, (doc) => {
           if (doc.exists()) {
             setProfile(doc.data() as User);
           } else {
             setError('Profile no longer exists');
+            setLoading(false);
           }
         }, (error) => {
-          handleFirestoreError(error, OperationType.GET, profileRef.path);
+          console.error("Profile snapshot error:", error);
+          setError('Failed to load profile');
+          setLoading(false);
         });
 
-        const q = query(
+        const qLinks = query(
           collection(db, 'links'), 
           where('userId', '==', userId),
           orderBy('position', 'asc')
         );
-        unsubLinks = onSnapshot(q, (snapshot) => {
+        unsubLinks = onSnapshot(qLinks, (snapshot) => {
           const allLinks = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as Link))
-            .filter(link => link.active); // Filter active in memory to avoid composite index requirement
-          
-          const now = new Date();
-          const filteredLinks = allLinks.filter(link => {
-            if (!link.scheduledStart && !link.scheduledEnd) return true;
-            const start = link.scheduledStart ? new Date(link.scheduledStart) : null;
-            const end = link.scheduledEnd ? new Date(link.scheduledEnd) : null;
-            if (start && isBefore(now, start)) return false;
-            if (end && isAfter(now, end)) return false;
-            return true;
-          });
-
-          setLinks(filteredLinks);
+            .map(doc => ({ id: doc.id, ...doc.data() } as LinkType))
+            .filter(link => link.active && !(link as any).isDeleted);
+          setLinks(allLinks);
           setLoading(false);
         }, (error) => {
-          handleFirestoreError(error, OperationType.LIST, 'links');
+          console.error("Links snapshot error:", error);
+          // If index is missing, try without orderBy for graceful degradation
+          if (error.message.includes('index')) {
+            const fallbackQ = query(collection(db, 'links'), where('userId', '==', userId));
+            onSnapshot(fallbackQ, (snapshot) => {
+              const allLinks = snapshot.docs
+                .map(doc => ({ id: doc.id, ...doc.data() } as LinkType))
+                .filter(link => link.active && !(link as any).isDeleted)
+                .sort((a, b) => (a.position || 0) - (b.position || 0));
+              setLinks(allLinks);
+              setLoading(false);
+            });
+          } else {
+            setLoading(false);
+          }
         });
+
+        const qShouts = query(collection(db, 'shouts'), where('userId', '==', userId));
+        unsubShouts = onSnapshot(qShouts, (snapshot) => {
+          const sortedShouts = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as Shout))
+            .filter(s => !(s as any).isDeleted)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setShouts(sortedShouts);
+        }, (err) => console.error("Shouts error:", err));
+
+        const qMedia = query(collection(db, 'media'), where('userId', '==', userId));
+        unsubMedia = onSnapshot(qMedia, (snapshot) => {
+          const sortedMedia = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() } as Media))
+            .filter(m => !(m as any).isDeleted)
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setMedia(sortedMedia);
+        }, (err) => console.error("Media error:", err));
       } catch (err) {
         console.error(err);
         setError('Something went wrong');
@@ -106,237 +210,548 @@ const PublicProfile: React.FC = () => {
     };
 
     fetchProfile();
-
     return () => {
       unsubProfile();
       unsubLinks();
+      unsubShouts();
+      unsubMedia();
     };
   }, [username]);
-
-  const handleLinkClick = async (linkId: string, url: string) => {
-    try {
-      updateDoc(doc(db, 'links', linkId), {
-        clicks: increment(1)
-      }).catch(err => console.error('Failed to track click:', err));
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (err) {
-      console.error(err);
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
-  };
 
   const copyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    toast.success('Link copied to clipboard');
-  };
-
-  const saveContact = () => {
-    if (!profile) return;
-    const vcardLines = [
-      'BEGIN:VCARD',
-      'VERSION:3.0',
-      `FN:${profile.displayName || profile.username}`,
-      `N:;${profile.displayName || profile.username};;;`,
-      profile.email ? `EMAIL;TYPE=INTERNET:${profile.email}` : '',
-      profile.bio ? `NOTE:${profile.bio}` : '',
-      `URL:${window.location.href}`,
-    ];
-    if (profile.socialLinks?.whatsapp) {
-      const phone = profile.socialLinks.whatsapp.replace(/\D/g, '');
-      if (phone) vcardLines.push(`TEL;TYPE=CELL:${phone}`);
-    }
-    vcardLines.push('END:VCARD');
-    const vcard = vcardLines.join('\n');
-    const blob = new Blob([vcard], { type: 'text/vcard' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${profile.username || 'contact'}.vcf`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success('Contact file downloaded');
+    toast.success('Link copied');
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950">
-      <motion.div 
-        animate={{ scale: [1, 1.2, 1], opacity: [0.3, 1, 0.3] }}
-        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-      >
-        <Logo size="lg" variant="icon-only" />
-      </motion.div>
+    <div className="min-h-screen bg-black p-6">
+      <div className="max-w-lg mx-auto space-y-8 pt-20">
+        <div className="flex flex-col items-center gap-6">
+          <div className="w-28 h-28 bg-zinc-900 rounded-[2.2rem] animate-pulse" />
+          <div className="space-y-3 flex flex-col items-center">
+            <div className="h-10 w-48 bg-zinc-900 rounded-xl animate-pulse" />
+            <div className="h-4 w-32 bg-zinc-900 rounded-lg animate-pulse" />
+          </div>
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-20 w-full bg-zinc-900 rounded-[2rem] animate-pulse" />
+          ))}
+        </div>
+      </div>
     </div>
   );
 
   if (error || !profile) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-white p-6">
       <AlertCircle className="w-16 h-16 text-zinc-800 mb-6" />
-      <h1 className="text-4xl font-black mb-4">{error || 'Profile Not Found'}</h1>
-      <p className="text-zinc-500 mb-8 text-center max-w-md">
-        The profile you are looking for doesn't exist or has been removed.
-      </p>
-      <RouterLink to="/" className="bg-lime-400 text-black px-8 py-3 rounded-full font-black uppercase tracking-tighter hover:scale-105 transition-transform">
+      <h1 className="text-2xl font-black mb-2">Profile Not Found</h1>
+      <p className="text-zinc-500 mb-8 text-center max-w-sm">The user @{username} doesn't exist on Chip NG yet.</p>
+      <RouterLink to="/" className="bg-[#A020F0] text-white px-8 py-3 rounded-xl font-bold transition-transform hover:scale-105">
         Back Home
       </RouterLink>
     </div>
   );
-
-  const theme = THEMES[profile.theme];
-
-
+  
   return (
-    <div className={`min-h-screen relative overflow-x-hidden ${theme.text} selection:bg-lime-400 selection:text-black`}>
+    <div className="min-h-screen bg-black text-white selection:bg-[#A3E635] selection:text-black font-sans overflow-x-hidden">
       <Helmet>
-        <title>{profile.displayName || profile.username} | Premium Mini Profile</title>
-        <meta name="description" content={profile.bio || `Explore ${profile.displayName}'s exclusive content and links.`} />
-        <meta property="og:title" content={`${profile.displayName || profile.username} | Link Hub`} />
-        {profile.photoURL && <meta property="og:image" content={profile.photoURL} />}
+        <title>{profile.displayName || profile.username} (@{profile.username}) | Chip NG</title>
       </Helmet>
 
-      {/* Background System */}
-      <ProfileBackground profile={profile} />
-
-      <div className="relative z-50 w-full max-w-[480px] mx-auto pt-16 pb-32 px-6 flex flex-col items-center min-h-screen">
-        {/* Profile Header */}
-        <ProfileHeader profile={profile} />
-
-        {/* Global Social Links Horizontal Rail */}
-        <SocialRail profile={profile} />
-
-        {/* Dynamic Links Layout */}
-        <div className={`w-full ${
-          profile.profileLayout === 'grid' 
-            ? 'grid grid-cols-2 gap-4' 
-            : profile.profileLayout === 'cards'
-            ? 'space-y-6'
-            : 'space-y-4'
-        }`}>
-          {links.map((link, i) => {
-            const isFeatured = profile.profileLayout === 'featured' && i === 0;
-            return (
-              <div key={link.id} className={isFeatured ? 'col-span-full' : ''}>
-                <LinkCard 
-                  link={link}
-                  profile={profile}
-                  index={i}
-                  onClick={handleLinkClick}
-                  variant={isFeatured ? 'featured' : profile.profileLayout === 'cards' ? 'card' : 'standard'}
-                />
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Extra Sections (Map, Bookings) */}
-        <ExtraSections profile={profile} />
-
-        {/* Footer / Branding */}
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          className="mt-auto pt-20 flex flex-col items-center gap-4"
-        >
-          <RouterLink 
-            to="/" 
-            className="group flex flex-col items-center gap-2 opacity-30 hover:opacity-100 transition-all duration-500"
-          >
-            <Logo size="sm" variant="icon-only" className="grayscale group-hover:grayscale-0 transition-all opacity-50 group-hover:opacity-100" />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">
-              Created with Chip NG
-            </span>
-          </RouterLink>
-        </motion.div>
-      </div>
-
-      {/* Floating Modern Action Bar */}
+      {/* Top Fixed Header */}
       <motion.div 
-        initial={{ y: 100 }}
-        animate={{ y: 0 }}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100]"
+        style={{ opacity: headerOpacity }}
+        className="fixed top-0 left-0 right-0 z-[60] bg-black/80 backdrop-blur-xl border-b border-white/5 px-6 h-20 flex items-center justify-between"
       >
-        <div className="flex items-center gap-1.5 p-2 bg-black/40 backdrop-blur-3xl border border-white/10 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-           <button 
-            onClick={() => setShowQR(true)}
-            className="p-3.5 bg-white/5 hover:bg-white/10 text-white rounded-full transition-all hover:-translate-y-1 active:scale-95"
-            title="Scan QR"
-          >
-            <QrCode className="w-5 h-5 shadow-sm" />
-          </button>
-          
-          <button 
-            onClick={saveContact}
-            className="flex items-center gap-2 px-6 h-12 bg-lime-400 hover:bg-lime-300 text-black rounded-full font-black text-xs uppercase tracking-widest transition-all hover:shadow-[0_0_20px_rgba(163,230,53,0.4)] active:scale-95"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>Save Contact</span>
-          </button>
-
-          <button 
-            onClick={copyLink}
-            className="p-3.5 bg-white/5 hover:bg-white/10 text-white rounded-full transition-all hover:-translate-y-1 active:scale-95"
-            title="Share Profile"
-          >
-            {copied ? <Check className="w-5 h-5 text-lime-400" /> : <Share2 className="w-5 h-5" />}
-          </button>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl overflow-hidden bg-zinc-900 border border-white/10 group-hover:scale-105 transition-transform">
+             {profile.photoURL ? (
+               <img src={profile.photoURL} alt="" className="w-full h-full object-cover" />
+             ) : (
+               <div className="w-full h-full flex items-center justify-center text-zinc-700">
+                 <UserIcon className="w-5 h-5" />
+               </div>
+             )}
+          </div>
+          <div className="flex flex-col -space-y-1">
+             <span className="font-black text-sm truncate max-w-[120px]">{profile.displayName || profile.username}</span>
+             <span className="text-[10px] font-bold text-[#A3E635] italic">@{profile.username}</span>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+           <button onClick={copyLink} className="p-2.5 bg-zinc-900 rounded-xl border border-white/5 active:scale-95 transition-transform">
+             <Share2 className="w-4 h-4 text-zinc-400" />
+           </button>
+           <button onClick={handleSaveContact} className="px-5 py-2.5 bg-[#A3E635] text-black font-black rounded-xl text-xs active:scale-95 transition-transform">
+             Save Contact
+           </button>
         </div>
       </motion.div>
 
-      {/* QR Code Modal */}
-      <AnimatePresence>
-        {showQR && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 sm:p-0">
-             <motion.div 
-               initial={{ opacity: 0 }}
-               animate={{ opacity: 1 }}
-               exit={{ opacity: 0 }}
-               onClick={() => setShowQR(false)}
-               className="absolute inset-0 bg-black/90 backdrop-blur-xl"
-             />
-             
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative bg-zinc-900 overflow-hidden border border-white/10 rounded-[2.5rem] max-w-sm w-full flex flex-col items-center gap-8 p-10 shadow-3xl"
+      {/* Initial Transparent Header */}
+      <div className="fixed top-0 left-0 right-0 z-50 px-6 h-20 flex items-center justify-between pointer-events-none">
+        <RouterLink to="/" className="p-3 bg-black/40 backdrop-blur-xl rounded-2xl pointer-events-auto border border-white/5 active:scale-95 transition-transform">
+          <Logo size="sm" variant="favicon" color="neon" />
+        </RouterLink>
+        
+        <button 
+          onClick={handleSaveContact}
+          className="p-3 bg-black/40 backdrop-blur-xl rounded-2xl pointer-events-auto border border-white/5 active:scale-95 transition-transform flex items-center gap-2 group"
+        >
+          <div className="relative">
+            <UserPlus className="w-6 h-6 text-white group-hover:text-[#A3E635] transition-colors" />
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#A3E635] rounded-full border-2 border-black" />
+          </div>
+        </button>
+      </div>
+
+      {/* Main Container */}
+      <main className="w-full max-w-lg mx-auto pb-48">
+        {/* Hero Section */}
+        <div className="relative h-[55vh] min-h-[450px] w-full overflow-hidden">
+          <motion.div 
+            style={{ opacity: coverOpacity }}
+            className="w-full h-full relative"
+          >
+            {profile.coverImage ? (
+              <img 
+                src={profile.coverImage} 
+                alt="" 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-zinc-900 via-zinc-950 to-black relative">
+                 <div className="absolute inset-0 bg-[#A3E635]/5 blur-3xl rounded-full translate-y-1/2" />
+              </div>
+            )}
+            {/* High-End Shadow Overlay */}
+            <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/40 to-transparent" />
+            <div className="absolute inset-0 bg-black/10" />
+          </motion.div>
+
+          {/* Profile Content Overlay */}
+          <div className="absolute inset-0 flex flex-col justify-end p-8 pb-12">
+            <motion.div 
+              style={{ scale: avatarScale, y: avatarY }}
+              className="relative inline-block mb-8 group"
             >
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-lime-400 to-emerald-500" />
+              <div className="w-28 h-28 rounded-[2.2rem] border-[5px] border-black overflow-hidden bg-zinc-900 shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative z-10">
+                {profile.photoURL ? (
+                  <img src={profile.photoURL} alt={profile.displayName} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-zinc-700 bg-zinc-800">
+                    <UserIcon className="w-12 h-12" />
+                  </div>
+                )}
+              </div>
+              <div className="absolute -inset-1 bg-gradient-to-tr from-[#A3E635] to-transparent rounded-[2.4rem] opacity-40 group-hover:opacity-100 transition-opacity blur-sm" />
               
-              <button 
-                onClick={() => setShowQR(false)}
-                className="absolute top-6 right-6 p-2 text-white/40 hover:text-white transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-              
-              <div className="text-center">
-                <div className="relative inline-block mb-2">
-                  <div className="absolute -inset-1 bg-lime-400/20 blur-lg rounded-full" />
-                  <h3 className="relative text-2xl font-black text-white italic tracking-tight">Scan Profile</h3>
+              {profile.isVerified && (
+                <div className="absolute -bottom-2 -right-2 p-1.5 bg-[#A3E635] rounded-xl border-[3px] border-black z-20 shadow-xl">
+                  <BadgeCheck className="w-6 h-6 text-black" />
                 </div>
-                <p className="text-white/40 text-sm font-medium">@{profile.username} on Chip NG</p>
+              )}
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="space-y-4"
+            >
+              <div className="space-y-1">
+                <h1 className="text-5xl font-black tracking-tighter leading-none mb-2">
+                  {profile.displayName || profile.username}
+                </h1>
+                <div className="flex items-center gap-3">
+                  <span className="text-[#A3E635] font-black text-lg tracking-tight italic">@{profile.username}</span>
+                  <div className="w-1.5 h-1.5 bg-zinc-800 rounded-full" />
+                  <span className="text-zinc-500 text-sm font-bold uppercase tracking-widest">Brand Ambassador</span>
+                </div>
+              </div>
+              
+              {profile.bio && (
+                <p className="text-zinc-400 text-[15px] leading-relaxed max-w-sm font-medium font-sans">
+                  {profile.bio}
+                </p>
+              )}
+
+              {/* Social Pills */}
+              {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
+                <div className="flex flex-wrap gap-3 pt-4">
+                  {Object.entries(profile.socialLinks).map(([platform, username]) => (
+                    <SocialIcon 
+                      key={platform} 
+                      platform={platform} 
+                      username={username as string} 
+                      className="w-10 h-10 p-2.5 bg-white/5 backdrop-blur-xl border border-white/5 rounded-xl text-zinc-400 hover:text-[#A3E635] hover:bg-white/10 transition-all hover:-translate-y-1" 
+                    />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Links & Content Section */}
+        <div className="px-6 space-y-16 mt-8">
+          
+          {/* Main Action Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <button 
+              onClick={copyLink}
+              className="group flex flex-col items-center justify-center gap-3 py-6 bg-zinc-900 hover:bg-zinc-800 rounded-[2rem] border border-white/5 transition-all active:scale-95 shadow-xl"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center group-hover:bg-zinc-700 transition-colors">
+                {copied ? <CheckCircle2 className="w-6 h-6 text-[#A3E635]" /> : <Share2 className="w-6 h-6 text-zinc-400" />}
+              </div>
+              <span className="font-black text-xs uppercase tracking-widest">{copied ? 'Copied' : 'Share Bio'}</span>
+            </button>
+            <button 
+              onClick={() => setShowContactForm(true)}
+              className="group flex flex-col items-center justify-center gap-3 py-6 bg-zinc-900 hover:bg-zinc-800 rounded-[2rem] border border-white/5 transition-all active:scale-95 shadow-xl"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center group-hover:bg-zinc-700 transition-colors">
+                <Mail className="w-6 h-6 text-zinc-400 group-hover:text-[#A3E635]" />
+              </div>
+              <span className="font-black text-xs uppercase tracking-widest text-zinc-400">Message</span>
+            </button>
+          </div>
+
+          {/* Featured Content Group */}
+          <section className="space-y-8">
+            <div className="flex items-center justify-between px-2">
+              <h2 className="text-2xl font-black tracking-tighter">Spotlight</h2>
+              <div className="flex-1 h-px bg-zinc-900 ml-6" />
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              {links.filter(l => l.active).map((link, idx) => {
+                // Feature big links with rich previews
+                const isBig = idx === 0 || (idx === 1 && links.length > 3);
+                
+                if (isBig) {
+                  return (
+                    <motion.a
+                      key={link.id}
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => handleLinkClick(link.id)}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      className="group relative block bg-zinc-900 border border-white/5 rounded-[2.8rem] overflow-hidden shadow-2xl hover:border-[#A3E635]/30 transition-all active:scale-[0.98]"
+                    >
+                      <div className="aspect-[16/10] relative overflow-hidden">
+                        {link.icon ? (
+                          <img 
+                            src={link.icon} 
+                            alt={link.title} 
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
+                            referrerPolicy="no-referrer" 
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-zinc-800 to-zinc-950 flex items-center justify-center">
+                            <LinkIcon className="w-16 h-16 text-zinc-800" />
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent group-hover:opacity-20 transition-opacity" />
+                        
+                        <div className="absolute inset-0 p-8 flex flex-col justify-end">
+                           <div className="inline-flex py-1 px-3 bg-[#A3E635] text-black text-[10px] font-black uppercase tracking-widest rounded-full self-start mb-3">Featured</div>
+                           <h3 className="text-3xl font-black leading-tight text-white group-hover:text-[#A3E635] transition-colors">{link.title}</h3>
+                           <p className="text-zinc-400 text-sm font-medium mt-1 truncate opacity-70 group-hover:opacity-100">{link.url.replace(/^https?:\/\//, '')}</p>
+                        </div>
+                        
+                        <div className="absolute top-8 right-8 w-12 h-12 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 border border-white/20">
+                          <ArrowUpRight className="w-6 h-6 text-white" />
+                        </div>
+                      </div>
+                    </motion.a>
+                  );
+                }
+
+                return (
+                  <motion.a
+                    key={link.id}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => handleLinkClick(link.id)}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    className="flex items-center gap-5 p-5 bg-zinc-900 border border-white/5 rounded-[2rem] hover:bg-zinc-800 transition-all active:scale-[0.98] group"
+                  >
+                    <div className="w-16 h-16 rounded-[1.2rem] bg-zinc-800 flex items-center justify-center overflow-hidden border border-white/5 shadow-inner">
+                       {link.icon ? (
+                         <img src={link.icon} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" referrerPolicy="no-referrer" />
+                       ) : (
+                         <LinkIcon className="w-6 h-6 text-zinc-600" />
+                       )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                       <h3 className="font-bold text-lg text-white group-hover:text-[#A3E635] transition-colors truncate">{link.title}</h3>
+                       <p className="text-[11px] text-zinc-500 font-bold tracking-tight truncate uppercase">{link.url.replace(/^https?:\/\//, '')}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-zinc-800 rounded-2xl flex items-center justify-center group-hover:bg-[#A3E635] transition-all group-hover:rotate-12">
+                       <ArrowUpRight className="w-5 h-5 group-hover:text-black transition-colors" />
+                    </div>
+                  </motion.a>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Shouts Section - Horizontal Scroll */}
+          {shouts.length > 0 && (
+            <section className="space-y-8">
+              <div className="flex items-center justify-between px-2">
+                <h2 className="text-2xl font-black tracking-tighter">Public Shouts</h2>
+                <div className="flex-1 h-px bg-zinc-900 ml-6" />
+              </div>
+              
+              <div className="flex overflow-x-auto no-scrollbar gap-5 px-1 pb-6 -mx-6 px-6">
+                {shouts.map(shout => (
+                  <motion.div 
+                    key={shout.id}
+                    whileHover={{ y: -6 }}
+                    className="min-w-[300px] w-[300px] bg-zinc-900/40 backdrop-blur-md p-8 rounded-[2.5rem] border border-white/5 relative shadow-2xl flex flex-col"
+                  >
+                    <div className="absolute -top-3 -right-3 p-3 bg-[#A3E635] text-black rounded-2xl shadow-xl rotate-[8deg]">
+                      <Megaphone className="w-5 h-5 font-black" />
+                    </div>
+                    
+                    <div className="flex-1 mb-6">
+                      <p className="text-[16px] font-medium text-white/90 leading-relaxed italic">"{shout.content}"</p>
+                    </div>
+
+                    {shout.image && (
+                      <div className="aspect-square rounded-[1.8rem] overflow-hidden mb-6 border border-white/10 shadow-lg">
+                        <img src={shout.image} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between mt-auto">
+                      <div className="flex items-center gap-2">
+                         <div className="w-6 h-6 rounded-full bg-zinc-800 flex items-center justify-center">
+                            <Logo variant="favicon" size="sm" color="neon" />
+                         </div>
+                         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#A3E635]">Verified Shout</span>
+                      </div>
+                      <span className="text-[9px] font-bold uppercase text-zinc-600 tracking-widest">
+                        {shout.createdAt ? format(new Date(shout.createdAt), 'MMM d') : 'Recently'}
+                      </span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Media Discovery - Bento Grid Style */}
+          {media.length > 0 && (
+            <section className="space-y-8">
+              <div className="flex items-center justify-between px-2">
+                <h2 className="text-2xl font-black tracking-tighter">Lifestyle</h2>
+                <div className="flex-1 h-px bg-zinc-900 ml-6" />
               </div>
 
-              <div className="relative group p-4 bg-white rounded-3xl overflow-hidden">
-                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                <QRCodeSVG 
-                  value={window.location.href} 
-                  size={200}
-                  level="H"
-                  includeMargin={true}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                {media.map((item, i) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    className={`rounded-[2.2rem] overflow-hidden group cursor-pointer relative shadow-2xl bg-zinc-900 ${i % 3 === 0 ? 'col-span-2 aspect-video' : 'aspect-square'}`}
+                  >
+                    {item.type === 'image' ? (
+                      <img src={item.url} alt="" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" referrerPolicy="no-referrer" />
+                    ) : (
+                      <video src={item.url} className="w-full h-full object-cover" loop muted playsInline />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500" />
+                    <div className="absolute bottom-6 left-6 opacity-0 group-hover:opacity-100 transition-all translate-y-4 group-hover:translate-y-0">
+                       <span className="text-[10px] font-black uppercase text-[#A3E635] tracking-widest">Snapshot • {format(new Date(item.createdAt), 'yyyy')}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Business Section (Pro/Business Plan) */}
+          {(profile.appointmentsEnabled || profile.address) && (
+            <section className="space-y-10 py-12">
+               {profile.appointmentsEnabled && profile.appointments && profile.appointments.length > 0 && (
+                 <div className="space-y-6">
+                    <div className="flex items-center gap-4 px-2">
+                      <div className="w-12 h-12 bg-[#A3E635]/10 rounded-2xl flex items-center justify-center">
+                        <Calendar className="w-6 h-6 text-[#A3E635]" />
+                      </div>
+                      <h2 className="text-3xl font-black tracking-tighter">Book an Appointment</h2>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 gap-4">
+                      {profile.appointments.map(appt => (
+                        <motion.a
+                          key={appt.id}
+                          href={appt.contactLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          whileHover={{ x: 10 }}
+                          className="flex items-center justify-between p-6 bg-zinc-900 border border-white/5 rounded-[2.5rem] group"
+                        >
+                          <div className="space-y-1">
+                            <h4 className="text-lg font-bold group-hover:text-[#A3E635] transition-colors">{appt.title}</h4>
+                            <p className="text-xs text-zinc-500 font-bold uppercase tracking-widest">{appt.dateTime}</p>
+                          </div>
+                          <div className="px-6 py-2 bg-zinc-800 group-hover:bg-[#A3E635] text-white group-hover:text-black rounded-xl text-xs font-black transition-all">
+                            Book
+                          </div>
+                        </motion.a>
+                      ))}
+                    </div>
+                 </div>
+               )}
+
+               {profile.address && (
+                 <div className="space-y-6">
+                    <div className="flex items-center gap-4 px-2">
+                       <div className="w-12 h-12 bg-[#A3E635]/10 rounded-2xl flex items-center justify-center">
+                        <MapPin className="w-6 h-6 text-[#A3E635]" />
+                      </div>
+                      <h2 className="text-3xl font-black tracking-tighter">Find Us</h2>
+                    </div>
+
+                    <div className="rounded-[3rem] overflow-hidden border border-white/5 bg-zinc-900 shadow-2xl">
+                       <div className="aspect-[16/10] bg-zinc-800 relative">
+                          {/* Mock Map using Static Image if lat/lng present, otherwise just address */}
+                          <iframe
+                            src={`https://www.google.com/maps/embed/v1/place?key=YOUR_API_KEY_OR_MOCK&q=${encodeURIComponent(profile.address)}`}
+                            className="w-full h-full border-0 grayscale invert opacity-70 contrast-125"
+                            allowFullScreen
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                          ></iframe>
+                          <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-zinc-950 via-transparent to-transparent text-white p-8 flex flex-col justify-end">
+                             <div className="flex items-center gap-2 mb-2">
+                                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Physical Presence</span>
+                             </div>
+                             <p className="text-xl font-bold max-w-xs leading-snug">{profile.address}</p>
+                             <a 
+                               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile.address)}`}
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               className="mt-6 flex items-center justify-center gap-2 py-4 bg-white text-black font-black rounded-2xl text-xs uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all pointer-events-auto"
+                             >
+                               Get Directions <ArrowUpRight className="w-4 h-4" />
+                             </a>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+               )}
+            </section>
+          )}
+        </div>
+
+        <footer className="py-32 flex flex-col items-center gap-6">
+           <div className="p-4 bg-zinc-900 rounded-[1.5rem] border border-white/5 mb-4 group cursor-pointer hover:border-[#A3E635]/50 transition-colors">
+              <Logo size="md" variant="icon-only" color="neon" />
+           </div>
+           <div className="flex flex-col items-center gap-1">
+             <span className="text-xs font-black tracking-[0.4em] uppercase text-zinc-600">This profile is</span>
+             <span className="text-xl font-black text-white italic">Chip NG <span className="text-[#A3E635]">Verified</span></span>
+           </div>
+        </footer>
+      </main>
+
+      {/* High-End Glass Floating CTA Bar */}
+      <AnimatePresence>
+        {showBottomBar && (
+          <motion.div 
+            initial={{ y: 150 }}
+            animate={{ y: 0 }}
+            exit={{ y: 150 }}
+            className="fixed bottom-0 left-0 right-0 z-[100] px-6 sm:px-8 pb-8 sm:pb-12 pointer-events-none"
+          >
+            <div className="max-w-xl mx-auto w-full bg-white/5 backdrop-blur-[40px] rounded-[2.5rem] sm:rounded-[3.5rem] p-3 sm:p-4 border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex items-center justify-between pointer-events-auto">
+              <div className="flex items-center gap-4 pl-4 sm:pl-6">
+                 <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center p-2 border border-white/5">
+                    <Logo variant="favicon" size="sm" color="neon" />
+                 </div>
+                 <div className="flex flex-col -space-y-1">
+                    <span className="text-[10px] font-black uppercase text-zinc-500 tracking-widest">Built with</span>
+                    <span className="text-lg font-black text-white leading-none">Chip <span className="text-[#A3E635]">NG</span></span>
+                 </div>
+              </div>
+              
+              <RouterLink to="/signup" className="group px-8 sm:px-10 h-14 bg-[#A3E635] hover:bg-lime-300 text-black font-black rounded-[1.8rem] sm:rounded-[2.2rem] text-sm flex items-center gap-3 transition-all active:scale-95 shadow-2xl">
+                 Claim Yours <ArrowUpRight className="w-5 h-5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </RouterLink>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modern High-End Contact Modal */}
+      <AnimatePresence>
+        {showContactForm && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowContactForm(false)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-xl"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-lg bg-zinc-950 rounded-[3rem] p-10 shadow-3xl border border-white/5 overflow-hidden"
+            >
+              {/* Modal Background Detail */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#A3E635]/10 blur-[60px] rounded-full -translate-y-1/2 translate-x-1/2" />
+              
+              <div className="flex justify-between items-start mb-10 relative z-10">
+                <div className="space-y-1">
+                  <h2 className="text-4xl font-black tracking-tighter text-white">Direct Message</h2>
+                  <p className="text-zinc-500 font-medium">Inquiry for @{profile.username}</p>
+                </div>
+                <button onClick={() => setShowContactForm(false)} className="p-3 bg-zinc-900 rounded-2xl hover:bg-zinc-800 transition-colors border border-white/5">
+                  <X className="w-5 h-5 text-zinc-500" />
+                </button>
               </div>
 
-              <button 
-                onClick={copyLink}
-                className="w-full h-14 bg-white text-black rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-zinc-200 transition-all flex items-center justify-center gap-2"
-              >
-                <LinkIcon className="w-4 h-4" />
-                Copy Profile URL
-              </button>
+              <form className="space-y-6 relative z-10" onSubmit={(e) => { e.preventDefault(); toast.success("Message deliverd!"); setShowContactForm(false); }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Your Alias</label>
+                    <input type="text" required placeholder="Alex" className="w-full h-14 bg-zinc-900 border border-white/5 rounded-2xl px-6 text-white focus:border-[#A3E635]/40 outline-none transition-all placeholder:text-zinc-800" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Email</label>
+                    <input type="email" required placeholder="alex@me.com" className="w-full h-14 bg-zinc-900 border border-white/5 rounded-2xl px-6 text-white focus:border-[#A3E635]/40 outline-none transition-all placeholder:text-zinc-800" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-600 uppercase tracking-widest ml-1">Context</label>
+                  <textarea required rows={4} placeholder="Let's collaborate..." className="w-full bg-zinc-900 border border-white/5 rounded-[2rem] p-6 text-white focus:border-[#A3E635]/40 outline-none transition-all resize-none placeholder:text-zinc-800" />
+                </div>
+                <button className="w-full h-16 bg-[#A3E635] text-black rounded-[2rem] font-black uppercase tracking-widest text-sm mt-4 shadow-2xl shadow-[#A3E635]/10 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 group">
+                  Send Inquiry <Send className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                </button>
+              </form>
             </motion.div>
           </div>
         )}

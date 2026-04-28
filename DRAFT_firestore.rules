@@ -54,7 +54,7 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get: if true;
-      allow list: if true;
+      allow list: if isAdmin(); // Only admins can list all users
       allow create: if isOwner(userId) && isValidUser(incoming()) && (
         !incoming().keys().hasAny(['role', 'isPremium', 'plan', 'isVerified', 'status'])
       );

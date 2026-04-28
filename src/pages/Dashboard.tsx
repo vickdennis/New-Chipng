@@ -20,7 +20,9 @@ import {
   Plus, Trash2, GripVertical, Eye, EyeOff, Image as ImageIcon,
   LogOut, ExternalLink, Copy, Check, Moon, Sun, Palette,
   Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash,
-  CreditCard, Calendar, LayoutGrid, Star, Square, AlertCircle, Lightbulb
+  CreditCard, Calendar, LayoutGrid, Star, Square, AlertCircle, Lightbulb, Camera,
+  Briefcase, Play, Heart, Coffee, BookOpen, Globe, Search, ChevronRight, X,
+  History as HistoryIcon, RotateCcw, Megaphone, Clock, BadgeCheck, ArrowUpRight
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -30,18 +32,20 @@ import {
 } from 'recharts';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { toast } from 'sonner';
-import { Link, Transaction, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment } from '../types';
+import { Link, Transaction, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment, Shout, Media } from '../types';
 import { auth } from '../firebase';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { DISPLAY_DOMAIN } from '../constants';
 import UpgradeModal from '../components/UpgradeModal';
-import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Clock, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2, BadgeCheck } from 'lucide-react';
+import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2 } from 'lucide-react';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { usePaystackPayment } from 'react-paystack';
 import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
-import { safeWrite, getBackupHistory, rollbackDocument, BackupData } from '../services/backupService';
+import { safeWrite, getBackupHistory, rollbackDocument, rollbackToVersion, BackupData } from '../services/backupService';
 import { AIDesigner } from '../components/AIDesigner';
+import { BrandIcons } from '../components/icons/BrandIcons';
 import { Sparkles, Wand2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -49,13 +53,15 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, isUploading }: { 
+const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, isUploading, isAdmin, onViewHistory }: { 
   link: Link; 
   onUpdate: (id: string, data: Partial<Link>) => void;
   onDelete: (id: string) => void;
   isPremium: boolean;
   onUploadIcon: (e: React.ChangeEvent<HTMLInputElement>, linkId: string) => void;
   isUploading: boolean;
+  isAdmin: boolean;
+  onViewHistory: (collection: string, id: string) => void;
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: link.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
@@ -114,6 +120,15 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
               >
                 <Settings className="w-4 h-4" />
               </button>
+              {isAdmin && (
+                <button 
+                  onClick={() => onViewHistory('links', link.id)}
+                  className="p-2 rounded-lg text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                  title="View History"
+                >
+                  <HistoryIcon className="w-4 h-4" />
+                </button>
+              )}
               <button 
                 onClick={() => onUpdate(link.id, { active: !link.active })}
                 className={`transition-colors ${link.active ? 'text-lime-500' : 'text-zinc-400'}`}
@@ -203,6 +218,68 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
   );
 };
 
+const CATEGORIES = [
+  { id: 'socials', label: 'Socials', icon: MessageCircle },
+  { id: 'music', label: 'Music', icon: Music },
+  { id: 'business', label: 'Business', icon: Briefcase },
+  { id: 'payments', label: 'Payments', icon: CreditCard },
+  { id: 'entertainment', label: 'Entertainment', icon: Play },
+  { id: 'lifestyle', label: 'Lifestyle', icon: Heart },
+] as const;
+
+const PLATFORMS = {
+  socials: [
+    { id: 'instagram', label: 'Instagram', icon: BrandIcons.instagram, color: '#E4405F', urlPrefix: 'https://instagram.com/' },
+    { id: 'twitter', label: 'Twitter / X', icon: BrandIcons.x, color: '#000000', urlPrefix: 'https://twitter.com/' },
+    { id: 'tiktok', label: 'TikTok', icon: BrandIcons.tiktok, color: '#000000', urlPrefix: 'https://tiktok.com/@' },
+    { id: 'youtube', label: 'YouTube', icon: BrandIcons.youtube, color: '#FF0000', urlPrefix: 'https://youtube.com/' },
+    { id: 'facebook', label: 'Facebook', icon: BrandIcons.facebook, color: '#1877F2', urlPrefix: 'https://facebook.com/' },
+    { id: 'threads', label: 'Threads', icon: AtSign, color: '#000000', urlPrefix: 'https://threads.net/@' },
+    { id: 'linkedin', label: 'LinkedIn', icon: BrandIcons.linkedin, color: '#0A66C2', urlPrefix: 'https://linkedin.com/in/' },
+    { id: 'whatsapp', label: 'WhatsApp', icon: BrandIcons.whatsapp, color: '#25D366', urlPrefix: 'https://wa.me/' },
+    { id: 'telegram', label: 'Telegram', icon: Send, color: '#26A5E4', urlPrefix: 'https://t.me/' },
+    { id: 'snapchat', label: 'Snapchat', icon: BrandIcons.snapchat, color: '#FFFC00', urlPrefix: 'https://snapchat.com/add/' },
+    { id: 'discord', label: 'Discord', icon: BrandIcons.discord, color: '#5865F2', urlPrefix: 'https://discord.gg/' },
+    { id: 'reddit', label: 'Reddit', icon: BrandIcons.reddit, color: '#FF4500', urlPrefix: 'https://reddit.com/u/' },
+    { id: 'pinterest', label: 'Pinterest', icon: Pin, color: '#BD081C', urlPrefix: 'https://pinterest.com/' },
+    { id: 'twitch', label: 'Twitch', icon: BrandIcons.twitch, color: '#9146FF', urlPrefix: 'https://twitch.tv/' }
+  ],
+  music: [
+    { id: 'spotify', label: 'Spotify', icon: BrandIcons.spotify, color: '#1DB954', urlPrefix: 'https://open.spotify.com/user/' },
+    { id: 'applemusic', label: 'Apple Music', icon: Apple, color: '#FA243C', urlPrefix: 'https://music.apple.com/' },
+    { id: 'soundcloud', label: 'SoundCloud', icon: BrandIcons.soundcloud, color: '#FF5500', urlPrefix: 'https://soundcloud.com/' },
+    { id: 'deezer', label: 'Deezer', icon: Music, color: '#00C7FF', urlPrefix: 'https://deezer.com/' },
+    { id: 'tidal', label: 'Tidal', icon: Music2, color: '#000000', urlPrefix: 'https://tidal.com/' }
+  ],
+  business: [
+    { id: 'website', label: 'Website', icon: Globe, color: '#6B7280', urlPrefix: 'https://' },
+    { id: 'linkedin', label: 'LinkedIn Business', icon: BrandIcons.linkedin, color: '#0A66C2', urlPrefix: 'https://linkedin.com/company/' },
+    { id: 'github', label: 'GitHub', icon: BrandIcons.github, color: '#181717', urlPrefix: 'https://github.com/' },
+    { id: 'portfolio', label: 'Portfolio', icon: LayoutGrid, color: '#6366F1', urlPrefix: 'https://' },
+    { id: 'behance', label: 'Behance', icon: BrandIcons.behance, color: '#1769FF', urlPrefix: 'https://behance.net/' },
+    { id: 'dribbble', label: 'Dribbble', icon: BrandIcons.dribbble, color: '#EA4C89', urlPrefix: 'https://dribbble.com/' }
+  ],
+  payments: [
+    { id: 'paypal', label: 'PayPal', icon: CreditCard, color: '#003087', urlPrefix: 'https://paypal.me/' },
+    { id: 'buymeacoffee', label: 'Buy Me a Coffee', icon: Coffee, color: '#FFDD00', urlPrefix: 'https://buymeacoffee.com/' },
+    { id: 'patreon', label: 'Patreon', icon: Star, color: '#FF424D', urlPrefix: 'https://patreon.com/' },
+    { id: 'cashapp', label: 'Cash App', icon: CreditCard, color: '#00D632', urlPrefix: 'https://cash.app/$' },
+    { id: 'venmo', label: 'Venmo', icon: CreditCard, color: '#3D95CE', urlPrefix: 'https://venmo.com/' }
+  ],
+  entertainment: [
+    { id: 'netflix', label: 'Netflix', icon: Play, color: '#E50914', urlPrefix: 'https://netflix.com/' },
+    { id: 'hulu', label: 'Hulu', icon: Play, color: '#1CE783', urlPrefix: 'https://hulu.com/' },
+    { id: 'primevideo', label: 'Prime Video', icon: Play, color: '#00A8E1', urlPrefix: 'https://amazon.com/video/' },
+    { id: 'disneyplus', label: 'Disney+', icon: Play, color: '#006E99', urlPrefix: 'https://disneyplus.com/' }
+  ],
+  lifestyle: [
+    { id: 'blog', label: 'Blog', icon: BookOpen, color: '#6B7280', urlPrefix: 'https://' },
+    { id: 'medium', label: 'Medium', icon: BrandIcons.medium, color: '#000000', urlPrefix: 'https://medium.com/@' },
+    { id: 'substack', label: 'Substack', icon: BrandIcons.substack, color: '#FF6719', urlPrefix: 'https://substack.com/' },
+    { id: 'goodreads', label: 'Goodreads', icon: Star, color: '#372213', urlPrefix: 'https://goodreads.com/' }
+  ]
+};
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserType | null>(null);
@@ -218,44 +295,58 @@ const Dashboard: React.FC = () => {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   const [links, setLinks] = useState<Link[]>([]);
+  const [shouts, setShouts] = useState<Shout[]>([]);
+  const [media, setMedia] = useState<Media[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup' | 'ai'>('links');
+  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup' | 'ai' | 'posts'>('links');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isAddPlatformModalOpen, setIsAddPlatformModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<keyof typeof PLATFORMS>('socials');
+  const [searchQuery, setSearchQuery] = useState('');
   const [backups, setBackups] = useState<BackupData[]>([]);
   const [isRollingBack, setIsRollingBack] = useState(false);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const isAdmin = profile?.role === 'admin';
   const [upgradeModal, setUpgradeModal] = useState<{ isOpen: boolean; requiredPlan: PlanType; featureName: string }>({
     isOpen: false,
     requiredPlan: 'pro',
     featureName: ''
   });
+  const [historyModal, setHistoryModal] = useState<{ collection: string; id: string } | null>(null);
   const navigate = useNavigate();
+
+  const fetchHistory = async (collection: string, id: string) => {
+    const history = await getBackupHistory(collection, id);
+    setBackups(history);
+    setHistoryModal({ collection, id });
+  };
+
+  const handleRollback = async (backupId: string) => {
+    if (!historyModal) return;
+    if (!window.confirm("Are you sure you want to restore this version? This will overwrite the current data.")) return;
+
+    setIsRollingBack(true);
+    try {
+      await rollbackToVersion(historyModal.collection, historyModal.id, backupId);
+      toast.success("Document restored successfully");
+      setHistoryModal(null);
+      // Reload relevant data
+      if (historyModal.collection === 'users') {
+        const docSnap = await getDoc(doc(db, 'users', historyModal.id));
+        if (docSnap.exists()) setProfile(docSnap.data() as UserType);
+      }
+    } catch (error) {
+      toast.error("Failed to restore document");
+    } finally {
+      setIsRollingBack(false);
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
-
-  useEffect(() => {
-    if (activeTab === 'backup' && user) {
-      getBackupHistory('users', user.uid).then(setBackups);
-    }
-  }, [activeTab, user]);
-
-  const handleRollback = async (backupId: string) => {
-    if (!user || !window.confirm('Are you sure you want to restore this version? Current data will be backed up.')) return;
-    setIsRollingBack(true);
-    try {
-      await rollbackDocument('users', user.uid);
-      toast.success('Successfully restored to previous version!');
-      const newHistory = await getBackupHistory('users', user.uid);
-      setBackups(newHistory);
-    } catch (err) {
-      toast.error('Rollback failed. Please try again.');
-    } finally {
-      setIsRollingBack(false);
-    }
-  };
 
   useEffect(() => {
     if (!user) return;
@@ -282,7 +373,7 @@ const Dashboard: React.FC = () => {
     const unsubLinks = onSnapshot(q, (snapshot) => {
       const sortedLinks = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() } as Link))
-        .filter(link => !link.isDeleted)
+        .filter(l => !(l as any).isDeleted)
         .sort((a, b) => (a.position || 0) - (b.position || 0));
       setLinks(sortedLinks);
       setLoading(false);
@@ -300,6 +391,24 @@ const Dashboard: React.FC = () => {
       handleFirestoreError(error, OperationType.LIST, 'transactions');
     });
 
+    const qShouts = query(collection(db, 'shouts'), where('userId', '==', user.uid));
+    const unsubShouts = onSnapshot(qShouts, (snapshot) => {
+      const sortedShouts = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Shout))
+        .filter(s => !(s as any).isDeleted)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setShouts(sortedShouts);
+    });
+
+    const qMedia = query(collection(db, 'media'), where('userId', '==', user.uid));
+    const unsubMedia = onSnapshot(qMedia, (snapshot) => {
+      const sortedMedia = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Media))
+        .filter(m => !(m as any).isDeleted)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setMedia(sortedMedia);
+    });
+
     // Trigger subscription expiry check on load
     fetch('/api/cron/check-subscriptions', { method: 'POST' })
       .catch(err => console.error('Expiry check failed:', err));
@@ -308,6 +417,8 @@ const Dashboard: React.FC = () => {
       unsubProfile();
       unsubLinks();
       unsubTx();
+      unsubShouts();
+      unsubMedia();
     };
   }, [user]);
 
@@ -329,9 +440,23 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const getFavicon = (url: string) => {
+    try {
+      const domain = new URL(url).hostname;
+      return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+    } catch (e) {
+      return null;
+    }
+  };
+
   const handleUpdateLink = async (id: string, data: Partial<Link>) => {
     try {
-      await safeWrite('links', id, data, 'update');
+      const updateData = { ...data };
+      if (data.url && data.url.startsWith('http')) {
+        const icon = getFavicon(data.url);
+        if (icon) updateData.icon = icon;
+      }
+      await safeWrite('links', id, updateData, 'update');
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `links/${id}`);
     }
@@ -340,7 +465,7 @@ const Dashboard: React.FC = () => {
   const handleDeleteLink = async (id: string) => {
     try {
       await safeWrite('links', id, null, 'delete');
-      toast.success('Link deleted');
+      toast.success('Link soft deleted');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `links/${id}`);
     }
@@ -355,11 +480,14 @@ const Dashboard: React.FC = () => {
       
       setLinks(newLinks);
 
-      const batch = writeBatch(db);
-      newLinks.forEach((link, index) => {
-        batch.update(doc(db, 'links', link.id), { position: index });
-      });
-      await batch.commit();
+      // Perform safe writes for each affected link to ensure backups exist for position changes
+      try {
+        for (let i = 0; i < newLinks.length; i++) {
+          await safeWrite('links', newLinks[i].id, { position: i }, 'update');
+        }
+      } catch (error) {
+        console.error('Error updating link positions safely:', error);
+      }
     }
   };
 
@@ -426,16 +554,27 @@ const Dashboard: React.FC = () => {
     setIsUploading(true);
     const folder = type === 'profile' ? 'profiles' : type === 'cover' ? 'covers' : type === 'background' ? 'backgrounds' : 'link-icons';
     const timestamp = Date.now();
-    const storageRef = ref(storage, `${folder}/${user.uid}/${timestamp}_${file.name}`);
+    const storagePath = `${folder}/${user.uid}/${timestamp}_${file.name}`;
     
-    console.log(`Starting upload to: ${folder}/${user.uid}/${timestamp}_${file.name}`);
-    console.log('File info:', { name: file.name, size: file.size, type: file.type });
+    console.log(`Starting server-side upload proxy to: ${storagePath}`);
 
     try {
-      const snapshot = await uploadBytes(storageRef, file);
-      console.log('Upload successful, getting download URL...');
-      const url = await getDownloadURL(snapshot.ref);
-      console.log('Download URL obtained:', url);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('path', storagePath);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const { url } = await response.json();
+      console.log('Upload successful via proxy, URL:', url);
       
       if (type === 'profile') {
         await handleUpdateProfile({ photoURL: url });
@@ -447,9 +586,9 @@ const Dashboard: React.FC = () => {
         await handleUpdateLink(linkId, { icon: url });
       }
       toast.success(`${type.replace('-', ' ')} updated`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error);
-      toast.error(`Failed to upload ${type.replace('-', ' ')} image. Please check your connection.`);
+      toast.error(`Failed to upload ${type.replace('-', ' ')} image: ${error.message}`);
     } finally {
       setIsUploading(false);
       e.target.value = '';
@@ -474,7 +613,7 @@ const Dashboard: React.FC = () => {
     try {
       return preparePaystackConfig({
         email: user.email,
-        amountNaira: 1000,
+        amountNaira: 2000,
         metadata: {
           userId: user.uid,
           isVerification: true
@@ -551,6 +690,43 @@ const Dashboard: React.FC = () => {
     return false;
   };
 
+  const handleSelectPlatform = async (platformId: string, urlPrefix: string) => {
+    if (!profile) return;
+    
+    // Allow updating existing platforms
+    const currentSocials = profile.socialLinks || {};
+    const existingValue = currentSocials[platformId as keyof typeof currentSocials];
+
+    const value = window.prompt(`Enter your ${platformId} username (e.g. @username)`, existingValue ? existingValue.split('/').pop() : '');
+    if (value === null) return;
+
+    // Clean @ if provided
+    const cleanValue = value.replace('@', '').trim();
+    if (!cleanValue) return;
+
+    let finalUrl = cleanValue;
+    if (!cleanValue.startsWith('http')) {
+      finalUrl = urlPrefix + cleanValue;
+    }
+
+    try {
+      await handleUpdateProfile({
+        socialLinks: {
+          ...currentSocials,
+          [platformId]: finalUrl
+        }
+      });
+      setIsAddPlatformModalOpen(false);
+      toast.success(`${platformId} added successfully`);
+    } catch (error) {
+      toast.error(`Failed to add ${platformId}`);
+    }
+  };
+
+  const filteredPlatforms = PLATFORMS[selectedCategory].filter(p => 
+    p.label.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const calculateCompletion = () => {
     if (!profile) return 0;
     const fields = [
@@ -569,7 +745,75 @@ const Dashboard: React.FC = () => {
     return Math.round((filledFields / fields.length) * 100);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">Loading...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-white">Loading...</div>;
+  if (!user) return <div className="min-h-screen flex items-center justify-center">Redirecting to login...</div>;
+
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-zinc-950 flex flex-col items-center justify-center p-6 text-center">
+        <Logo size="lg" className="mb-8" />
+        <div className="max-w-md w-full space-y-6">
+          <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/20 p-6 rounded-[2.5rem] flex flex-col items-center text-center">
+            <AlertCircle className="w-12 h-12 text-amber-500 mb-4" />
+            <h1 className="text-2xl font-black text-zinc-900 dark:text-white mb-2">Profile Not Found</h1>
+            <p className="text-zinc-500 dark:text-zinc-400">
+              We couldn't find your profile data. This can happen if account creation was interrupted. 
+              Let's fix it by setting up your profile now.
+            </p>
+          </div>
+          
+          <button
+            onClick={async () => {
+              try {
+                let baseUsername = user.email?.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '') || 'user';
+                let finalUsername = baseUsername;
+                
+                const check = await getUserByUsername(finalUsername);
+                if (check) {
+                  finalUsername = `${baseUsername}${Math.floor(Math.random() * 10000)}`;
+                }
+
+                await safeWrite('users', user.uid, {
+                  uid: user.uid,
+                  email: user.email,
+                  username: finalUsername,
+                  displayName: user.displayName || finalUsername,
+                  photoURL: user.photoURL || null,
+                  bio: 'Welcome to my Chip NG profile!',
+                  role: 'user',
+                  createdAt: new Date().toISOString(),
+                  status: 'active',
+                  theme: 'minimal',
+                  buttonStyle: 'rounded',
+                  backgroundType: 'solid',
+                  backgroundColor: '#ffffff',
+                  totalClicks: 0,
+                  plan: 'basic',
+                  subscriptionStatus: 'active',
+                  onboardingCompleted: false
+                }, 'create');
+                
+                toast.success('Profile created successfully!');
+              } catch (error) {
+                console.error('Failed to create profile:', error);
+                toast.error('Failed to create profile. Please try again.');
+              }
+            }}
+            className="w-full bg-[#A3E635] text-white py-4 rounded-2xl font-black shadow-lg shadow-lime-100 dark:shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            Setup My Profile
+          </button>
+          
+          <button 
+            onClick={() => auth.signOut()}
+            className="text-zinc-400 font-bold hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const mockAnalyticsData = [
     { name: 'Mon', views: 400, clicks: 240 },
@@ -582,646 +826,726 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col md:flex-row">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 bg-white dark:bg-zinc-900 border-r border-zinc-200 dark:border-zinc-800 p-6 flex flex-col">
-        <RouterLink to="/" className="mb-12">
-          <Logo size="sm" className="!flex-row !gap-3 !justify-start" />
+    <div className="min-h-screen bg-[#F8F9FA] dark:bg-zinc-950 flex font-sans selection:bg-lime-400 selection:text-zinc-950 transition-colors duration-500 overflow-hidden relative">
+      {/* Animated Background Details */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-lime-400/5 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[30%] h-[30%] bg-blue-400/5 blur-[100px] rounded-full animate-pulse" style={{ animationDelay: '2s' }} />
+      </div>
+
+      {/* Sidebar - Desktop */}
+      <aside className="hidden lg:flex flex-col w-72 h-screen bg-white/80 dark:bg-zinc-900/80 backdrop-blur-3xl border-r border-zinc-100 dark:border-zinc-800 p-8 sticky top-0 z-50">
+        <RouterLink to="/" className="mb-12 block group">
+          <Logo size="sm" className="!justify-start transition-transform group-hover:scale-105" />
         </RouterLink>
 
-        <nav className="flex-1 space-y-2">
-          {[
-            { id: 'ai', icon: Sparkles, label: 'AI Designer', isNew: true },
-            { id: 'links', icon: LinkIcon, label: 'Links' },
-            { id: 'appearance', icon: Palette, label: 'Appearance' },
-            { id: 'business', icon: Crown, label: 'Business' },
-            { id: 'verification', icon: BadgeCheck, label: 'Verification' },
-            { id: 'billing', icon: CreditCard, label: 'Billing' },
-            { id: 'backup', icon: Clock, label: 'Backup' },
-            { id: 'analytics', icon: BarChart2, label: 'Analytics' },
-            { id: 'settings', icon: Settings, label: 'Settings' }
-          ].map((item) => (
-            <button
-              key={item.id}
-              id={`tour-nav-${item.id}`}
-              onClick={() => setActiveTab(item.id as any)}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${
-                activeTab === item.id 
-                  ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold' 
-                  : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <item.icon className={`w-5 h-5 ${item.id === 'ai' ? 'text-lime-500' : ''}`} />
-                {item.label}
-              </div>
-              {item.isNew && (
-                <span className="text-[10px] bg-lime-400 text-zinc-900 px-1.5 py-0.5 rounded-md font-black">NEW</span>
-              )}
-            </button>
-          ))}
+        <nav className="flex-1 space-y-8 overflow-y-auto no-scrollbar">
+          <div>
+            <p className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-6">Create</p>
+            <div className="space-y-1">
+              {[
+                { id: 'links', icon: LayoutGrid, label: 'Profile Links' },
+                { id: 'posts', icon: ImageIcon, label: 'Posts & Feed' },
+                { id: 'ai', icon: Sparkles, label: 'AI Designer', badge: 'New' },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id as any)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300",
+                    activeTab === item.id 
+                      ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 font-bold shadow-2xl shadow-zinc-200 dark:shadow-none translate-x-1" 
+                      : "text-zinc-500 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                  )}
+                >
+                  <item.icon className={cn("w-5 h-5", activeTab === item.id ? "animate-pulse" : "")} />
+                  <span className="text-[14px]">{item.label}</span>
+                  {item.badge && (
+                    <span className="ml-auto bg-lime-400 text-zinc-950 text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider">{item.badge}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+             <p className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-6">Insights</p>
+             <div className="space-y-1">
+              {[
+                { id: 'analytics', icon: TrendingUp, label: 'Analytics' },
+                { id: 'business', icon: Crown, label: 'Business Hub' },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id as any)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all",
+                    activeTab === item.id 
+                      ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 font-bold shadow-xl translate-x-1" 
+                      : "text-zinc-500 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                  )}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span className="text-[14px]">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+             <p className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-6">Account</p>
+             <div className="space-y-1">
+              {[
+                { id: 'verification', icon: BadgeCheck, label: 'Verification' },
+                { id: 'billing', icon: CreditCard, label: 'Billing' },
+                ...(profile?.role === 'admin' ? [{ id: 'backup', icon: HistoryIcon, label: 'Revision History' }] : []),
+                { id: 'settings', icon: Settings, label: 'Settings' }
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id as any)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all",
+                    activeTab === item.id 
+                      ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 font-bold shadow-xl translate-x-1" 
+                      : "text-zinc-500 hover:text-zinc-950 dark:hover:text-white hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                  )}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span className="text-[14px]">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </nav>
 
-        <div className="mt-auto space-y-4">
-          <div className="px-4 py-2 flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800">
-            <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Theme</span>
-            <ThemeToggle />
-          </div>
-          <button 
-            onClick={() => auth.signOut()}
-            className="w-full flex items-center gap-3 px-4 py-3 text-zinc-500 hover:text-red-500 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            Logout
-          </button>
+        <div className="mt-8 pt-8 border-t border-zinc-100 dark:border-zinc-800">
+           <div className="bg-zinc-50 dark:bg-zinc-800/50 rounded-3xl p-4 mb-6">
+              <div className="flex items-center gap-3 mb-3">
+                 <div className="w-10 h-10 bg-lime-400 rounded-2xl flex items-center justify-center">
+                    <User className="w-5 h-5 text-zinc-950" />
+                 </div>
+                 <div className="flex-1 truncate">
+                    <p className="text-sm font-bold truncate dark:text-white">{profile?.displayName || 'Set Name'}</p>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-tight">{profile?.plan || 'Free'} Plan</p>
+                 </div>
+              </div>
+              <button 
+                onClick={() => auth.signOut()}
+                className="w-full flex items-center justify-center gap-2 py-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors font-bold text-xs"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign out
+              </button>
+           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-6 md:p-12 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
-          <header className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-zinc-900 dark:text-white capitalize">{activeTab}</h1>
-              <p className="text-zinc-500">Manage your profile and links</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button 
-                id="tour-share"
-                onClick={copyLink}
-                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all"
-              >
-                {copied ? <Check className="w-4 h-4 text-lime-500" /> : <Copy className="w-4 h-4" />}
-                {profile?.username}
-              </button>
-              <a 
-                id="tour-preview"
-                href={`/${profile?.username}`}
-                target="_blank"
-                className="flex items-center gap-2 px-4 py-2 bg-lime-400 text-zinc-950 rounded-xl text-sm font-bold hover:bg-lime-300 transition-all"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Preview
-              </a>
-            </div>
-          </header>
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col h-screen overflow-hidden overflow-y-auto no-scrollbar scroll-smooth">
+        {/* Top Floating Navbar (Mobile + Tablet) */}
+        <header className="lg:hidden h-20 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-100 dark:border-zinc-800 px-6 flex items-center justify-between sticky top-0 z-40">
+           <Logo size="sm" />
+           <div className="flex gap-4">
+             <ThemeToggle />
+             <button onClick={() => auth.signOut()} className="p-2 border border-zinc-100 dark:border-zinc-800 rounded-xl">
+               <LogOut className="w-5 h-5 text-zinc-400" />
+             </button>
+           </div>
+        </header>
 
-          {/* Progress Bar */}
-          <div className="mb-12 bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border-2 border-lime-400/20 shadow-xl shadow-lime-400/5">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-lime-400/10 rounded-xl">
-                  <TrendingUp className="w-6 h-6 text-lime-500" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg dark:text-white">Profile Completion</h3>
-                  <p className="text-xs text-zinc-500">Boost your profile visibility</p>
-                </div>
+        {/* Editor Wrapper */}
+        <div className="flex-1 max-w-4xl w-full mx-auto p-6 md:p-12 space-y-12 pb-40">
+          {/* Dashboard Header */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-[12px] font-black uppercase tracking-[0.2em] text-lime-500">Dashboard</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+                <span className="text-[12px] font-black uppercase tracking-[0.2em] text-zinc-400">{activeTab}</span>
               </div>
-              <div className="text-right">
-                <span className="text-2xl font-black text-lime-500">{calculateCompletion()}%</span>
-              </div>
+              <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-zinc-900 dark:text-white leading-none">
+                {activeTab === 'links' ? 'Profile Editor' : activeTab === 'posts' ? 'Content Feed' : activeTab === 'ai' ? 'AI Designer' : activeTab === 'backup' ? 'Revision History' : activeTab === 'business' ? 'Business Hub' : activeTab}
+              </h1>
             </div>
-            <div className="w-full h-4 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-lime-400 to-lime-500 transition-all duration-1000 ease-out relative"
-                style={{ width: `${calculateCompletion()}%` }}
-              >
-                <div className="absolute inset-0 bg-white/20 animate-pulse" />
-              </div>
+
+            <div className="flex flex-col gap-3">
+               <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-[2rem] p-1.5 border border-zinc-200 dark:border-zinc-800">
+                  <div className="flex items-center gap-3 px-4 py-2 flex-1">
+                     <LinkIcon className="w-4 h-4 text-zinc-400" />
+                     <span className="text-[14px] font-bold text-zinc-600 dark:text-zinc-400 truncate max-w-[150px]">chip.ng/{profile?.username}</span>
+                  </div>
+                  <button 
+                    onClick={copyLink}
+                    className="flex items-center gap-2 px-6 py-2 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-[1.5rem] font-black text-xs hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  >
+                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
+               </div>
             </div>
-            <p className="mt-6 text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              {calculateCompletion() < 100 
-                ? "Complete your profile to build more trust with your audience! Add social links, a bio, and a profile photo." 
-                : "Your profile is fully optimized! You're ready to share it with the world."}
-            </p>
           </div>
 
-          {activeTab === 'ai' && (
-            <div className="space-y-6">
-              <section className="bg-gradient-to-br from-lime-400/10 to-emerald-400/10 p-8 rounded-[2.5rem] border border-lime-400/20">
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 bg-lime-400 rounded-2xl flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 text-zinc-950" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold dark:text-white">AI Designer</h2>
-                    <p className="text-sm text-zinc-500">I'll handle the design and setup while you relax.</p>
-                  </div>
-                </div>
-                <AIDesigner user={user} profile={profile} links={links} />
-              </section>
-            </div>
-          )}
-
-          {activeTab === 'links' && (
-            <div id="tour-content-links" className="space-y-6">
-              <button 
-                onClick={handleAddLink}
-                className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-lime-300 transition-all shadow-lg shadow-lime-400/20"
+          {/* Category Tabs Deleted as requested */}
+          
+          {/* Active Tab Content */}
+          <div className="relative">
+            <AnimatePresence mode="wait">
+            {activeTab === 'links' && (
+              <motion.div 
+                key="links"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="px-6 flex flex-col items-center"
               >
-                <Plus className="w-5 h-5" />
-                Add New Link
-              </button>
-
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={links.map(l => l.id)} strategy={verticalListSortingStrategy}>
-                  <div className="space-y-4">
-                    {links.map((link) => (
-                      <SortableLinkItem 
-                        key={link.id} 
-                        link={link} 
-                        onUpdate={handleUpdateLink}
-                        onDelete={handleDeleteLink}
-                        isPremium={!!user?.isPremium}
-                        onUploadIcon={(e, id) => handleFileUpload(e, 'link-icon', id)}
-                        isUploading={isUploading}
+                {/* Cover Image Section */}
+                <div className="w-full mt-8 mb-6 group">
+                  <div className="relative w-full h-[180px] rounded-[2rem] bg-[#F3F4F6] dark:bg-zinc-900 flex items-center justify-center border-2 border-white dark:border-zinc-800 shadow-sm overflow-hidden group">
+                    {profile?.coverImage ? (
+                      <img 
+                        src={profile.coverImage} 
+                        referrerPolicy="no-referrer" 
+                        alt="Cover" 
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
                       />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            </div>
-          )}
-
-          {activeTab === 'appearance' && profile && (
-            <div id="tour-content-appearance" className="space-y-12">
-              {/* Profile Section */}
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
-                <h2 className="text-xl font-bold dark:text-white">Profile</h2>
-                
-                {/* Cover Image */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-zinc-500">Cover Image</label>
-                  </div>
-                  <div className="relative group h-32 w-full bg-zinc-100 dark:bg-zinc-800 rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                    {profile.coverImage ? (
-                      <img src={profile.coverImage} alt="Cover" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-zinc-400">
-                        <ImageIcon className="w-8 h-8" />
+                      <div className="flex flex-col items-center gap-2">
+                        <ImageIcon className="w-8 h-8 text-[#6B7280]" />
+                        <span className="text-[12px] font-bold text-[#6B7280]">Add Cover Image</span>
+                        <p className="text-[10px] text-zinc-400 font-medium tracking-tight">Max 5MB • 1920x1080 recommended</p>
                       </div>
                     )}
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                      {isUploading ? (
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
-                      ) : (
-                        <ImageIcon className="w-6 h-6" />
-                      )}
-                      <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'cover')} accept="image/*" disabled={isUploading} />
+                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 cursor-pointer transition-all duration-300 backdrop-blur-[2px]">
+                      <div className="flex flex-col items-center gap-2 text-white">
+                        <Camera className="w-8 h-8" />
+                        <span className="text-[14px] font-black uppercase tracking-widest">Change Cover</span>
+                      </div>
+                      <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'cover')} accept="image/*" />
                     </label>
+                  </div>
+                  
+                  {/* Presets Gallery */}
+                  <div className="mt-4 flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                    {[
+                      'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=800',
+                      'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=800',
+                      'https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&q=80&w=800',
+                      'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&q=80&w=800',
+                      'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&q=80&w=800'
+                    ].map((url, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          safeWrite('users', user?.uid || '', { coverImage: url }, 'update');
+                          toast.success('Cover image updated!');
+                        }}
+                        className="w-16 h-10 rounded-xl overflow-hidden flex-shrink-0 border border-zinc-200 dark:border-zinc-800 hover:scale-105 transition-transform"
+                      >
+                        <img src={url} alt={`Preset ${idx + 1}`} className="w-full h-full object-cover" />
+                      </button>
+                    ))}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-8">
-                  <div className="relative group">
-                    <div className="w-24 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border-4 border-zinc-50 dark:border-zinc-950 shadow-xl">
-                      {profile.photoURL ? (
-                        <img src={profile.photoURL} alt="Profile" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-zinc-400">
-                          <User className="w-10 h-10" />
-                        </div>
-                      )}
-                    </div>
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                      {isUploading ? (
-                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
-                      ) : (
-                        <ImageIcon className="w-6 h-6" />
-                      )}
-                      <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'profile')} accept="image/*" disabled={isUploading} />
-                    </label>
+                {/* Profile Strength */}
+                <div className="w-full mb-8">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[14px] text-[#6B7280] font-medium">Profile Strength • {calculateCompletion()}%</p>
+                    {calculateCompletion() < 100 && <Star className="w-4 h-4 text-[#A3E635]" />}
                   </div>
-                  <div className="flex-1 space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-500">Username</label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm whitespace-nowrap">{DISPLAY_DOMAIN}/</span>
-                        <input 
-                          type="text" 
-                          value={profileForm.username}
-                          onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
-                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl pl-[5.5rem] pr-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                          placeholder="username"
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-500">Display Name</label>
-                      <input 
-                        type="text" 
-                        value={profileForm.displayName}
-                        onChange={(e) => setProfileForm({ ...profileForm, displayName: e.target.value })}
-                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                        placeholder="Your Name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-500">Bio</label>
-                      <textarea 
-                        value={profileForm.bio}
-                        onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
-                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white h-24 resize-none"
-                        placeholder="Tell your story..."
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-zinc-500">Phone Number</label>
-                        <input 
-                          type="tel" 
-                          value={profileForm.phone}
-                          onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                          placeholder="+234..."
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-zinc-500">Contact Email</label>
-                        <input 
-                          type="email" 
-                          value={profileForm.contactEmail}
-                          onChange={(e) => setProfileForm({ ...profileForm, contactEmail: e.target.value })}
-                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                          placeholder="contact@example.com"
-                        />
-                      </div>
-                      <div className="md:col-span-2 space-y-2">
-                        <label className="text-sm font-medium text-zinc-500">Address</label>
-                        <input 
-                          type="text" 
-                          value={profileForm.address}
-                          onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
-                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                          placeholder="Your location"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2 space-y-2">
-                        <label className="text-sm font-medium text-zinc-500">Custom Text Color</label>
-                        <div className="flex items-center gap-4">
-                          <input 
-                            type="color" 
-                            value={profileForm.textColor || '#000000'}
-                            onChange={(e) => setProfileForm({ ...profileForm, textColor: e.target.value })}
-                            className="w-12 h-12 rounded-lg cursor-pointer border-2 border-zinc-200 dark:border-zinc-700"
-                          />
-                          <input 
-                            type="text"
-                            value={profileForm.textColor || ''}
-                            onChange={(e) => setProfileForm({ ...profileForm, textColor: e.target.value })}
-                            className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                            placeholder="#HEX Color"
-                          />
-                          {profileForm.textColor && (
-                            <button 
-                              onClick={() => setProfileForm({ ...profileForm, textColor: '' })}
-                              className="text-xs text-rose-500 hover:underline"
-                            >
-                              Reset
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => handleUpdateProfile(profileForm)}
-                      disabled={isSavingProfile}
-                      className="w-full py-2 bg-lime-400 text-zinc-950 rounded-xl font-bold hover:bg-lime-300 transition-all disabled:opacity-50"
-                    >
-                      {isSavingProfile ? 'Saving...' : 'Save Profile'}
-                    </button>
+                  <div className="w-full h-1 bg-[#F3F4F6] rounded-full overflow-hidden">
+                    <div className="h-full bg-[#A3E635] transition-all duration-500" style={{ width: `${calculateCompletion()}%` }} />
                   </div>
                 </div>
-              </section>
 
-              {/* Background Section */}
-              <section className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Background</h2>
-                  {!hasAccess('pro') && (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                      <Crown className="w-3 h-3" /> PRO
+                {/* Edit Sections List */}
+                <div className="w-full space-y-0.5 mb-10">
+                  <button 
+                    onClick={() => setIsAddPlatformModalOpen(true)}
+                    className="w-full flex items-center justify-between py-4 border-b border-[#F3F4F6] group hover:bg-zinc-50 transition-colors px-2 -mx-2 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-lime-50 flex items-center justify-center text-[#A3E635]">
+                        <Plus className="w-5 h-5" />
+                      </div>
+                      <span className="text-[15px] font-medium">Add Platforms</span>
+                    </div>
+                    <span className="text-[#6B7280] group-hover:text-black font-bold text-[13px] transition-colors">
+                      {profile?.socialLinks && Object.keys(profile.socialLinks).length > 0 ? 'Update' : '+20%'}
                     </span>
-                  )}
+                  </button>
+
+                  <div className="mt-4 flex overflow-x-auto no-scrollbar gap-4 py-2 px-2 -mx-2">
+                    {profile?.socialLinks && Object.entries(profile.socialLinks).map(([id, url]) => {
+                      const platform = Object.values(PLATFORMS).flat().find(p => p.id === id);
+                      if (!platform) return null;
+                      
+                      const Icon = platform.icon;
+                      
+                      return (
+                        <div key={id} className="relative group flex flex-col items-center gap-1.5 shrink-0">
+                          <button 
+                            onClick={() => handleSelectPlatform(platform.id, platform.urlPrefix)}
+                            className="w-14 h-14 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all active:scale-95 shadow-sm"
+                            title={`Edit ${platform.label}`}
+                          >
+                             <Icon className="w-6 h-6" />
+                          </button>
+                          <button 
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!window.confirm(`Remove ${platform.label}?`)) return;
+                              const newLinks = { ...profile.socialLinks };
+                              delete newLinks[id as keyof typeof newLinks];
+                              await handleUpdateProfile({ socialLinks: newLinks });
+                            }}
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm z-10"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="py-4 border-b border-[#F3F4F6]">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[15px] font-medium">Bio</span>
+                      <button 
+                         onClick={() => {
+                           const bio = window.prompt("Edit Bio", profile?.bio || "");
+                           if (bio !== null) handleUpdateProfile({ bio });
+                         }}
+                         className="text-[#A3E635] font-bold text-[13px]"
+                      >
+                        {profile?.bio ? 'Edit' : '+15%'}
+                      </button>
+                    </div>
+                    <p className="text-[#6B7280] text-[14px] truncate max-w-full">
+                      {profile?.bio || 'Add bio to your profile'}
+                    </p>
+                  </div>
+
+                  <div className="py-4 border-b border-[#F3F4F6]">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[15px] font-medium">Email Contact Form</span>
+                      <button 
+                        onClick={() => handleUpdateProfile({ emailContactEnabled: !profile?.emailContactEnabled })}
+                        className={`w-12 h-6 rounded-full relative transition-colors ${profile?.emailContactEnabled ? 'bg-[#A3E635]' : 'bg-[#E5E7EB]'}`}
+                      >
+                        <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 shadow-sm transition-all ${profile?.emailContactEnabled ? 'right-0.5' : 'left-0.5'}`} />
+                      </button>
+                    </div>
+                    <p className="text-[#6B7280] text-[11px] leading-snug">Visitors can share their email with you through a contact form on your profile.</p>
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <label className="text-sm font-medium text-zinc-500">Background Type</label>
-                    <div className="flex gap-2">
-                      {['solid', 'gradient', 'image'].map((type) => (
-                        <button
-                          key={type}
-                          onClick={() => {
-                            if (type === 'image' && !checkFeatureAccess('pro', 'Custom Background')) return;
-                            handleUpdateProfile({ backgroundType: type as any });
-                          }}
-                          className={`flex-1 py-2 px-4 rounded-xl border transition-all capitalize text-sm font-bold ${
-                            profile.backgroundType === type 
-                              ? 'border-lime-400 bg-lime-400/5 text-lime-600' 
-                              : 'border-zinc-200 dark:border-zinc-800 text-zinc-500'
-                          }`}
+
+                {/* Featured Links Grid */}
+                <div className="w-full text-left">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="font-bold text-[18px]">Featured Links</h3>
+                    <Plus className="w-6 h-6 text-[#A3E635] cursor-pointer" onClick={handleAddLink} />
+                  </div>
+                  
+                  <div className="space-y-6">
+                    {links.length === 0 ? (
+                      <button 
+                        onClick={handleAddLink}
+                        className="w-full p-6 border-2 border-dashed border-zinc-200 rounded-[2rem] flex flex-col items-center gap-2 group hover:border-lime-400 transition-all"
+                      >
+                        <Plus className="w-8 h-8 text-lime-500" />
+                        <span className="text-sm font-bold text-zinc-900">Add Spotlight Link</span>
+                      </button>
+                    ) : (
+                      <div className="space-y-6">
+                        {links.map((link, idx) => {
+                          const isBig = idx === 0 || (idx === 1 && links.length > 3);
+                          
+                          if (isBig) {
+                            return (
+                              <div key={link.id} className="relative aspect-[16/10] bg-zinc-900 rounded-[2.8rem] overflow-hidden border border-zinc-800 shadow-2xl group">
+                                {link.icon ? (
+                                  <img src={link.icon} className="w-full h-full object-cover opacity-60 transition-transform duration-700 group-hover:scale-110" alt="" />
+                                ) : (
+                                  <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                                    <LinkIcon className="w-12 h-12 text-zinc-700" />
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 p-8 flex flex-col justify-end bg-gradient-to-t from-black via-black/40 to-transparent">
+                                  <div className="flex flex-col gap-2">
+                                     <input 
+                                       className="w-full bg-transparent border-none p-0 text-2xl font-black text-white outline-none" 
+                                       value={link.title}
+                                       onChange={(e) => handleUpdateLink(link.id, { title: e.target.value })}
+                                     />
+                                     <input 
+                                       className="w-full bg-transparent border-none p-0 text-xs text-zinc-400 font-bold outline-none truncate" 
+                                       value={link.url}
+                                       onChange={(e) => handleUpdateLink(link.id, { url: e.target.value })}
+                                     />
+                                  </div>
+                                </div>
+                                <div className="absolute top-6 right-6 flex gap-2">
+                                  <label className="p-3 bg-white/10 backdrop-blur-md rounded-2xl cursor-pointer hover:bg-white/20 transition-all">
+                                    <Camera className="w-4 h-4 text-white" />
+                                    <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', link.id)} accept="image/*" />
+                                  </label>
+                                  <button onClick={() => handleUpdateLink(link.id, { active: !link.active })} className={`p-3 backdrop-blur-md rounded-2xl transition-all ${link.active ? 'bg-lime-400 text-zinc-950' : 'bg-white/10 text-white'}`}>
+                                    {link.active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                                  </button>
+                                  <button onClick={() => handleDeleteLink(link.id)} className="p-3 bg-red-500/80 backdrop-blur-md rounded-2xl hover:bg-red-500 transition-all">
+                                    <Trash2 className="w-4 h-4 text-white" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div key={link.id} className="flex items-center gap-4 p-4 bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-[2rem] group hover:scale-[1.01] transition-all">
+                              <div className="w-16 h-16 rounded-2xl bg-zinc-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-zinc-100 dark:border-zinc-800 relative group/icon shrink-0">
+                                 {link.icon ? (
+                                   <img src={link.icon} alt="" className="w-full h-full object-cover" />
+                                 ) : (
+                                   <LinkIcon className="w-6 h-6 text-zinc-300" />
+                                 )}
+                                 <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/icon:opacity-100 cursor-pointer transition-opacity">
+                                   <Plus className="w-4 h-4 text-white" />
+                                   <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', link.id)} accept="image/*" />
+                                 </label>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                 <input 
+                                   className="w-full bg-transparent border-none p-0 font-bold text-base dark:text-white outline-none" 
+                                   value={link.title}
+                                   onChange={(e) => handleUpdateLink(link.id, { title: e.target.value })}
+                                 />
+                                 <input 
+                                   className="w-full bg-transparent border-none p-0 text-[10px] text-zinc-400 font-bold uppercase tracking-widest outline-none truncate" 
+                                   value={link.url}
+                                   onChange={(e) => handleUpdateLink(link.id, { url: e.target.value })}
+                                 />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => handleUpdateLink(link.id, { active: !link.active })} className={`p-2 rounded-xl transition-all ${link.active ? 'text-lime-500' : 'text-zinc-300'}`}>
+                                  {link.active ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                                </button>
+                                <button onClick={() => handleDeleteLink(link.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
+                                  <Trash2 className="w-5 h-5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <button 
+                          onClick={handleAddLink}
+                          className="w-full py-4 border-2 border-dashed border-zinc-100 dark:border-zinc-800 rounded-[2rem] flex items-center justify-center gap-2 text-zinc-400 hover:border-lime-400 hover:text-lime-500 transition-all font-black text-xs uppercase tracking-widest"
                         >
-                          {type}
+                          <Plus className="w-5 h-5" /> Add Standard Link
                         </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="w-full py-10">
+                   <button className="w-full py-4 text-[#A3E635] font-bold border-2 border-[#A3E635] rounded-2xl hover:bg-lime-50 transition-colors" onClick={() => setActiveTab('appearance')}>
+                     Manage Custom Content
+                   </button>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'analytics' && (
+              <motion.div 
+                key="analytics"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-6 space-y-6"
+              >
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white dark:bg-zinc-900 p-4 rounded-[24px] border border-[#F3F4F6] dark:border-zinc-800 shadow-sm">
+                    <p className="text-[#6B7280] text-[12px] font-medium mb-1">Views</p>
+                    <p className="text-[24px] font-bold text-zinc-900 dark:text-white">{profile?.totalClicks || 0}</p>
+                    <p className="text-[10px] text-green-500 font-bold">+100% lifetime</p>
+                  </div>
+                  <div className="bg-white dark:bg-zinc-900 p-4 rounded-[24px] border border-[#F3F4F6] dark:border-zinc-800 shadow-sm">
+                    <p className="text-[#6B7280] text-[12px] font-medium mb-1">Link Clicks</p>
+                    <p className="text-[24px] font-bold text-zinc-900 dark:text-white">{links.reduce((sum, l) => sum + (l.clicks || 0), 0)}</p>
+                    <p className="text-[10px] text-zinc-400 font-bold">{links.length} Active links</p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-[24px] border border-[#F3F4F6] shadow-sm h-[300px]">
+                  <h3 className="font-bold mb-6">Traffic Over Time</h3>
+                  <ResponsiveContainer width="100%" height="80%">
+                    <AreaChart data={mockAnalyticsData}>
+                      <defs>
+                        <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#A3E635" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#A3E635" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <Area type="monotone" dataKey="views" stroke="#A3E635" fillOpacity={1} fill="url(#colorViews)" />
+                      <Tooltip />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'posts' && (
+              <motion.div 
+                key="posts"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-6 space-y-8"
+              >
+                {/* Add Shout */}
+                <div className="bg-white dark:bg-zinc-950 p-6 rounded-[2.5rem] border border-[#F3F4F6] dark:border-zinc-800 shadow-sm">
+                  <h3 className="font-bold mb-4 text-zinc-900 dark:text-white">Post a Shout</h3>
+                  <div className="space-y-4">
+                    <textarea 
+                      placeholder="What's happening?"
+                      className="w-full bg-zinc-50 dark:bg-zinc-900 border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-[#A3E635] transition-all resize-none h-24 text-zinc-900 dark:text-white"
+                      id="shout-content"
+                    />
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 text-zinc-500 cursor-pointer hover:text-zinc-900 dark:hover:text-white transition-colors text-sm font-bold">
+                        <ImageIcon className="w-5 h-5" />
+                        <span>Add Image</span>
+                        <input type="file" className="hidden" accept="image/*" id="shout-image" />
+                      </label>
+                      <button 
+                        onClick={async () => {
+                          const content = (document.getElementById('shout-content') as HTMLTextAreaElement).value;
+                          const imageFile = (document.getElementById('shout-image') as HTMLInputElement).files?.[0];
+                          
+                          if (!content.trim()) {
+                            toast.error('Shout content cannot be empty');
+                            return;
+                          }
+
+                          try {
+                            let imageUrl = '';
+                            if (imageFile) {
+                              const formData = new FormData();
+                              formData.append('file', imageFile);
+                              formData.append('path', `shouts/${user?.uid}/${Date.now()}_${imageFile.name}`);
+                              const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                              const data = await res.json();
+                              imageUrl = data.url;
+                            }
+
+                            await safeWrite('shouts', null, {
+                              userId: user?.uid,
+                              content,
+                              image: imageUrl,
+                              createdAt: new Date().toISOString()
+                            }, 'create');
+
+                            (document.getElementById('shout-content') as HTMLTextAreaElement).value = '';
+                            (document.getElementById('shout-image') as HTMLInputElement).value = '';
+                            toast.success('Shout posted!');
+                          } catch (err) {
+                            toast.error('Failed to post shout');
+                          }
+                        }}
+                        className="px-6 py-2 bg-[#A3E635] text-white rounded-xl font-bold active:scale-95 transition-transform"
+                      >
+                        Post
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Shouts List */}
+                <div className="space-y-4">
+                  <h3 className="font-bold text-zinc-900 dark:text-white">Your Shouts</h3>
+                  {shouts.length === 0 ? (
+                    <div className="bg-zinc-50 dark:bg-zinc-900/50 py-12 rounded-[2rem] flex flex-col items-center justify-center text-center px-6">
+                      <Megaphone className="w-10 h-10 text-zinc-200 mb-4" />
+                      <p className="text-zinc-500 font-bold">No shouts yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {shouts.map(shout => (
+                        <div key={shout.id} className="bg-white dark:bg-zinc-950 p-4 rounded-[2rem] border border-[#F3F4F6] dark:border-zinc-800 shadow-sm group">
+                          <div className="flex justify-between items-start mb-2">
+                             <p className="text-[14px] text-zinc-900 dark:text-white font-medium">{shout.content}</p>
+                             <button 
+                               onClick={() => safeWrite('shouts', shout.id, null, 'delete')}
+                               className="p-2 opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-full transition-all"
+                             >
+                                <Trash2 className="w-4 h-4" />
+                             </button>
+                          </div>
+                          {shout.image && (
+                            <img src={shout.image} alt="" className="w-full h-48 object-cover rounded-2xl mb-2" />
+                          )}
+                          <span className="text-[10px] text-zinc-400 font-bold uppercase">{shout.createdAt ? format(new Date(shout.createdAt), 'MMM d, h:mm a') : 'Just now'}</span>
+                        </div>
                       ))}
                     </div>
-                  </div>
-                  {profile.backgroundType === 'image' && (
-                    <div className="space-y-4">
-                      <label className="text-sm font-medium text-zinc-500">Custom Image</label>
-                      <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
-                          {profile.backgroundImage ? (
-                            <img src={profile.backgroundImage} alt="Background" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-zinc-400">
-                              <ImageIcon className="w-6 h-6" />
-                            </div>
-                          )}
-                        </div>
-                        <label className="flex-1 py-2 px-4 bg-lime-400 text-zinc-950 rounded-xl text-center font-bold cursor-pointer hover:bg-lime-300 transition-all flex items-center justify-center gap-2">
-                          {isUploading ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
-                              Uploading...
-                            </>
-                          ) : (
-                            'Upload Image'
-                          )}
-                          <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'background')} accept="image/*" disabled={isUploading} />
-                        </label>
-                      </div>
-                    </div>
                   )}
                 </div>
-              </section>
 
-              {/* Social Icons Section */}
-              <section className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Social Icons</h2>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {[
-                    { id: 'instagram', icon: Instagram, label: 'Instagram', color: '#E4405F' },
-                    { id: 'twitter', icon: Twitter, label: 'Twitter', color: '#1DA1F2' },
-                    { id: 'linkedin', icon: Linkedin, label: 'LinkedIn', color: '#0077B5' },
-                    { id: 'youtube', icon: Youtube, label: 'YouTube', color: '#FF0000' },
-                    { id: 'facebook', icon: Facebook, label: 'Facebook', color: '#1877F2' },
-                    { id: 'whatsapp', icon: MessageCircle, label: 'WhatsApp', color: '#25D366' },
-                    { id: 'tiktok', icon: Music2, label: 'TikTok', color: '#000000' },
-                    { id: 'reddit', icon: MessageSquare, label: 'Reddit', color: '#FF4500' },
-                    { id: 'discord', icon: Disc, label: 'Discord', color: '#5865F2' },
-                    { id: 'telegram', icon: Send, label: 'Telegram', color: '#26A5E4' },
-                    { id: 'pinterest', icon: Pin, label: 'Pinterest', color: '#BD081C' },
-                    { id: 'spotify', icon: Music, label: 'Spotify', color: '#1DB954' },
-                    { id: 'applemusic', icon: Apple, label: 'Apple Music', color: '#FA243C' },
-                    { id: 'soundcloud', icon: Cloud, label: 'SoundCloud', color: '#FF3300' },
-                    { id: 'threads', icon: AtSign, label: 'Threads', color: '#000000' },
-                    { id: 'mastodon', icon: Hash, label: 'Mastodon', color: '#6364FF' },
-                    { id: 'github', icon: Github, label: 'GitHub', color: '#181717' },
-                    { id: 'twitch', icon: Twitch, label: 'Twitch', color: '#9146FF' },
-                    { id: 'snapchat', icon: Ghost, label: 'Snapchat', color: '#FFFC00' },
-                    { id: 'medium', icon: MessageSquare, label: 'Medium', color: '#00ab6c' },
-                    { id: 'behance', icon: ImageIcon, label: 'Behance', color: '#1769ff' },
-                    { id: 'dribbble', icon: Disc, label: 'Dribbble', color: '#ea4c89' },
-                    { id: 'patreon', icon: Star, label: 'Patreon', color: '#f96854' },
-                    { id: 'substack', icon: Send, label: 'Substack', color: '#FF6719' },
-                    { id: 'buymeacoffee', icon: Music, label: 'Buy Me Coffee', color: '#FFDD00' },
-                    { id: 'mail', icon: Mail, label: 'Email', color: '#D44638' }
-                  ].map((social) => (
-                    <div key={social.id} className="space-y-2">
-                      <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
-                        <social.icon className="w-3 h-3" style={{ color: social.color }} /> {social.label}
-                      </label>
-                      <input 
-                        type="text" 
-                        value={profile.socialLinks?.[social.id as keyof typeof profile.socialLinks] || ''}
-                        onChange={(e) => {
-                          const newSocialLinks = { ...(profile.socialLinks || {}), [social.id]: e.target.value };
-                          handleUpdateProfile({ socialLinks: newSocialLinks });
-                        }}
-                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white text-sm"
-                        placeholder={`${social.label} URL or username`}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </section>
-
-              {/* Layouts Section */}
-              <section className="space-y-6">
-                <h2 className="text-xl font-bold dark:text-white">Profile Layout</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[
-                    { id: 'list', label: 'Classic List', icon: LinkIcon },
-                    { id: 'grid', label: 'Grid', icon: LayoutGrid },
-                    { id: 'cards', label: 'Big Cards', icon: Square },
-                    { id: 'featured', label: 'Featured First', icon: Star }
-                  ].map((layout) => (
-                    <button
-                      key={layout.id}
-                      onClick={() => handleUpdateProfile({ profileLayout: layout.id as any })}
-                      className={`p-4 rounded-2xl border-2 transition-all text-center space-y-3 ${
-                        (profile.profileLayout || 'list') === layout.id 
-                          ? 'border-lime-400 bg-lime-400/5' 
-                          : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
-                      }`}
-                    >
-                      <div className="flex justify-center text-zinc-400">
-                        <layout.icon className="w-6 h-6" />
-                      </div>
-                      <span className="text-sm font-bold dark:text-white">{layout.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {/* Fonts Section */}
-              <section className="space-y-6">
-                <h2 className="text-xl font-bold dark:text-white">Text Fonts</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {[
-                    { id: 'sans', label: 'Sans-Serif', family: 'font-sans' },
-                    { id: 'serif', label: 'Elegant Serif', family: 'font-serif' },
-                    { id: 'mono', label: 'Mono Code', family: 'font-mono' },
-                    { id: 'display', label: 'Modern Display', family: 'font-display' },
-                    { id: 'modern', label: 'Modern Sans', family: 'font-sans tracking-tight' },
-                    { id: 'elegant', label: 'Cursive Elegant', family: 'font-serif italic' },
-                    { id: 'bold', label: 'Ultra Bold', family: 'font-display font-black uppercase' }
-                  ].map((font) => (
-                    <button
-                      key={font.id}
-                      onClick={() => handleUpdateProfile({ profileFont: font.id as any })}
-                      className={`p-4 rounded-2xl border-2 transition-all text-center space-y-2 ${
-                        (profile.profileFont || 'sans') === font.id 
-                          ? 'border-lime-400 bg-lime-400/5' 
-                          : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
-                      }`}
-                    >
-                      <span className={`text-xl block ${font.family}`}>Abc</span>
-                      <span className="text-xs font-bold text-zinc-500">{font.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {/* Themes Section */}
-              <section className="space-y-6">
-                <h2 className="text-xl font-bold dark:text-white">Themes</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                  {(Object.keys(THEMES) as ThemeType[]).map((themeKey) => (
-                    <button
-                      key={themeKey}
-                      onClick={() => handleUpdateProfile({ theme: themeKey })}
-                      className={`p-4 rounded-2xl border-2 transition-all text-center space-y-3 ${
-                        profile.theme === themeKey 
-                          ? 'border-lime-400 bg-lime-400/5' 
-                          : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
-                      }`}
-                    >
-                      <div className={`w-full aspect-square rounded-xl ${THEMES[themeKey].background} border border-zinc-200 dark:border-zinc-800`} />
-                      <span className="text-sm font-bold dark:text-white capitalize">{themeKey}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {/* Button Styles */}
-              <section className="space-y-6">
-                <h2 className="text-xl font-bold dark:text-white">Button Style</h2>
-                <div className="grid grid-cols-3 gap-4">
-                  {(['rounded', 'pill', 'square'] as ButtonStyle[]).map((style) => (
-                    <button
-                      key={style}
-                      onClick={() => handleUpdateProfile({ buttonStyle: style })}
-                      className={`p-6 rounded-2xl border-2 transition-all ${
-                        profile.buttonStyle === style 
-                          ? 'border-lime-400 bg-lime-400/5' 
-                          : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'
-                      }`}
-                    >
-                      <div className={`w-full h-10 bg-zinc-200 dark:bg-zinc-800 ${
-                        style === 'rounded' ? 'rounded-xl' : style === 'pill' ? 'rounded-full' : 'rounded-none'
-                      }`} />
-                      <span className="block mt-4 text-sm font-bold dark:text-white capitalize">{style}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
-            </div>
-          )}
-
-          {activeTab === 'business' && profile && (
-            <div className="space-y-12">
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Location & Map</h2>
-                  {!hasAccess('business') && (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                      <Crown className="w-3 h-3" /> BUSINESS
-                    </span>
-                  )}
-                </div>
-                <div className={`space-y-6 ${!hasAccess('business') ? 'opacity-50 pointer-events-none' : ''}`}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-500">Latitude</label>
-                      <input 
-                        type="number" 
-                        step="any"
-                        value={profile.location?.lat || ''}
-                        onChange={(e) => handleUpdateProfile({ location: { ...profile.location!, lat: parseFloat(e.target.value) || 0, lng: profile.location?.lng || 0 } })}
-                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                        placeholder="6.5244"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-500">Longitude</label>
-                      <input 
-                        type="number" 
-                        step="any"
-                        value={profile.location?.lng || ''}
-                        onChange={(e) => handleUpdateProfile({ location: { ...profile.location!, lng: parseFloat(e.target.value) || 0, lat: profile.location?.lat || 0 } })}
-                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                        placeholder="3.3792"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-500">Address (Optional)</label>
-                    <input 
-                      type="text" 
-                      value={profile.location?.address || ''}
-                      onChange={(e) => handleUpdateProfile({ location: { ...profile.location!, address: e.target.value, lat: profile.location?.lat || 0, lng: profile.location?.lng || 0 } })}
-                      className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
-                      placeholder="123 Business Way, Lagos"
-                    />
-                  </div>
-                </div>
-              </section>
-
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-8">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Appointments</h2>
-                  {!hasAccess('business') && (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                      <Crown className="w-3 h-3" /> BUSINESS
-                    </span>
-                  )}
-                </div>
-                <div className={`space-y-6 ${!hasAccess('business') ? 'opacity-50 pointer-events-none' : ''}`}>
+                {/* Media Gallery */}
+                <div className="space-y-4 pt-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-zinc-500">Enable Appointments</span>
-                    <button 
-                      onClick={() => handleUpdateProfile({ appointmentsEnabled: !profile.appointmentsEnabled })}
-                      className={`w-12 h-6 rounded-full transition-all relative ${profile.appointmentsEnabled ? 'bg-lime-400' : 'bg-zinc-300 dark:bg-zinc-700'}`}
-                    >
-                      <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${profile.appointmentsEnabled ? 'left-7' : 'left-1'}`} />
-                    </button>
-                  </div>
+                    <h3 className="font-bold text-zinc-900 dark:text-white">Media Gallery</h3>
+                    <label className="p-2 bg-lime-50 text-[#A3E635] rounded-xl cursor-pointer hover:bg-lime-100 transition-colors">
+                      <Plus className="w-5 h-5" />
+                      <input 
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*,video/*" 
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          
+                          try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            formData.append('path', `media/${user?.uid}/${Date.now()}_${file.name}`);
+                            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                            const data = await res.json();
 
-                  {profile.appointmentsEnabled && (
-                    <div className="space-y-4">
+                            await safeWrite('media', null, {
+                              userId: user?.uid,
+                              url: data.url,
+                              type: file.type.startsWith('video') ? 'video' : 'image',
+                              createdAt: new Date().toISOString()
+                            }, 'create');
+                            toast.success('Media uploaded!');
+                          } catch (err) {
+                            toast.error('Failed to upload media');
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  
+                  {media.length === 0 ? (
+                    <div className="bg-zinc-50 dark:bg-zinc-900/50 py-12 rounded-[2rem] flex flex-col items-center justify-center text-center px-6 border-2 border-dashed border-zinc-100">
+                      <ImageIcon className="w-10 h-10 text-zinc-200 mb-4" />
+                      <p className="text-zinc-500 font-bold">Your gallery is empty</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      {media.map(m => (
+                        <div key={m.id} className="aspect-square bg-zinc-100 dark:bg-zinc-900 rounded-[2rem] overflow-hidden relative group">
+                          {m.type === 'image' ? (
+                            <img src={m.url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <video src={m.url} className="w-full h-full object-cover" />
+                          )}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button 
+                              onClick={() => safeWrite('media', m.id, null, 'delete')}
+                              className="w-10 h-10 bg-red-500 text-white rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'ai' && (
+              <motion.div 
+                key="ai"
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="px-6 py-6"
+              >
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-[28px] font-black tracking-tighter dark:text-white">AI Designer</h2>
+                      <p className="text-[#6B7280] text-[14px] font-medium leading-tight">Your personal assistant for profile optimization.</p>
+                    </div>
+                  </div>
+                  <AIDesigner user={user} profile={profile} links={links} />
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'business' && (
+              <motion.div 
+                key="business"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-8 space-y-8"
+              >
+                <div className="space-y-4">
+                  <h2 className="text-[28px] font-black tracking-tighter dark:text-white">Business Hub</h2>
+                  <p className="text-[#6B7280] text-[14px] font-medium leading-tight">Scale your brand with advanced monetization and lead tools.</p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                    <div className="p-8 bg-black text-white rounded-[2.5rem] relative overflow-hidden group">
+                      <div className="relative z-10 space-y-4">
+                        <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                          <Crown className="w-6 h-6 text-lime-400" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold">Business Hub</h3>
+                          <p className="text-zinc-400 text-sm mt-1">Unlock advanced analytics, maps, and appointment booking.</p>
+                        </div>
+                        {profile?.plan !== 'business' && (
+                          <button 
+                            onClick={() => setShowUpgradeModal(true)}
+                            className="px-6 py-3 bg-lime-400 text-black font-black rounded-xl text-sm"
+                          >
+                            Upgrade to Business
+                          </button>
+                        )}
+                      </div>
+                      <Crown className="absolute -bottom-8 -right-8 w-48 h-48 text-white/5 rotate-12 transition-transform group-hover:scale-110" />
+                    </div>
+
+                    {/* Appointments Management */}
+                    <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm space-y-4">
                       <div className="flex items-center justify-between">
-                        <h3 className="font-bold dark:text-white">Booking Slots</h3>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center">
+                            <Calendar className="w-5 h-5 text-purple-500" />
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-sm dark:text-white">Appointments</h4>
+                            <p className="text-xs text-zinc-500">Allow users to book time with you.</p>
+                          </div>
+                        </div>
                         <button 
-                          onClick={() => {
-                            const newAppt: Appointment = {
-                              id: Math.random().toString(36).substr(2, 9),
-                              title: 'Consultation',
-                              dateTime: new Date().toISOString(),
-                              contactLink: ''
-                            };
-                            handleUpdateProfile({ appointments: [...(profile.appointments || []), newAppt] });
-                          }}
-                          className="flex items-center gap-2 text-sm font-bold text-lime-500 hover:text-lime-600"
+                          onClick={() => handleUpdateProfile({ appointmentsEnabled: !profile?.appointmentsEnabled })}
+                          className={`w-12 h-6 rounded-full p-1 transition-colors ${profile?.appointmentsEnabled ? 'bg-lime-400' : 'bg-zinc-200 dark:bg-zinc-700'}`}
                         >
-                          <Plus className="w-4 h-4" /> Add Slot
+                          <div className={`w-4 h-4 bg-white rounded-full transition-transform ${profile?.appointmentsEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
                         </button>
                       </div>
 
-                      <div className="space-y-4">
-                        {(profile.appointments || []).map((appt, idx) => (
-                          <div key={appt.id} className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700 space-y-4">
-                            <div className="flex items-center justify-between">
-                              <input 
-                                type="text" 
-                                value={appt.title}
-                                onChange={(e) => {
-                                  const newAppts = [...(profile.appointments || [])];
-                                  newAppts[idx].title = e.target.value;
-                                  handleUpdateProfile({ appointments: newAppts });
-                                }}
-                                className="bg-transparent font-bold dark:text-white outline-none"
-                                placeholder="Slot Title"
-                              />
+                      {profile?.appointmentsEnabled && (
+                        <div className="space-y-4 pt-4 border-t border-zinc-50 dark:border-zinc-800">
+                          {profile.appointments?.map((appt, idx) => (
+                            <div key={appt.id} className="flex items-center justify-between bg-zinc-50 dark:bg-zinc-800 p-4 rounded-2xl">
+                              <div>
+                                <h5 className="text-xs font-bold dark:text-white">{appt.title}</h5>
+                                <p className="text-[10px] text-zinc-500">{appt.dateTime}</p>
+                              </div>
                               <button 
                                 onClick={() => {
-                                  const newAppts = profile.appointments?.filter(a => a.id !== appt.id);
+                                  const newAppts = [...(profile.appointments || [])];
+                                  newAppts.splice(idx, 1);
                                   handleUpdateProfile({ appointments: newAppts });
                                 }}
                                 className="text-zinc-400 hover:text-red-500"
@@ -1229,422 +1553,800 @@ const Dashboard: React.FC = () => {
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                <span className="text-[10px] text-zinc-500 uppercase font-bold">Date & Time</span>
-                                <input 
-                                  type="datetime-local" 
-                                  value={appt.dateTime.slice(0, 16)}
-                                  onChange={(e) => {
-                                    const newAppts = [...(profile.appointments || [])];
-                                    newAppts[idx].dateTime = new Date(e.target.value).toISOString();
-                                    handleUpdateProfile({ appointments: newAppts });
-                                  }}
-                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 text-xs outline-none"
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <span className="text-[10px] text-zinc-500 uppercase font-bold">Contact Link (WhatsApp/Email)</span>
-                                <input 
-                                  type="text" 
-                                  value={appt.contactLink}
-                                  onChange={(e) => {
-                                    const newAppts = [...(profile.appointments || [])];
-                                    newAppts[idx].contactLink = e.target.value;
-                                    handleUpdateProfile({ appointments: newAppts });
-                                  }}
-                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg p-2 text-xs outline-none"
-                                  placeholder="https://wa.me/..."
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </section>
-            </div>
-          )}
-
-          {activeTab === 'verification' && profile && (
-            <div className="space-y-8">
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Get Verified</h2>
-                  {profile.isVerified && (
-                    <span className="px-3 py-1 bg-blue-500/10 text-blue-500 rounded-full text-xs font-bold flex items-center gap-1">
-                      <BadgeCheck className="w-3 h-3" /> VERIFIED
-                    </span>
-                  )}
-                </div>
-
-                <div className="p-8 bg-zinc-50 dark:bg-zinc-800 rounded-[2rem] border border-zinc-100 dark:border-zinc-700 text-center space-y-6">
-                  <div className="w-20 h-20 bg-[#1D9BF0] rounded-full flex items-center justify-center mx-auto shadow-xl shadow-blue-500/20">
-                    <VerificationBadge size={40} />
-                  </div>
-                  <div className="max-w-md mx-auto space-y-2">
-                    <h3 className="text-2xl font-bold dark:text-white">Twitter-style Verification</h3>
-                    <p className="text-zinc-500">Stand out from the crowd with a blue verification badge on your profile. Build trust and credibility with your audience.</p>
-                  </div>
-                  
-                  <div className="py-6 border-y border-zinc-200 dark:border-zinc-700">
-                    <div className="text-4xl font-black dark:text-white">₦1,000<span className="text-lg font-normal text-zinc-500">/month</span></div>
-                  </div>
-
-                  {!profile.isVerified ? (
-                    <button
-                      onClick={triggerVerification}
-                      className="w-full py-4 bg-[#1D9BF0] text-white rounded-2xl font-bold hover:bg-[#1A8CD8] transition-all shadow-lg shadow-blue-500/20"
-                    >
-                      Get Verified Now
-                    </button>
-                  ) : (
-                    <div className="p-4 bg-blue-500/5 rounded-xl border border-blue-500/20 text-blue-500 font-bold">
-                      You are already verified!
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {[
-                    { title: 'Trust', desc: 'Build instant trust with your audience' },
-                    { title: 'Credibility', desc: 'Show that you are the real deal' },
-                    { title: 'Visibility', desc: 'Stand out in search results' }
-                  ].map((benefit, i) => (
-                    <div key={i} className="p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700">
-                      <h4 className="font-bold dark:text-white mb-1">{benefit.title}</h4>
-                      <p className="text-xs text-zinc-500">{benefit.desc}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </div>
-          )}
-
-          {activeTab === 'billing' && (
-            <div className="space-y-8">
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-none">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-lime-400/10 rounded-xl text-lime-500">
-                      <CreditCard className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold dark:text-white">Current Plan</h2>
-                      <p className="text-sm text-zinc-500">Manage your subscription and billing history</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <div className="text-sm font-bold uppercase tracking-wider text-zinc-400">{profile?.plan}</div>
-                      <div className={`text-xs font-bold ${profile?.subscriptionStatus === 'active' ? 'text-lime-500' : 'text-zinc-500'}`}>
-                        {profile?.subscriptionStatus === 'active' ? 'Active' : 'Inactive'}
-                      </div>
-                    </div>
-                    <button 
-                      onClick={() => navigate('/pricing')}
-                      className="px-6 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 rounded-xl text-sm font-bold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all"
-                    >
-                      {profile?.plan === 'business' ? 'Manage' : 'Upgrade'}
-                    </button>
-                  </div>
-                </div>
-
-                {profile?.isPremium && profile.premiumUntil && (
-                  <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Calendar className="w-4 h-4 text-zinc-400" />
-                      <span className="text-sm text-zinc-500 italic">Expires on</span>
-                    </div>
-                    <div className="font-bold text-zinc-900 dark:text-white">
-                      {format(new Date(profile.premiumUntil), 'MMMM dd, yyyy')}
-                    </div>
-                  </div>
-                )}
-              </section>
-
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-200/50 dark:shadow-none">
-                <h3 className="text-lg font-bold dark:text-white mb-6">Transaction History</h3>
-                <div className="space-y-4">
-                  {transactions.length > 0 ? (
-                    transactions.map((tx) => (
-                      <div key={tx.id} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl group border border-zinc-100 dark:border-zinc-800">
-                        <div className="flex items-center gap-4">
-                          <div className={`p-2 rounded-xl ${tx.status === 'success' ? 'bg-lime-400/10 text-lime-500' : 'bg-red-400/10 text-red-500'}`}>
-                            <CreditCard className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <div className="font-bold text-zinc-900 dark:text-white capitalize">{tx.plan} Plan</div>
-                            <div className="text-xs text-zinc-500">{format(new Date(tx.createdAt), 'MMM dd, yyyy • HH:mm')}</div>
-                          </div>
+                          ))}
+                          <button 
+                            onClick={() => {
+                              const title = prompt('Appointment Title:');
+                              const dateTime = prompt('Date/Time (e.g. Mon-Fri, 9am-5pm):');
+                              const contactLink = prompt('Contact Link (WhatsApp/Calendly):');
+                              if (title && dateTime && contactLink) {
+                                const newAppts = [...(profile.appointments || []), {
+                                  id: Math.random().toString(36).substr(2, 9),
+                                  title,
+                                  dateTime,
+                                  contactLink
+                                }];
+                                handleUpdateProfile({ appointments: newAppts });
+                              }
+                            }}
+                            className="w-full py-3 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold text-zinc-500 hover:border-lime-400 hover:text-lime-500 transition-all"
+                          >
+                            + Add Availability Slot
+                          </button>
                         </div>
-                        <div className="text-right">
-                          <div className="font-bold text-zinc-900 dark:text-white">₦{tx.amount?.toLocaleString()}</div>
-                          <div className="text-[10px] font-mono text-zinc-400 leading-none">{tx.reference}</div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-12 text-zinc-400 bg-zinc-50 dark:bg-zinc-800/30 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800">
-                      No transactions found
+                      )}
                     </div>
-                  )}
-                </div>
-              </section>
-            </div>
-          )}
 
-          {activeTab === 'analytics' && (
-            <div id="tour-content-analytics" className="space-y-8">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-zinc-500 text-sm font-medium">Total Profile Views</span>
-                    <TrendingUp className="w-4 h-4 text-lime-500" />
-                  </div>
-                  <div className="text-4xl font-bold text-zinc-900 dark:text-white">
-                    {profile?.totalClicks || 0}
-                  </div>
-                </div>
-                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-zinc-500 text-sm font-medium">Total Link Clicks</span>
-                    <BarChart2 className="w-4 h-4 text-blue-500" />
-                  </div>
-                  <div className="text-4xl font-bold text-zinc-900 dark:text-white">
-                    {links.reduce((acc, l) => acc + (l.clicks || 0), 0)}
-                  </div>
-                </div>
-              </div>
-
-              {/* Charts */}
-              <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800">
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-xl font-bold dark:text-white">Performance Over Time</h2>
-                  {!user?.isPremium && (
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-bold flex items-center gap-1">
-                      <Crown className="w-3 h-3" /> PRO FEATURE
-                    </span>
-                  )}
-                </div>
-                
-                <div className={`h-[300px] w-full ${!user?.isPremium ? 'blur-md pointer-events-none select-none opacity-50' : ''}`}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={mockAnalyticsData}>
-                      <defs>
-                        <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#a3e635" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#a3e635" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
-                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 12 }} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#18181b', border: 'none', borderRadius: '12px', color: '#fff' }}
-                        itemStyle={{ color: '#a3e635' }}
-                      />
-                      <Area type="monotone" dataKey="views" stroke="#a3e635" fillOpacity={1} fill="url(#colorViews)" strokeWidth={3} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {!user?.isPremium && (
-                  <div className="mt-8 text-center">
-                    <p className="text-zinc-500 mb-4">Upgrade to Premium to unlock detailed analytics and charts.</p>
-                    <button 
-                      onClick={handleUpgrade}
-                      className="px-8 py-3 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:scale-105 transition-all"
-                    >
-                      Upgrade Now
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800">
-                <h2 className="text-xl font-bold dark:text-white mb-6">Link Performance</h2>
-                <div className="space-y-4">
-                  {links.map((link) => (
-                    <div key={link.id} className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl">
+                    {/* Location Management */}
+                    <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm space-y-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-700 rounded-xl flex items-center justify-center">
-                          {link.type === 'youtube' ? <Youtube className="w-5 h-5 text-red-500" /> : 
-                           link.type === 'tiktok' ? <Music2 className="w-5 h-5 text-pink-500" /> : 
-                           <LinkIcon className="w-5 h-5 text-zinc-400" />}
+                        <div className="w-10 h-10 bg-amber-50 dark:bg-amber-900/20 rounded-xl flex items-center justify-center">
+                          <MapPin className="w-5 h-5 text-amber-500" />
                         </div>
                         <div>
-                          <div className="font-bold dark:text-white">{link.title}</div>
-                          <div className="text-sm text-zinc-500 truncate max-w-[200px]">{link.url}</div>
+                          <h4 className="font-bold text-sm dark:text-white">Business Location</h4>
+                          <p className="text-xs text-zinc-500">Show your office or store on a map.</p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-xl font-bold dark:text-white">{link.clicks || 0}</div>
-                        <div className="text-xs text-zinc-500">clicks</div>
+                      <div className="space-y-3">
+                        <input 
+                          type="text"
+                          value={profile?.address || ''}
+                          onChange={(e) => handleUpdateProfile({ address: e.target.value })}
+                          placeholder="Store Address (e.g. 123 Main St, Lagos)"
+                          className="w-full p-3 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-xs outline-none"
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                           <input 
+                              type="number"
+                              value={profile?.location?.lat || ''}
+                              onChange={(e) => handleUpdateProfile({ location: { ...profile?.location, lat: parseFloat(e.target.value), lng: profile?.location?.lng || 0 } })}
+                              placeholder="Latitude"
+                              className="w-full p-3 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[10px] outline-none"
+                           />
+                           <input 
+                              type="number"
+                              value={profile?.location?.lng || ''}
+                              onChange={(e) => handleUpdateProfile({ location: { ...profile?.location, lng: parseFloat(e.target.value), lat: profile?.location?.lat || 0 } })}
+                              placeholder="Longitude"
+                              className="w-full p-3 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[10px] outline-none"
+                           />
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
 
-          {activeTab === 'backup' && (
-            <div className="space-y-8">
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Profile Versions</h2>
-                  <div className="flex items-center gap-2 text-xs font-bold text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-full">
-                    <Clock className="w-3 h-3" /> AUTO-BACKUP ACTIVE
+                    <div className="grid grid-cols-2 gap-4">
+                    <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm">
+                      <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center mb-4">
+                        <Mail className="w-5 h-5 text-blue-500" />
+                      </div>
+                      <h4 className="font-bold text-sm dark:text-white">Lead Capture</h4>
+                      <p className="text-xs text-zinc-500 mt-1">Connect Mailchimp or Google Sheets.</p>
+                    </div>
+                    <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm">
+                      <div className="w-10 h-10 bg-purple-50 dark:bg-purple-900/20 rounded-xl flex items-center justify-center mb-4">
+                        <CreditCard className="w-5 h-5 text-purple-500" />
+                      </div>
+                      <h4 className="font-bold text-sm dark:text-white">Shop Links</h4>
+                      <p className="text-xs text-zinc-500 mt-1">Sell digital or physical products.</p>
+                    </div>
                   </div>
                 </div>
-                
-                <p className="text-sm text-zinc-500">
-                  Every time you update your profile, we save a backup. You can restore your profile to any previous version here. 
-                  Note: Restoring will overwrite your current profile data.
-                </p>
+              </motion.div>
+            )}
+
+            {activeTab === 'appearance' && (
+              <motion.div 
+                key="appearance"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-6 space-y-10"
+              >
+                <div className="space-y-4">
+                   <h3 className="text-[22px] font-bold">Brand Color</h3>
+                   <div className="flex flex-wrap gap-3">
+                      {[
+                        '#A3E635', // Lime
+                        '#3B82F6', // Blue
+                        '#EF4444', // Red
+                        '#F59E0B', // Amber
+                        '#8B5CF6', // Violet
+                        '#EC4899', // Pink
+                        '#000000', // Black
+                        '#6366F1', // Indigo
+                        '#10B981', // Emerald
+                        '#F97316', // Orange
+                      ].map(color => (
+                        <button 
+                          key={color}
+                          onClick={() => handleUpdateProfile({ brandColor: color })}
+                          className={`w-10 h-10 rounded-full border-4 transition-all ${profile?.brandColor === color ? 'border-black scale-110 shadow-lg' : 'border-white'}`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                      <div className="flex items-center gap-2 ml-auto">
+                        <span className="text-xs font-bold text-zinc-400">Hex</span>
+                        <input 
+                          type="text" 
+                          value={profile?.brandColor || ''}
+                          onChange={(e) => handleUpdateProfile({ brandColor: e.target.value })}
+                          className="w-24 h-10 px-3 bg-[#F3F4F6] border-none rounded-xl text-xs font-bold uppercase"
+                          placeholder="#000000"
+                        />
+                      </div>
+                   </div>
+                </div>
+
+                <div className="space-y-6">
+                   <div className="flex items-center justify-between px-2">
+                     <h3 className="text-[22px] font-black">Verification</h3>
+                     {profile?.isVerified && (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 text-[#1D9BF0] rounded-full text-[10px] font-black uppercase">
+                          <Check className="w-3 h-3" /> Verified
+                        </div>
+                     )}
+                   </div>
+                   
+                   <div className="bg-zinc-900 text-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-[#1D9BF0]/20 blur-[50px] rounded-full" />
+                      <div className="relative z-10 space-y-4">
+                         <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 bg-[#1D9BF0] rounded-2xl flex items-center justify-center shadow-lg shadow-[#1D9BF0]/30 transform group-hover:rotate-12 transition-transform">
+                               <BadgeCheck className="w-8 h-8 text-white fill-white stroke-[#1D9BF0]" />
+                            </div>
+                            <div>
+                               <h4 className="text-xl font-black">Official Verification</h4>
+                               <p className="text-zinc-400 text-xs font-medium">Add the prestigious blue tick to your bio.</p>
+                            </div>
+                         </div>
+                         <div className="pt-4 flex items-center justify-between">
+                            <div className="flex flex-col">
+                               <span className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Investment</span>
+                               <span className="text-2xl font-black">₦2,000</span>
+                            </div>
+                            {!profile?.isVerified && (
+                               <button 
+                                 onClick={triggerVerification}
+                                 className="px-8 py-3 bg-white text-black font-black rounded-2xl text-xs hover:bg-[#1D9BF0] hover:text-white transition-all shadow-xl"
+                               >
+                                 Get Verified
+                               </button>
+                            )}
+                         </div>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="space-y-6">
+                   <h3 className="text-[22px] font-black">Themes & Identity</h3>
+                   <div className="grid grid-cols-2 gap-4">
+                      {[
+                        { id: 'minimal', name: 'Cloud Minimal', color: 'bg-white' },
+                        { id: 'modern', name: 'Shadow Modern', color: 'bg-zinc-950' },
+                        { id: 'brutalist', name: 'Raw Brutalist', color: 'bg-yellow-400' },
+                        { id: 'gradient', name: 'Neon Gradient', color: 'bg-gradient-to-br from-purple-500 to-pink-500' },
+                      ].map(t => (
+                        <button 
+                          key={t.id}
+                          onClick={() => handleUpdateProfile({ theme: t.id as ThemeType })}
+                          className={`aspect-[4/3] rounded-[2.5rem] border-4 transition-all p-4 flex flex-col gap-3 relative overflow-hidden ${profile?.theme === t.id ? 'border-lime-400 scale-102 shadow-2xl' : 'border-zinc-100 dark:border-zinc-800'}`}
+                        >
+                          <div className={`absolute inset-0 opacity-10 ${t.color}`} />
+                          <div className="w-full h-3 bg-zinc-200 dark:bg-zinc-700 rounded-full" />
+                          <div className="w-2/3 h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
+                          <div className="mt-auto flex items-center justify-between">
+                             <span className="text-[13px] font-black leading-tight max-w-[80px]">{t.name}</span>
+                             <div className={`w-6 h-6 rounded-lg ${t.color} border border-white/20`} />
+                          </div>
+                        </button>
+                      ))}
+                   </div>
+                </div>
 
                 <div className="space-y-4">
-                  {backups.length === 0 ? (
-                    <div className="p-12 text-center text-zinc-500 italic bg-zinc-50 dark:bg-zinc-800/50 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800">
-                      No backups found yet. Start editing your profile to create history.
-                    </div>
-                  ) : (
-                    backups.map((backup, idx) => (
-                      <div key={backup.id} className="flex items-center justify-between p-6 bg-zinc-50 dark:bg-zinc-800 rounded-3xl border border-zinc-100 dark:border-zinc-700 hover:border-lime-400/50 transition-all group">
-                        <div className="flex items-center gap-4">
-                          <div className={cn(
-                            "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
-                            backup.action === 'rollback' ? 'bg-amber-400/10 text-amber-500' : 
-                            backup.action === 'create' ? 'bg-lime-400/10 text-lime-500' : 
-                            'bg-blue-400/10 text-blue-500'
-                          )}>
-                            <Clock className="w-6 h-6" />
-                          </div>
-                          <div>
-                            <div className="font-bold dark:text-white flex items-center gap-2">
-                              {backup.action === 'rollback' ? 'Restored Version' : 
-                               backup.action === 'create' ? 'Initial Creation' : 
-                               `Version ${backups.length - idx}`}
-                              {idx === 0 && <span className="text-[10px] bg-lime-400 text-zinc-950 px-2 py-0.5 rounded-full">LATEST</span>}
-                            </div>
-                            <div className="text-sm text-zinc-500">
-                              {backup.timestamp?.toDate ? format(backup.timestamp.toDate(), 'PPP p') : 'Just now'}
-                            </div>
-                          </div>
-                        </div>
-                        
+                   <h3 className="text-[22px] font-bold">Background</h3>
+                   <div className="flex gap-4">
+                      {['solid', 'gradient', 'image'].map(type => (
                         <button 
-                          onClick={() => handleRollback(backup.id!)}
-                          disabled={isRollingBack || idx === 0}
-                          className={cn(
-                            "px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-widest transition-all",
-                            idx === 0 
-                              ? "bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed" 
-                              : "bg-white dark:bg-zinc-700 text-zinc-950 dark:text-white border border-zinc-200 dark:border-zinc-600 hover:bg-lime-400 hover:text-zinc-950 hover:border-lime-400 shadow-sm"
-                          )}
+                          key={type}
+                          onClick={() => handleUpdateProfile({ backgroundType: type as any })}
+                          className={`flex-1 py-3 rounded-xl border-2 font-bold text-[14px] capitalize ${profile?.backgroundType === type ? 'border-[#A3E635] text-[#A3E635]' : 'border-[#F3F4F6] text-[#6B7280]'}`}
                         >
-                          {isRollingBack ? 'Restoring...' : 'Restore'}
+                          {type}
                         </button>
+                      ))}
+                   </div>
+                   {profile?.backgroundType === 'image' && (
+                     <div className="mt-4">
+                        <label className="block w-full py-4 border-2 border-dashed border-[#D1D5DB] rounded-2xl text-center cursor-pointer hover:border-[#A3E635]">
+                          <span className="font-bold text-[14px] text-[#6B7280]">Upload Custom Background</span>
+                          <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'background')} accept="image/*" />
+                        </label>
+                     </div>
+                   )}
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'backup' && (
+              <motion.div 
+                key="backup"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-8 space-y-8"
+              >
+                <div className="space-y-2">
+                  <h2 className="text-[28px] font-black tracking-tighter dark:text-white">Revision History</h2>
+                  <p className="text-[#6B7280] text-[14px] font-medium leading-tight">Manage system-wide backups and restore previous versions of your data.</p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-lime-50 dark:bg-lime-900/20 rounded-xl flex items-center justify-center">
+                          <User className="w-5 h-5 text-lime-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm dark:text-white">Profile Control</h3>
+                          <p className="text-xs text-zinc-500">Restore your personal profile settings.</p>
+                        </div>
                       </div>
-                    ))
-                  )}
-                </div>
-              </section>
+                      <button 
+                        onClick={() => profile && fetchHistory('users', profile.uid)}
+                        className="px-4 py-2 bg-[#A3E635] text-white text-xs font-bold rounded-lg shadow-lg shadow-lime-200"
+                      >
+                        View History
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="p-8 bg-amber-50 dark:bg-amber-900/10 rounded-[2.5rem] border border-amber-100 dark:border-amber-900/20">
-                <h3 className="text-amber-700 dark:text-amber-500 font-bold mb-2 flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5" /> Data Recovery Note
-                </h3>
-                <p className="text-sm text-amber-600 dark:text-amber-600/80">
-                  Links and transactions are currently backed up internally but cannot be restored individually through this UI yet. 
-                  Currently, only the main Profile document (Name, Bio, Theme, etc.) supports one-click visual restoration.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'settings' && (
-            <div className="space-y-8">
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-6">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold dark:text-white">Premium Subscription</h2>
-                  {user?.isPremium && (
-                    <span className="px-3 py-1 bg-lime-400/10 text-lime-500 rounded-full text-xs font-bold flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> ACTIVE
-                    </span>
-                  )}
+                  <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm space-y-4 overflow-hidden">
+                    <h3 className="font-bold text-sm dark:text-white mb-2">Tracked Content Links</h3>
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                      {links.length === 0 ? (
+                        <p className="text-xs text-zinc-400 py-4 text-center italic">No links added yet to track history.</p>
+                      ) : links.map(link => (
+                        <div key={link.id} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 rounded-2xl border border-zinc-100 dark:border-zinc-700 hover:border-zinc-300 transition-colors">
+                          <div className="flex items-center gap-3">
+                             <div className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-700 flex items-center justify-center overflow-hidden flex-shrink-0">
+                               {link.icon ? <img src={link.icon} alt="" className="w-full h-full object-cover" /> : <LinkIcon className="w-4 h-4 text-zinc-400" />}
+                             </div>
+                             <span className="text-xs font-bold dark:text-white truncate max-w-[120px]">{link.title || 'Untitled Link'}</span>
+                          </div>
+                          <button 
+                            onClick={() => fetchHistory('links', link.id)}
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                          >
+                            <HistoryIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                
-                {!user?.isPremium ? (
-                  <div className="p-6 bg-zinc-50 dark:bg-zinc-800 rounded-3xl border border-zinc-100 dark:border-zinc-700">
-                    <div className="flex items-start gap-4 mb-6">
-                      <div className="w-12 h-12 bg-lime-400 rounded-2xl flex items-center justify-center shrink-0">
-                        <Crown className="text-zinc-950 w-6 h-6" />
+
+                <div className="p-6 bg-blue-50/50 dark:bg-blue-900/10 rounded-[2.5rem] border border-blue-100/50 dark:border-blue-800/50 flex items-start gap-4">
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-2xl flex items-center justify-center flex-shrink-0">
+                    <RotateCcw className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-blue-900 dark:text-blue-200">Safety First</h4>
+                    <p className="text-xs text-blue-700/80 dark:text-blue-400/80 leading-relaxed mt-1 font-medium italic">
+                      "Data is immortal, but mistakes should be reversible." Every significant change is automatically versioned.
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'verification' && (
+              <motion.div 
+                key="verification"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-8 space-y-8"
+              >
+                <div className="space-y-4 text-center">
+                  <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto shadow-sm">
+                    <BadgeCheck className="w-12 h-12 text-[#1D9BF0] fill-[#1D9BF0] stroke-white stroke-1" />
+                  </div>
+                  <h2 className="text-[24px] font-black">Get Verified</h2>
+                  <p className="text-zinc-500 text-[14px]">
+                    Stand out with a blue tick verification badge on your profile.
+                  </p>
+                </div>
+
+                <div className="bg-white p-6 rounded-[2.5rem] border border-zinc-100 shadow-sm space-y-6">
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-green-50 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Check className="w-4 h-4 text-green-500" />
+                      </div>
+                      <p className="text-[14px] font-medium text-zinc-600">Boost your credibility and trust</p>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-6 h-6 bg-green-50 rounded-full flex items-center justify-center flex-shrink-0">
+                        <Check className="w-4 h-4 text-green-500" />
+                      </div>
+                      <p className="text-[14px] font-medium text-zinc-600">Priority support and early access</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t border-zinc-50">
+                    <div className="flex justify-between items-center mb-6">
+                      <span className="text-[14px] font-bold text-zinc-400">One-time fee</span>
+                      <span className="text-[20px] font-black">₦2,000</span>
+                    </div>
+
+                    {profile?.isVerified ? (
+                      <div className="w-full py-4 bg-zinc-50 text-zinc-400 rounded-2xl font-black text-center flex items-center justify-center gap-2">
+                        <BadgeCheck className="w-5 h-5" />
+                        Verified Account
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={triggerVerification}
+                        className="w-full py-4 bg-black text-white rounded-2xl font-black shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
+                      >
+                        Get Verified Now
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'billing' && (
+              <motion.div 
+                key="billing"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-8 space-y-8"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-8 bg-zinc-900 text-white rounded-[2.5rem] space-y-6">
+                    <div className="flex items-center justify-between">
+                      <p className="text-zinc-400 font-bold text-xs uppercase tracking-widest">Current Plan</p>
+                      <Crown className="w-5 h-5 text-lime-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-4xl font-black capitalize">{profile?.plan || 'Basic'}</h3>
+                      <p className="text-zinc-500 text-sm mt-1">
+                        {profile?.plan === 'pro' || profile?.plan === 'business' 
+                          ? `Renews on ${profile.premiumUntil ? format(new Date(profile.premiumUntil), 'MMM d, yyyy') : 'soon'}`
+                          : 'Unlock more features with Pro'}
+                      </p>
+                    </div>
+                    {profile?.plan !== 'business' && (
+                      <button 
+                        onClick={() => navigate('/pricing')}
+                        className="w-full py-3 bg-white text-black font-black rounded-xl text-sm"
+                      >
+                        Upgrade Plan
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="p-8 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] space-y-6">
+                    <p className="text-zinc-400 font-bold text-xs uppercase tracking-widest">Ad-Free Experience</p>
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-lime-50 dark:bg-lime-900/20 rounded-2xl flex items-center justify-center">
+                        <CheckCircle2 className="w-6 h-6 text-lime-600" />
                       </div>
                       <div>
-                        <h3 className="font-bold dark:text-white">Upgrade to Chip NG Pro</h3>
-                        <p className="text-sm text-zinc-500">Unlock verified badge, link scheduling, advanced analytics, and more.</p>
-                      </div>
-                    </div>
-                    <button 
-                      onClick={handleUpgrade}
-                      className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:scale-[1.02] transition-all"
-                    >
-                      Upgrade for ₦10,000/mo
-                    </button>
-                  </div>
-                ) : (
-                  <div className="p-6 bg-zinc-50 dark:bg-zinc-800 rounded-3xl border border-zinc-100 dark:border-zinc-700">
-                    <p className="text-sm text-zinc-500 mb-4">You are currently on the Pro plan. Your subscription is active until {user.premiumUntil ? format(new Date(user.premiumUntil), 'PPP') : 'N/A'}.</p>
-                    <button className="text-sm font-bold text-zinc-400 hover:text-zinc-600 transition-colors">
-                      Manage Subscription
-                    </button>
-                  </div>
-                )}
-              </section>
-
-              <section className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 space-y-6">
-                <h2 className="text-xl font-bold dark:text-white">Account Settings</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl">
-                    <div>
-                      <div className="font-bold dark:text-white">Email</div>
-                      <div className="text-sm text-zinc-500">{user?.email}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl">
-                    <div>
-                      <div className="font-bold dark:text-white">Member Since</div>
-                      <div className="text-sm text-zinc-500">
-                        {user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                        <h4 className="font-bold dark:text-white">Active Status</h4>
+                        <p className="text-xs text-zinc-500">Your profile is currently clean and fast.</p>
                       </div>
                     </div>
                   </div>
                 </div>
-              </section>
 
-              <section className="bg-red-50 dark:bg-red-900/10 p-8 rounded-[2.5rem] border border-red-100 dark:border-red-900/20 space-y-6">
-                <h2 className="text-xl font-bold text-red-600">Danger Zone</h2>
-                <p className="text-red-600/70 text-sm">Once you delete your account, there is no going back. Please be certain.</p>
-                <button className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all">
-                  Delete Account
-                </button>
-              </section>
-            </div>
-          )}
+                <div className="space-y-4">
+                  <h3 className="text-xl font-black dark:text-white ml-2">Payment History</h3>
+                  {transactions.length === 0 ? (
+                    <div className="p-12 bg-zinc-50 dark:bg-zinc-900 rounded-[2.5rem] text-center border-2 border-dashed border-zinc-100 dark:border-zinc-800">
+                      <CreditCard className="w-10 h-10 text-zinc-200 mx-auto mb-4" />
+                      <p className="text-zinc-400 font-bold">No transactions yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {transactions.map(tx => (
+                        <div key={tx.id} className="p-6 bg-white dark:bg-zinc-900 border border-zinc-50 dark:border-zinc-800 rounded-[2rem] flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-zinc-50 dark:bg-zinc-800 rounded-xl flex items-center justify-center">
+                              <CreditCard className="w-5 h-5 text-zinc-400" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm dark:text-white capitalize">{tx.plan} Subscription</p>
+                              <p className="text-[10px] text-zinc-400 uppercase font-black">{tx.reference}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-black text-sm dark:text-white">₦{tx.amount.toLocaleString()}</p>
+                            <p className="text-[10px] text-zinc-400 font-bold">{tx.createdAt ? format(new Date(tx.createdAt), 'MMM d, yyyy') : 'Just now'}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'settings' && (
+              <motion.div 
+                key="settings"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-8 space-y-8"
+              >
+                <div className="space-y-6">
+                  <h2 className="text-[24px] font-black text-zinc-900 dark:text-white transition-colors duration-300">Account Settings</h2>
+                  
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Username</label>
+                      <input 
+                        type="text" 
+                        value={profile?.username}
+                        disabled
+                        className="w-full h-12 bg-zinc-50 dark:bg-zinc-900 border-none rounded-xl px-4 font-bold text-zinc-400"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Display Name</label>
+                      <input 
+                        type="text" 
+                        value={profile?.displayName}
+                        onChange={(e) => handleUpdateProfile({ displayName: e.target.value })}
+                        className="w-full h-12 bg-zinc-50 dark:bg-zinc-900 border-none rounded-xl px-4 font-bold text-zinc-900 dark:text-white transition-colors duration-300"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-6">
+                    <button 
+                      onClick={() => auth.signOut()}
+                      className="w-full py-4 border-2 border-red-100 dark:border-red-900/20 text-red-500 rounded-2xl font-bold hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                    >
+                      Sign Out
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
+      </div>
+
+        {/* Right Side: Phone Preview (Sticky) */}
+        <aside className="hidden xl:flex w-[500px] h-screen border-l border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 items-center justify-center sticky top-0 px-8">
+           <div className="relative w-full max-w-[320px] aspect-[9/18.5] bg-zinc-950 rounded-[3.5rem] border-[10px] border-zinc-900 dark:border-zinc-800 shadow-[0_40px_100px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col group p-1 transition-all">
+              {/* iPhone Dynamic Island */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-28 h-8 bg-zinc-900 dark:bg-zinc-800 rounded-b-3xl z-50 flex items-center justify-center gap-1.5">
+                 <div className="w-1 h-1 rounded-full bg-zinc-700" />
+                 <div className="w-10 h-1 bg-zinc-800 rounded-full" />
+              </div>
+
+              {/* Preview Content Inside Phone */}
+              <div className="flex-1 overflow-y-auto no-scrollbar relative bg-[#FAFAFA] dark:bg-zinc-950 rounded-[2.8rem]">
+                 <div className="p-6 space-y-6 flex flex-col items-center pt-16">
+                    {/* Mock Profile Header */}
+                    <div className="relative w-full aspect-video rounded-3xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden mb-[-40px]">
+                       {profile?.coverImage && <img src={profile.coverImage} className="w-full h-full object-cover" />}
+                    </div>
+
+                    <div className="w-24 h-24 rounded-[2rem] bg-zinc-200 dark:bg-zinc-900 overflow-hidden shadow-2xl ring-4 ring-white dark:ring-zinc-950 relative z-10">
+                       {profile?.photoURL ? (
+                         <img src={profile.photoURL} alt="" className="w-full h-full object-cover" />
+                       ) : (
+                         <User className="w-full h-full p-6 text-zinc-400" />
+                       )}
+                    </div>
+                    
+                    <div className="text-center space-y-2">
+                       <h3 className="font-black text-xl flex items-center justify-center gap-1 dark:text-white">
+                         {profile?.displayName || '@username'}
+                         {profile?.isVerified && <BadgeCheck className="w-5 h-5 text-[#1D9BF0] fill-[#1D9BF0] stroke-white stroke-1" />}
+                       </h3>
+                       <p className="text-[11px] font-bold text-zinc-500 max-w-[220px] leading-relaxed uppercase tracking-tight">
+                         {profile?.bio || 'Bio preview will appear here...'}
+                       </p>
+                    </div>
+
+                    {/* Links Mock */}
+                    <div className="w-full space-y-3 px-2">
+                       {links.length > 0 ? links.slice(0, 4).map(link => (
+                         <div key={link.id} className="w-full p-4 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl shadow-sm flex items-center justify-center font-black text-[11px] uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
+                            {link.title}
+                         </div>
+                       )) : [1, 2, 3].map(i => (
+                         <div key={i} className="w-full h-14 bg-white dark:bg-zinc-900 border border-zinc-50 dark:border-zinc-800 rounded-2xl animate-pulse" />
+                       ))}
+                    </div>
+
+                    <div className="pt-8 opacity-20 hover:opacity-100 transition-opacity">
+                       <Logo size="sm" />
+                    </div>
+                 </div>
+              </div>
+
+              {/* iPhone Home Indicator */}
+              <div className="h-1 bg-zinc-900/10 dark:bg-white/10 w-32 rounded-full mx-auto mb-4 absolute bottom-0 left-1/2 -translate-x-1/2" />
+              
+              {/* Overlay Label */}
+              <div className="absolute inset-0 bg-zinc-950/40 backdrop-blur-[4px] opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center z-50">
+                 <button 
+                  onClick={() => window.open(`/${profile?.username}`, '_blank')}
+                  className="px-8 py-4 bg-lime-400 text-zinc-950 font-black rounded-3xl flex items-center gap-3 shadow-2xl scale-90 group-hover:scale-100 transition-all border-4 border-white/20"
+                >
+                   Live View <ExternalLink className="w-5 h-5" />
+                 </button>
+              </div>
+           </div>
+        </aside>
       </main>
 
+      {/* Floating Bottom Nav (Mobile Only) */}
+      <nav className="fixed lg:hidden bottom-8 left-1/2 -translate-x-1/2 bg-black text-white px-2 py-2 rounded-full flex items-center gap-1 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[110] ring-1 ring-white/10">
+        {[
+          { id: 'links', icon: LayoutGrid, label: 'Edit' },
+          { id: 'ai', icon: Sparkles, label: 'AI' },
+          { id: 'analytics', icon: TrendingUp, label: 'Stats' },
+          { id: 'appearance', icon: Palette, label: 'Style' },
+        ].map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveTab(item.id as any)}
+            className={cn(
+              "p-4 rounded-full transition-all flex items-center gap-2",
+              activeTab === item.id 
+                ? "bg-lime-400 text-zinc-950 shadow-xl scale-110" 
+                : "text-zinc-500 hover:text-white"
+            )}
+          >
+            <item.icon className="w-5 h-5" />
+            {activeTab === item.id && <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>}
+          </button>
+        ))}
+      </nav>
+
+      {/* Add Platform Modal */}
+      <AnimatePresence>
+        {isAddPlatformModalOpen && (
+          <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAddPlatformModalOpen(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              className="relative w-full max-w-lg bg-white rounded-t-[2.5rem] sm:rounded-b-[2.5rem] p-6 pb-12 shadow-2xl flex flex-col h-[80vh] sm:h-auto sm:max-h-[85vh]"
+            >
+              <div className="w-12 h-1.5 bg-zinc-100 rounded-full mx-auto mb-6 sm:hidden" />
+              
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-black">Add Platform</h2>
+                  <p className="text-[#6B7280] text-sm font-medium">Add social icons to your profile.</p>
+                </div>
+                <button 
+                  onClick={() => setIsAddPlatformModalOpen(false)}
+                  className="p-2 bg-zinc-50 rounded-full hover:bg-zinc-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-zinc-400" />
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div className="relative mb-6">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                <input 
+                  type="text" 
+                  placeholder="Search platforms..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-12 bg-zinc-50 border-none rounded-2xl pl-11 pr-4 focus:ring-2 focus:ring-[#A3E635] transition-all font-medium"
+                />
+              </div>
+
+              {/* Categories Scroll */}
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-6 mb-2 -mx-2 px-2">
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id as any)}
+                    className={cn(
+                      "flex items-center gap-2 px-4 py-2.5 rounded-2xl whitespace-nowrap font-bold text-sm transition-all border-2",
+                      selectedCategory === cat.id 
+                        ? "bg-[#A3E635] text-white border-[#A3E635] shadow-lg shadow-lime-100" 
+                        : "bg-white text-[#6B7280] border-[#F3F4F6] hover:border-zinc-200"
+                    )}
+                  >
+                    <cat.icon className="w-4 h-4" />
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Platforms Grid */}
+              <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-1 gap-2 pr-1">
+                {filteredPlatforms.length > 0 ? (
+                  filteredPlatforms.map(platform => (
+                    <button
+                      key={platform.id}
+                      onClick={() => handleSelectPlatform(platform.id, platform.urlPrefix)}
+                      className="w-full flex items-center justify-between p-4 bg-white border border-[#F3F4F6] rounded-2xl group hover:border-[#A3E635] hover:bg-lime-50 transition-all text-left"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div 
+                          className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-sm"
+                          style={{ backgroundColor: platform.color }}
+                        >
+                          <platform.icon className="w-6 h-6" />
+                        </div>
+                        <span className="font-bold text-[15px]">{platform.label}</span>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-zinc-300 group-hover:text-[#A3E635] transition-colors" />
+                    </button>
+                  ))
+                ) : (
+                  <div className="py-12 text-center">
+                    <p className="text-zinc-400 font-medium italic">No platforms found for "{searchQuery}"</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Added Platforms Section (Optional) */}
+              {profile?.socialLinks && Object.keys(profile.socialLinks).length > 0 && searchQuery === '' && (
+                <div className="mt-6 pt-6 border-t border-[#F3F4F6]">
+                  <h4 className="text-[12px] font-bold text-zinc-400 uppercase tracking-widest mb-3 ml-1">Added Platforms ({Object.keys(profile.socialLinks).length})</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(profile.socialLinks).map(([id, url]) => (
+                      <div key={id} className="flex items-center gap-2 bg-zinc-50 border border-[#F3F4F6] px-3 py-1.5 rounded-full">
+                        <span className="text-xs font-bold capitalize">{id}</span>
+                        <button 
+                          onClick={async () => {
+                            const newSocials = { ...profile.socialLinks };
+                            delete (newSocials as any)[id];
+                            await handleUpdateProfile({ socialLinks: newSocials });
+                            toast.success(`${id} removed`);
+                          }}
+                          className="text-zinc-400 hover:text-red-500 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <UpgradeModal 
         isOpen={upgradeModal.isOpen} 
         onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
         requiredPlan={upgradeModal.requiredPlan}
         featureName={upgradeModal.featureName}
+        onUpgrade={handleUpgrade}
       />
+
+      {/* Backup History Modal */}
+      <AnimatePresence>
+        {historyModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl border border-zinc-100 dark:border-zinc-800"
+            >
+              <div className="p-8 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-black dark:text-white flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
+                      <HistoryIcon className="w-6 h-6 text-blue-500" />
+                    </div>
+                    Version History
+                  </h2>
+                  <p className="text-[13px] text-zinc-500 mt-1 font-medium">Restore from a previous backup of this {historyModal.collection}.</p>
+                </div>
+                <button 
+                  onClick={() => setHistoryModal(null)}
+                  className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
+                >
+                  <Plus className="w-6 h-6 rotate-45 text-zinc-400" />
+                </button>
+              </div>
+
+              <div className="max-h-[50vh] overflow-y-auto p-4 custom-scrollbar">
+                {backups.length === 0 ? (
+                  <div className="p-16 text-center">
+                    <div className="w-20 h-20 bg-zinc-50 dark:bg-zinc-800/50 rounded-full flex items-center justify-center mx-auto mb-6">
+                      <RotateCcw className="w-10 h-10 text-zinc-200 dark:text-zinc-700" />
+                    </div>
+                    <p className="text-zinc-400 font-bold tracking-tight text-lg">No backups found</p>
+                    <p className="text-zinc-500 text-sm mt-2">Changes are automatically backed up before edits.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {backups.map((backup) => (
+                      <div 
+                        key={backup.id}
+                        className="p-5 rounded-3xl border border-zinc-100 dark:border-zinc-800 hover:border-blue-200 dark:hover:border-blue-900/50 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 flex items-center justify-between group transition-all"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className={cn(
+                            "w-12 h-12 rounded-2xl flex items-center justify-center",
+                            backup.action === 'create' ? "bg-green-50 text-green-600 shadow-sm shadow-green-100" :
+                            backup.action === 'update' ? "bg-blue-50 text-blue-600 shadow-sm shadow-blue-100" :
+                            backup.action === 'delete' ? "bg-red-50 text-red-600 shadow-sm shadow-red-100" :
+                            "bg-purple-50 text-purple-600 shadow-sm shadow-purple-100"
+                          )}>
+                            {backup.action === 'create' ? <Plus className="w-6 h-6" /> :
+                             backup.action === 'update' ? <Settings className="w-6 h-6" /> :
+                             backup.action === 'delete' ? <Trash2 className="w-6 h-6" /> :
+                             <RotateCcw className="w-6 h-6" />}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="text-[15px] font-black dark:text-white capitalize">
+                                {backup.action === 'rollback' ? 'System Restore' : `${backup.action} Action`}
+                              </p>
+                              {backup.performedBy === 'system' && (
+                                <span className="text-[9px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded-md font-black uppercase tracking-tighter">System</span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-zinc-400 font-bold uppercase tracking-wider mt-0.5 flex items-center gap-1.5">
+                              <Clock className="w-3 h-3" />
+                              {backup.timestamp?.toDate ? format(backup.timestamp.toDate(), 'MMM d, h:mm a') : 'Just now'}
+                            </p>
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => backup.id && handleRollback(backup.id)}
+                          disabled={isRollingBack}
+                          className="px-6 py-3 bg-zinc-900 dark:bg-white text-white dark:text-black text-[13px] font-black rounded-2xl opacity-0 group-hover:opacity-100 disabled:opacity-50 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-zinc-200 dark:shadow-none"
+                        >
+                          Restore Version
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-6 bg-zinc-50 dark:bg-zinc-800/20 border-t border-zinc-100 dark:border-zinc-800">
+                <div className="flex items-start gap-4">
+                  <div className="w-8 h-8 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <AlertCircle className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-[13px] font-black text-amber-900 dark:text-amber-400">Critical Warning</h4>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-medium mt-0.5">
+                      Restoring will overwrite current data. A safety snapshot will be created before this action is finalized.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
