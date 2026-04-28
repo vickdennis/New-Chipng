@@ -311,8 +311,8 @@ END:VCARD`;
 
       {/* Main Container */}
       <main className="w-full max-w-lg mx-auto pb-48">
-        {/* Hero Section */}
-        <div className="relative h-[55vh] min-h-[450px] w-full overflow-hidden">
+        {/* Banner Section */}
+        <div className="relative h-[25vh] min-h-[200px] w-full overflow-hidden">
           <motion.div 
             style={{ opacity: coverOpacity }}
             className="w-full h-full relative"
@@ -329,99 +329,83 @@ END:VCARD`;
                  <div className="absolute inset-0 bg-[#A3E635]/5 blur-3xl rounded-full translate-y-1/2" />
               </div>
             )}
-            {/* High-End Shadow Overlay */}
-            <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/40 to-transparent" />
-            <div className="absolute inset-0 bg-black/10" />
+            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black to-transparent" />
+          </motion.div>
+        </div>
+
+        {/* Profile Info Section */}
+        <div className="relative z-10 px-6 -mt-16 flex flex-col items-center">
+          {/* Avatar */}
+          <motion.div 
+            style={{ scale: avatarScale, y: avatarY }}
+            className="relative group mb-6"
+          >
+            <div className="w-32 h-32 rounded-[2.5rem] border-[6px] border-black overflow-hidden bg-zinc-900 shadow-2xl relative z-10">
+              {profile.photoURL ? (
+                <img src={profile.photoURL} alt={profile.displayName} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-zinc-700 bg-zinc-800">
+                  <UserIcon className="w-12 h-12" />
+                </div>
+              )}
+            </div>
+            {profile.isVerified && (
+              <div className="absolute -bottom-1 -right-1 p-2 bg-[#A3E635] rounded-xl border-[4px] border-black z-20 shadow-xl">
+                <BadgeCheck className="w-5 h-5 text-black" />
+              </div>
+            )}
           </motion.div>
 
-          {/* Profile Content Overlay */}
-          <div className="absolute inset-0 flex flex-col justify-end p-8 pb-12">
-            <motion.div 
-              style={{ scale: avatarScale, y: avatarY }}
-              className="relative inline-block mb-8 group"
-            >
-              <div className="w-28 h-28 rounded-[2.2rem] border-[5px] border-black overflow-hidden bg-zinc-900 shadow-[0_20px_60px_rgba(0,0,0,0.8)] relative z-10">
-                {profile.photoURL ? (
-                  <img src={profile.photoURL} alt={profile.displayName} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-zinc-700 bg-zinc-800">
-                    <UserIcon className="w-12 h-12" />
-                  </div>
-                )}
-              </div>
-              <div className="absolute -inset-1 bg-gradient-to-tr from-[#A3E635] to-transparent rounded-[2.4rem] opacity-40 group-hover:opacity-100 transition-opacity blur-sm" />
-              
-              {profile.isVerified && (
-                <div className="absolute -bottom-2 -right-2 p-1.5 bg-[#A3E635] rounded-xl border-[3px] border-black z-20 shadow-xl">
-                  <BadgeCheck className="w-6 h-6 text-black" />
-                </div>
-              )}
-            </motion.div>
+          {/* Identity */}
+          <div className="text-center space-y-2 mb-8">
+            <h1 className="text-4xl font-black tracking-tight leading-none text-white">
+              {profile.displayName || profile.username}
+            </h1>
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-[#A3E635] font-black text-lg">@{profile.username}</span>
+            </div>
+          </div>
 
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-              className="space-y-4"
-            >
-              <div className="space-y-1">
-                <h1 className="text-5xl font-black tracking-tighter leading-none mb-2">
-                  {profile.displayName || profile.username}
-                </h1>
-                <div className="flex items-center gap-3">
-                  <span className="text-[#A3E635] font-black text-lg tracking-tight italic">@{profile.username}</span>
-                  <div className="w-1.5 h-1.5 bg-zinc-800 rounded-full" />
-                  <span className="text-zinc-500 text-sm font-bold uppercase tracking-widest">Brand Ambassador</span>
-                </div>
-              </div>
-              
-              {profile.bio && (
-                <p className="text-zinc-400 text-[15px] leading-relaxed max-w-sm font-medium font-sans">
-                  {profile.bio}
-                </p>
-              )}
+          {/* Social Icons Row */}
+          {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
+            <div className="flex flex-wrap justify-center gap-4 mb-10">
+              {Object.entries(profile.socialLinks).map(([platform, username]) => (
+                <SocialIcon 
+                  key={platform} 
+                  platform={platform} 
+                  username={username as string} 
+                  className="w-12 h-12 p-3.5 bg-zinc-950 border border-white/5 rounded-2xl text-zinc-400 hover:text-[#A3E635] hover:bg-zinc-900 transition-all hover:scale-110 active:scale-95 shadow-xl" 
+                />
+              ))}
+            </div>
+          )}
 
-              {/* Social Pills */}
-              {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
-                <div className="flex flex-wrap gap-3 pt-4">
-                  {Object.entries(profile.socialLinks).map(([platform, username]) => (
-                    <SocialIcon 
-                      key={platform} 
-                      platform={platform} 
-                      username={username as string} 
-                      className="w-10 h-10 p-2.5 bg-white/5 backdrop-blur-xl border border-white/5 rounded-xl text-zinc-400 hover:text-[#A3E635] hover:bg-white/10 transition-all hover:-translate-y-1" 
-                    />
-                  ))}
-                </div>
-              )}
-            </motion.div>
+          {/* Bio */}
+          {profile.bio && (
+            <p className="text-zinc-400 text-center text-sm leading-relaxed max-w-sm font-medium mb-12 px-6">
+              {profile.bio}
+            </p>
+          )}
+
+          {/* Contact Actions */}
+          <div className="w-full grid grid-cols-1 gap-4 mb-16">
+            <button 
+              onClick={() => setShowContactForm(true)}
+              className="w-full h-16 bg-white text-black font-black rounded-[2rem] text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.01] active:scale-[0.98] shadow-2xl"
+            >
+              Contact Details
+            </button>
+            <button 
+              onClick={handleSaveContact}
+              className="w-full h-16 bg-zinc-950 text-white font-black rounded-[2rem] border border-white/10 text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:bg-zinc-900"
+            >
+              <UserPlus className="w-4 h-4" /> Add to Contacts
+            </button>
           </div>
         </div>
 
         {/* Links & Content Section */}
-        <div className="px-6 space-y-16 mt-8">
-          
-          {/* Main Action Grid */}
-          <div className="grid grid-cols-2 gap-4">
-            <button 
-              onClick={copyLink}
-              className="group flex flex-col items-center justify-center gap-3 py-6 bg-zinc-900 hover:bg-zinc-800 rounded-[2rem] border border-white/5 transition-all active:scale-95 shadow-xl"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center group-hover:bg-zinc-700 transition-colors">
-                {copied ? <CheckCircle2 className="w-6 h-6 text-[#A3E635]" /> : <Share2 className="w-6 h-6 text-zinc-400" />}
-              </div>
-              <span className="font-black text-xs uppercase tracking-widest">{copied ? 'Copied' : 'Share Bio'}</span>
-            </button>
-            <button 
-              onClick={() => setShowContactForm(true)}
-              className="group flex flex-col items-center justify-center gap-3 py-6 bg-zinc-900 hover:bg-zinc-800 rounded-[2rem] border border-white/5 transition-all active:scale-95 shadow-xl"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center group-hover:bg-zinc-700 transition-colors">
-                <Mail className="w-6 h-6 text-zinc-400 group-hover:text-[#A3E635]" />
-              </div>
-              <span className="font-black text-xs uppercase tracking-widest text-zinc-400">Message</span>
-            </button>
-          </div>
+        <div className="px-6 space-y-16">
 
           {/* Featured Content Group */}
           <section className="space-y-8">

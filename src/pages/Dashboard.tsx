@@ -2035,44 +2035,58 @@ const Dashboard: React.FC = () => {
               </div>
 
               {/* Preview Content Inside Phone */}
-              <div className="flex-1 overflow-y-auto no-scrollbar relative bg-[#FAFAFA] dark:bg-zinc-950 rounded-[2.8rem]">
-                 <div className="p-6 space-y-6 flex flex-col items-center pt-16">
-                    {/* Mock Profile Header */}
-                    <div className="relative w-full aspect-video rounded-3xl bg-zinc-100 dark:bg-zinc-800 overflow-hidden mb-[-40px]">
-                       {profile?.coverImage && <img src={profile.coverImage} className="w-full h-full object-cover" />}
-                    </div>
+              <div className="flex-1 overflow-y-auto no-scrollbar relative bg-zinc-950 rounded-[2.8rem]">
+                 {/* Mock Banner */}
+                 <div className="relative h-24 w-full overflow-hidden">
+                    {profile?.coverImage ? (
+                      <img src={profile.coverImage} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-zinc-900 shadow-inner" />
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 to-transparent" />
+                 </div>
 
-                    <div className="w-24 h-24 rounded-[2rem] bg-zinc-200 dark:bg-zinc-900 overflow-hidden shadow-2xl ring-4 ring-white dark:ring-zinc-950 relative z-10">
+                 <div className="p-6 space-y-6 flex flex-col items-center -mt-10">
+                    <div className="w-20 h-20 rounded-[2.2rem] bg-zinc-950 overflow-hidden shadow-2xl border-[4px] border-zinc-950 relative z-10 transition-transform hover:scale-105">
                        {profile?.photoURL ? (
                          <img src={profile.photoURL} alt="" className="w-full h-full object-cover" />
                        ) : (
-                         <User className="w-full h-full p-6 text-zinc-400" />
+                         <User className="w-full h-full p-5 text-zinc-700" />
                        )}
                     </div>
                     
-                    <div className="text-center space-y-2">
-                       <h3 className="font-black text-xl flex items-center justify-center gap-1 dark:text-white">
+                    <div className="text-center space-y-1 relative z-10">
+                       <h3 className="font-black text-lg flex items-center justify-center gap-1 text-white">
                          {profile?.displayName || '@username'}
-                         {profile?.isVerified && <BadgeCheck className="w-5 h-5 text-[#1D9BF0] fill-[#1D9BF0] stroke-white stroke-1" />}
+                         {profile?.isVerified && <BadgeCheck className="w-4 h-4 text-[#A3E635]" />}
                        </h3>
-                       <p className="text-[11px] font-bold text-zinc-500 max-w-[220px] leading-relaxed uppercase tracking-tight">
-                         {profile?.bio || 'Bio preview will appear here...'}
-                       </p>
+                       <p className="text-[10px] font-black text-[#A3E635] tracking-tight">@{profile?.username || 'handle'}</p>
                     </div>
 
-                    {/* Links Mock */}
-                    <div className="w-full space-y-3 px-2">
-                       {links.length > 0 ? links.slice(0, 4).map(link => (
-                         <div key={link.id} className="w-full p-4 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-2xl shadow-sm flex items-center justify-center font-black text-[11px] uppercase tracking-wider text-zinc-800 dark:text-zinc-200">
-                            {link.title}
-                         </div>
-                       )) : [1, 2, 3].map(i => (
-                         <div key={i} className="w-full h-14 bg-white dark:bg-zinc-900 border border-zinc-50 dark:border-zinc-800 rounded-2xl animate-pulse" />
+                    {/* Mock Social Icons */}
+                    <div className="flex gap-2 justify-center relative z-10">
+                       {[1,2,3].map(i => (
+                         <div key={i} className="w-8 h-8 rounded-xl bg-zinc-900 border border-white/5" />
                        ))}
                     </div>
 
-                    <div className="pt-8 opacity-20 hover:opacity-100 transition-opacity">
-                       <Logo size="sm" />
+                    <p className="text-[10px] text-zinc-500 text-center font-medium leading-relaxed px-4 relative z-10">
+                      {profile?.bio || 'Bio preview will appear here...'}
+                    </p>
+
+                    {/* Links Mock */}
+                    <div className="w-full space-y-3 px-1 relative z-10">
+                       {links.length > 0 ? links.slice(0, 3).map(link => (
+                         <div key={link.id} className="w-full p-3.5 bg-zinc-900 border border-white/5 rounded-2xl shadow-sm flex items-center justify-center font-black text-[10px] uppercase tracking-wider text-zinc-300">
+                            {link.title}
+                         </div>
+                       )) : [1, 2].map(i => (
+                         <div key={i} className="w-full h-12 bg-zinc-900 rounded-2xl animate-pulse" />
+                       ))}
+                    </div>
+
+                    <div className="pt-8 opacity-20 relative z-10">
+                       <Logo size="sm" color="neon" />
                     </div>
                  </div>
               </div>
