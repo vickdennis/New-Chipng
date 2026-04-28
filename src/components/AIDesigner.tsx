@@ -239,7 +239,7 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
   };
 
   return (
-    <div className="flex flex-col h-[70vh] bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 overflow-hidden relative">
+    <div className="flex flex-col h-full lg:h-[70vh] bg-white dark:bg-zinc-900 rounded-t-[2.5rem] lg:rounded-[2.5rem] border-t lg:border border-zinc-200 dark:border-zinc-800 overflow-hidden relative">
       {/* Header */}
       <div className="p-6 border-bottom border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/50 flex items-center justify-between">
         <div className="flex items-center gap-3">

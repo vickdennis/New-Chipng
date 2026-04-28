@@ -338,7 +338,7 @@ END:VCARD`;
           {/* Avatar */}
           <motion.div 
             style={{ scale: avatarScale, y: avatarY }}
-            className="relative group mb-6"
+            className="relative group mb-6 hidden"
           >
             <div className="w-32 h-32 rounded-[2.5rem] border-[6px] border-black overflow-hidden bg-zinc-900 shadow-2xl relative z-10">
               {profile.photoURL ? (
@@ -349,17 +349,15 @@ END:VCARD`;
                 </div>
               )}
             </div>
-            {profile.isVerified && (
-              <div className="absolute -bottom-1 -right-1 p-2 bg-[#A3E635] rounded-xl border-[4px] border-black z-20 shadow-xl">
-                <BadgeCheck className="w-5 h-5 text-black" />
-              </div>
-            )}
           </motion.div>
 
           {/* Identity */}
-          <div className="text-center space-y-2 mb-8">
-            <h1 className="text-4xl font-black tracking-tight leading-none text-white">
+          <div className="text-center space-y-2 mb-8 pt-8">
+            <h1 className="text-4xl font-black tracking-tight leading-none text-white flex items-center justify-center gap-2">
               {profile.displayName || profile.username}
+              {profile.isVerified && (
+                <BadgeCheck className="w-8 h-8 text-[#1D9BF0] fill-[#1D9BF0] stroke-white stroke-[2px]" />
+              )}
             </h1>
             <div className="flex items-center justify-center gap-2">
               <span className="text-[#A3E635] font-black text-lg">@{profile.username}</span>
@@ -368,13 +366,13 @@ END:VCARD`;
 
           {/* Social Icons Row */}
           {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
-            <div className="flex flex-wrap justify-center gap-4 mb-10">
-              {Object.entries(profile.socialLinks).map(([platform, username]) => (
+            <div className="flex overflow-x-auto no-scrollbar max-w-full justify-center gap-4 mb-10 px-6">
+              {Object.entries(profile.socialLinks).slice(0, 6).map(([platform, username]) => (
                 <SocialIcon 
                   key={platform} 
                   platform={platform} 
                   username={username as string} 
-                  className="w-12 h-12 p-3.5 bg-zinc-950 border border-white/5 rounded-2xl text-zinc-400 hover:text-[#A3E635] hover:bg-zinc-900 transition-all hover:scale-110 active:scale-95 shadow-xl" 
+                  className="w-14 h-14 p-4 bg-zinc-950 border border-white/5 rounded-2xl text-zinc-400 hover:text-[#A3E635] hover:bg-zinc-900 transition-all hover:scale-110 active:scale-95 shadow-2xl shrink-0" 
                 />
               ))}
             </div>
