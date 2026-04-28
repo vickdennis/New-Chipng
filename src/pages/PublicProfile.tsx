@@ -72,6 +72,7 @@ const PublicProfile: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'shouts' | 'media'>('shouts');
   const [showContactForm, setShowContactForm] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showBottomBar, setShowBottomBar] = useState(true);
 
   const handleSaveContact = () => {
     const vcard = `BEGIN:VCARD
@@ -254,8 +255,6 @@ END:VCARD`;
     </div>
   );
   
-  const [showBottomBar, setShowBottomBar] = useState(true);
-
   return (
     <div className="min-h-screen bg-black text-white selection:bg-[#A3E635] selection:text-black font-sans overflow-x-hidden">
       <Helmet>

@@ -1,161 +1,57 @@
 {
   "entities": {
     "User": {
-      "title": "User",
-      "description": "User information and profile settings.",
+      "title": "User Profile",
+      "description": "Core user profile data including plan and customization settings.",
       "type": "object",
       "properties": {
-        "uid": { "type": "string" },
+        "username": { "type": "string", "description": "Unique username for public profile URL." },
+        "displayName": { "type": "string", "description": "User's public name." },
         "email": { "type": "string", "format": "email" },
-        "username": { "type": "string" },
-        "displayName": { "type": "string" },
-        "bio": { "type": "string" },
-        "photoURL": { "type": "string" },
         "role": { "type": "string", "enum": ["user", "admin"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "status": { "type": "string", "enum": ["active", "suspended"] },
-        "isPremium": { "type": "boolean" },
-        "premiumUntil": { "type": "string", "format": "date-time" },
-        "theme": { "type": "string", "enum": ["minimal", "neon", "glassmorphism", "dark", "sunset"] },
-        "buttonStyle": { "type": "string", "enum": ["rounded", "pill", "square"] },
-        "backgroundType": { "type": "string", "enum": ["solid", "gradient", "image"] },
-        "backgroundColor": { "type": "string" },
-        "backgroundImage": { "type": "string" },
-        "totalClicks": { "type": "number" },
-        "isVerified": { "type": "boolean" },
         "plan": { "type": "string", "enum": ["basic", "pro", "business"] },
-        "subscriptionStatus": { "type": "string", "enum": ["active", "inactive"] },
-        "location": {
-          "type": "object",
-          "properties": {
-            "lat": { "type": "number" },
-            "lng": { "type": "number" },
-            "address": { "type": "string" }
-          }
-        },
-        "appointmentsEnabled": { "type": "boolean" },
-        "appointments": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "title": { "type": "string" },
-              "dateTime": { "type": "string", "format": "date-time" },
-              "contactLink": { "type": "string" }
-            }
-          }
-        },
-        "socialLinks": {
-          "type": "object",
-          "properties": {
-            "instagram": { "type": "string" },
-            "twitter": { "type": "string" },
-            "linkedin": { "type": "string" },
-            "youtube": { "type": "string" },
-            "facebook": { "type": "string" },
-            "whatsapp": { "type": "string" },
-            "tiktok": { "type": "string" }
-          }
-        }
+        "isPremium": { "type": "boolean" },
+        "isVerified": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "theme": { "type": "string" },
+        "isDeleted": { "type": "boolean" }
       },
-      "required": ["email", "role", "createdAt", "username", "theme", "buttonStyle", "backgroundType", "plan", "subscriptionStatus"]
+      "required": ["username", "email"]
     },
     "Link": {
-      "title": "Link",
+      "title": "Profile Link",
       "description": "A link displayed on the user's public profile.",
       "type": "object",
       "properties": {
         "userId": { "type": "string" },
         "title": { "type": "string" },
-        "url": { "type": "string", "format": "uri" },
+        "url": { "type": "string" },
         "icon": { "type": "string" },
         "active": { "type": "boolean" },
         "position": { "type": "number" },
-        "clicks": { "type": "number" },
-        "scheduledStart": { "type": "string", "format": "date-time" },
-        "scheduledEnd": { "type": "string", "format": "date-time" },
-        "type": { "type": "string", "enum": ["standard", "youtube", "tiktok"] }
+        "isDeleted": { "type": "boolean" }
       },
-      "required": ["userId", "title", "url", "active", "position"]
+      "required": ["userId", "title", "url"]
     },
-    "Analytics": {
-      "title": "Analytics",
-      "description": "Time-series click data for links and profiles.",
+    "BlogPost": {
+      "title": "Blog Post",
+      "description": "A blog post created by administrators.",
       "type": "object",
       "properties": {
-        "userId": { "type": "string" },
-        "linkId": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" },
-        "date": { "type": "string" }
-      },
-      "required": ["userId", "timestamp", "date"]
-    },
-    "Blog": {
-      "title": "Blog",
-      "description": "A blog post for content marketing and SEO.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
         "title": { "type": "string" },
         "slug": { "type": "string" },
         "content": { "type": "string" },
         "excerpt": { "type": "string" },
-        "coverImage": { "type": "string", "format": "uri" },
-        "tags": { "type": "array", "items": { "type": "string" } },
-        "author": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" },
+        "authorId": { "type": "string" },
         "published": { "type": "boolean" },
-        "seoTitle": { "type": "string" },
-        "seoDescription": { "type": "string" },
-        "seoKeywords": { "type": "array", "items": { "type": "string" } }
+        "tags": { "type": "array" },
+        "isDeleted": { "type": "boolean" }
       },
-      "required": ["title", "slug", "content", "excerpt", "author", "createdAt", "updatedAt", "published"]
-    },
-    "Product": {
-      "title": "Product",
-      "description": "A product available in the shop.",
-      "type": "object",
-      "properties": {
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "price": { "type": "number" },
-        "image": { "type": "string", "format": "uri" },
-        "category": { "type": "string" },
-        "stock": { "type": "number" },
-        "active": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["name", "description", "price", "image", "category", "stock", "active"]
-    },
-    "Shout": {
-      "title": "Shout",
-      "description": "A status update or post by the user.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "content": { "type": "string" },
-        "image": { "type": "string", "format": "uri" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "content", "createdAt"]
-    },
-    "Media": {
-      "title": "Media",
-      "description": "A media file (image/video) uploaded by the user.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "url": { "type": "string", "format": "uri" },
-        "type": { "type": "string", "enum": ["image", "video"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["userId", "url", "type", "createdAt"]
+      "required": ["title", "slug", "content"]
     },
     "Backup": {
-      "title": "Backup",
-      "description": "A snapshot of a document for recovery purposes.",
+      "title": "Data Backup",
+      "description": "A snapshot of a document before mutation.",
       "type": "object",
       "properties": {
         "originalId": { "type": "string" },
@@ -165,68 +61,33 @@
         "timestamp": { "type": "string", "format": "date-time" },
         "performedBy": { "type": "string" }
       },
-      "required": ["originalId", "collectionName", "data", "action", "timestamp", "performedBy"]
-    },
-    "Transaction": {
-      "title": "Transaction",
-      "description": "Payment transaction history.",
-      "type": "object",
-      "properties": {
-        "userId": { "type": "string" },
-        "reference": { "type": "string" },
-        "amount": { "type": "number" },
-        "plan": { "type": "string" },
-        "status": { "type": "string", "enum": ["success", "failed", "pending"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "metadata": { "type": "object" }
-      },
-      "required": ["userId", "reference", "amount", "plan", "status", "createdAt"]
+      "required": ["originalId", "collectionName", "data", "action", "performedBy"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
-      "description": "User and profile data."
-    },
-    "/transactions/{transactionId}": {
-      "schema": "Transaction",
-      "description": "Payment transactions."
-    },
-    "/links/{linkId}": {
-      "schema": "Link",
-      "description": "User links."
-    },
-    "/analytics/{analyticsId}": {
-      "schema": "Analytics",
-      "description": "Analytics events."
-    },
-    "/blogs/{blogId}": {
-      "schema": "Blog",
-      "description": "Blog posts."
-    },
-    "/products/{productId}": {
-      "schema": "Product",
-      "description": "Shop products."
-    },
-    "/shouts/{shoutId}": {
-      "schema": "Shout",
-      "description": "User status updates."
-    },
-    "/media/{mediaId}": {
-      "schema": "Media",
-      "description": "User media uploads."
+      "description": "User profile collection."
     },
     "/users_backup/{backupId}": {
       "schema": "Backup",
-      "description": "Backups for users collection."
+      "description": "Backups for user profiles."
     },
-    "/blogs_backup/{backupId}": {
-      "schema": "Backup",
-      "description": "Backups for blogs collection."
+    "/links/{linkId}": {
+      "schema": "Link",
+      "description": "User profile links."
     },
     "/links_backup/{backupId}": {
       "schema": "Backup",
-      "description": "Backups for links collection."
+      "description": "Backups for user links."
+    },
+    "/blogs/{blogId}": {
+      "schema": "BlogPost",
+      "description": "Platform blog posts."
+    },
+    "/blogs_backup/{backupId}": {
+      "schema": "Backup",
+      "description": "Backups for blog posts."
     }
   }
 }
