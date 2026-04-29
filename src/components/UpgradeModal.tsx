@@ -62,6 +62,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, requiredPl
               {planIcon}
             </div>
             <h2 className="text-3xl font-bold mb-2 tracking-tight text-zinc-950 dark:text-white">Upgrade to {planName}</h2>
+            {requiredPlan === 'pro' && <p className="text-lime-500 font-black text-sm mb-2">Starts at ₦10,000/year</p>}
             <p className="text-zinc-500 dark:text-zinc-400">
               The <span className="text-zinc-950 dark:text-white font-medium">{featureName}</span> feature is available on our {planName} plan and above.
             </p>

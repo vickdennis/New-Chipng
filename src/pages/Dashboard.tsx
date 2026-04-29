@@ -1247,24 +1247,37 @@ const Dashboard: React.FC = () => {
 
                           return (
                             <div key={link.id} className="flex items-center gap-4 p-4 bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-[2rem] group hover:scale-[1.01] transition-all">
-                                 <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
+                                 <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 flex items-center justify-center relative">
                                     {link.icon ? (
                                       <img src={link.icon} alt="" className="w-full h-full object-cover" />
                                     ) : (
                                        (() => {
-                                          const domain = link.url.includes('http') ? new URL(link.url).hostname : '';
-                                          const platform = Object.values(PLATFORMS).flat().find(p => domain.includes(p.id));
-                                          if (platform) {
-                                            return <platform.icon className="w-6 h-6" style={{ color: platform.color }} />;
+                                          const url = link.url.toLowerCase();
+                                          const brands: Record<string, { icon: any, color: string }> = {
+                                            instagram: { icon: BrandIcons.instagram, color: '#E1306C' },
+                                            twitter: { icon: BrandIcons.x, color: '#1DA1F2' },
+                                            x: { icon: BrandIcons.x, color: '#1DA1F2' },
+                                            facebook: { icon: BrandIcons.facebook, color: '#4267B2' },
+                                            youtube: { icon: BrandIcons.youtube, color: '#FF0000' },
+                                            linkedin: { icon: BrandIcons.linkedin, color: '#0077B5' },
+                                            github: { icon: BrandIcons.github, color: '#181717' },
+                                            tiktok: { icon: BrandIcons.tiktok, color: '#000000' },
+                                            whatsapp: { icon: BrandIcons.whatsapp, color: '#25D366' },
+                                            spotify: { icon: BrandIcons.spotify, color: '#1DB954' }
+                                          };
+                                          const brandKey = Object.keys(brands).find(key => url.includes(key));
+                                          if (brandKey) {
+                                            const brand = brands[brandKey];
+                                            return <brand.icon className="w-6 h-6" style={{ color: brand.color }} />;
                                           }
                                           return <LinkIcon className="w-6 h-6 text-zinc-300" />;
                                        })()
                                     )}
+                                    <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                                       <Plus className="w-4 h-4 text-white" />
+                                       <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', link.id)} accept="image/*" />
+                                    </label>
                                  </div>
-                                 <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover/icon:opacity-100 cursor-pointer transition-opacity">
-                                    <Plus className="w-4 h-4 text-white" />
-                                    <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', link.id)} accept="image/*" />
-                                 </label>
                               <div className="flex-1 min-w-0">
                                  <input 
                                    className="w-full bg-transparent border-none p-0 font-bold text-base dark:text-white outline-none" 
@@ -2118,46 +2131,42 @@ const Dashboard: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 to-transparent" />
                  </div>
 
-                 {/* Hide Avatar as per user request */}
-                 <div className="p-6 space-y-6 flex flex-col items-center pt-8">
-                    <div className="text-center space-y-1 relative z-10">
-                       <h3 className="font-black text-lg flex items-center justify-center gap-1 text-white">
-                         {profile?.displayName || '@username'}
-                         {profile?.isVerified && <BadgeCheck className="w-4 h-4 text-[#1D9BF0] fill-[#1D9BF0] stroke-white stroke-[1.5px]" />}
-                       </h3>
-                       <p className="text-[10px] font-black text-[#A3E635] tracking-tight">@{profile?.username || 'handle'}</p>
-                    </div>
+                     {/* Hide Avatar as per user request */}
+                  <div className="p-6 space-y-6 flex flex-col items-center pt-4">
+                     <div className="text-center space-y-1 relative z-10 font-sans">
+                        <h3 className="font-black text-lg flex items-center justify-center gap-1 text-white">
+                          {profile?.displayName || '@username'}
+                          {profile?.isVerified && <BadgeCheck className="w-4 h-4 text-[#1D9BF0] fill-[#1D9BF0] stroke-white stroke-[1.5px]" />}
+                        </h3>
+                        {profile?.username && <p className="text-[10px] font-black text-[#A3E635] tracking-tight">@{profile?.username}</p>}
+                     </div>
 
-                     {/* Mock Social Icons */}
-                    <div className="flex gap-2.5 justify-center relative z-10 w-full overflow-hidden px-4">
-                       {profile?.socialLinks && Object.keys(profile.socialLinks).length > 0 ? 
-                         Object.entries(profile.socialLinks).slice(0, 6).map(([platform, username]) => {
-                           const colors: {[key: string]: string} = {
-                             instagram: '#E1306C',
-                             twitter: '#1DA1F2',
-                             x: '#000000',
-                             facebook: '#4267B2',
-                             youtube: '#FF0000',
-                             linkedin: '#0077B5',
-                             tiktok: '#000000',
-                             whatsapp: '#25D366'
-                           };
-                           const IconComponent = BrandIcons[platform.toLowerCase() as keyof typeof BrandIcons] || Globe;
-                           return (
-                             <div 
-                               key={platform} 
-                               className="w-7 h-7 rounded-lg bg-zinc-900 border border-white/5 flex items-center justify-center shrink-0"
-                               style={{ color: colors[platform.toLowerCase()] || '#6366f1' }}
-                             >
-                               <div className="w-4 h-4">
-                                 <IconComponent className="w-full h-full" />
-                               </div>
-                             </div>
-                           );
-                         })
-                       : [1,2,3].map(i => (
-                         <div key={i} className="w-7 h-7 rounded-lg bg-zinc-900 border border-white/5" />
-                       ))}
+                      {/* Mock Social Icons */}
+                     <div className="flex gap-2.5 justify-center relative z-10 w-full overflow-hidden px-4">
+                        {profile?.socialLinks && Object.keys(profile.socialLinks).length > 0 ? 
+                          Object.entries(profile.socialLinks).slice(0, 6).map(([platform, username]) => {
+                            const platformInfo = Object.values(PLATFORMS).flat().find(p => p.id === platform.toLowerCase());
+                            const IconComponent = platformInfo?.icon || BrandIcons[platform.toLowerCase() as keyof typeof BrandIcons] || Globe;
+                            const color = platformInfo?.color || '#6366f1';
+                            
+                            return (
+                              <div 
+                                key={platform} 
+                                className="w-8 h-8 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center shrink-0 shadow-lg"
+                                style={{ color: color }}
+                              >
+                                <div className="w-4 h-4">
+                                  <IconComponent className="w-full h-full" />
+                                </div>
+                              </div>
+                            );
+                          })
+                        : [1,2,3].map(i => (
+                            <div key={i} className="w-8 h-8 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center shrink-0">
+                               <Globe className="w-4 h-4 text-zinc-800" />
+                            </div>
+                        ))}
+                     </div>
                     </div>
 
                     <p className="text-[10px] text-zinc-500 text-center font-medium leading-relaxed px-4 relative z-10">
@@ -2175,26 +2184,25 @@ const Dashboard: React.FC = () => {
                        ))}
                     </div>
 
-                    <div className="pt-8 opacity-20 relative z-10">
-                       <Logo size="sm" color="neon" />
-                    </div>
-                 </div>
-              </div>
+                  <div className="pt-8 opacity-20 relative z-10 pb-12">
+                     <Logo size="sm" color="neon" />
+                  </div>
+               </div>
 
-              {/* iPhone Home Indicator */}
-              <div className="h-1 bg-zinc-900/10 dark:bg-white/10 w-32 rounded-full mx-auto mb-4 absolute bottom-0 left-1/2 -translate-x-1/2" />
-              
-              {/* Overlay Label */}
-              <div className="absolute inset-0 bg-zinc-950/40 backdrop-blur-[4px] opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center z-50">
-                 <button 
-                  onClick={() => window.open(`/${profile?.username}`, '_blank')}
-                  className="px-8 py-4 bg-lime-400 text-zinc-950 font-black rounded-3xl flex items-center gap-3 shadow-2xl scale-90 group-hover:scale-100 transition-all border-4 border-white/20"
-                >
-                   Live View <ExternalLink className="w-5 h-5" />
-                 </button>
-              </div>
-           </div>
-        </aside>
+               {/* iPhone Home Indicator */}
+               <div className="h-1 bg-zinc-900/10 dark:bg-white/10 w-32 rounded-full mx-auto mb-4 absolute bottom-2 left-1/2 -translate-x-1/2 z-50" />
+               
+               {/* Overlay Label */}
+               <div className="absolute inset-0 bg-zinc-950/40 backdrop-blur-[4px] opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center z-[60] pointer-events-none group-hover:pointer-events-auto">
+                  <button 
+                   onClick={() => window.open(`/${profile?.username}`, '_blank')}
+                   className="px-8 py-4 bg-lime-400 text-zinc-950 font-black rounded-3xl flex items-center gap-3 shadow-2xl scale-90 group-hover:scale-100 transition-all border-4 border-white/20"
+                  >
+                    Live View <ExternalLink className="w-5 h-5" />
+                  </button>
+               </div>
+            </div>
+         </aside>
       </main>
 
       {/* Floating Bottom Nav (Mobile Only) */}
@@ -2289,30 +2297,47 @@ const Dashboard: React.FC = () => {
                   filteredPlatforms.map(platform => {
                     const isAdded = profile?.socialLinks && !!profile.socialLinks[platform.id as keyof typeof profile.socialLinks];
                     return (
-                      <button
-                        key={platform.id}
-                        onClick={() => handleSelectPlatform(platform.id, platform.urlPrefix)}
-                        className={cn(
-                          "flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] border transition-all hover:scale-105 active:scale-95 group relative",
-                          isAdded 
-                            ? "bg-lime-50 border-lime-200" 
-                            : "bg-white border-zinc-100 hover:border-lime-200"
-                        )}
-                      >
-                        <div 
-                          className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-lime-900/5 group-hover:rotate-6 transition-transform"
-                          style={{ backgroundColor: platform.color }}
+                      <div key={platform.id} className="relative group">
+                        <button
+                          onClick={() => handleSelectPlatform(platform.id, platform.urlPrefix)}
+                          className={cn(
+                            "w-full flex flex-col items-center justify-center gap-3 p-6 rounded-[2.5rem] border transition-all hover:scale-[1.02] active:scale-[0.98] relative",
+                            isAdded 
+                              ? "bg-lime-50 border-lime-200" 
+                              : "bg-white border-zinc-100 hover:border-lime-200 hover:shadow-xl"
+                          )}
                         >
-                          <platform.icon className="w-8 h-8" />
-                        </div>
-                        <span className="font-black text-xs uppercase tracking-tight text-zinc-900">{platform.label}</span>
+                          <div 
+                            className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-zinc-950/5 group-hover:rotate-6 transition-transform"
+                            style={{ backgroundColor: platform.color }}
+                          >
+                            <platform.icon className="w-8 h-8" />
+                          </div>
+                          <span className="font-black text-[11px] uppercase tracking-tighter text-zinc-900">{platform.label}</span>
+                          
+                          {isAdded && (
+                            <div className="absolute top-4 right-4 w-6 h-6 bg-lime-400 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                              <Check className="w-3 h-3 text-zinc-950 font-black" />
+                            </div>
+                          )}
+                        </button>
                         
                         {isAdded && (
-                          <div className="absolute top-3 right-3 w-6 h-6 bg-lime-400 rounded-full flex items-center justify-center">
-                            <Check className="w-3 h-3 text-zinc-950 font-black" />
-                          </div>
+                          <button 
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`Remove ${platform.label}?`)) {
+                                const newLinks = { ...profile.socialLinks };
+                                delete newLinks[platform.id as keyof typeof newLinks];
+                                await handleUpdateProfile({ socialLinks: newLinks });
+                              }
+                            }}
+                            className="absolute -top-1 -right-1 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border-2 border-white shadow-lg z-10 hover:bg-red-600"
+                          >
+                            <X className="w-4 h-4 font-black" />
+                          </button>
                         )}
-                      </button>
+                      </div>
                     );
                   })
                 ) : (

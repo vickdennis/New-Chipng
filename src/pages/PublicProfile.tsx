@@ -505,7 +505,28 @@ END:VCARD`;
                        {link.icon ? (
                          <img src={link.icon} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" referrerPolicy="no-referrer" />
                        ) : (
-                         <LinkIcon className="w-6 h-6 text-zinc-600" />
+                         (() => {
+                           const url = link.url.toLowerCase();
+                           const brands: Record<string, { icon: any, color: string }> = {
+                             instagram: { icon: BrandIcons.instagram, color: '#E1306C' },
+                             twitter: { icon: BrandIcons.x, color: '#1DA1F2' },
+                             x: { icon: BrandIcons.x, color: '#1DA1F2' },
+                             facebook: { icon: BrandIcons.facebook, color: '#4267B2' },
+                             youtube: { icon: BrandIcons.youtube, color: '#FF0000' },
+                             linkedin: { icon: BrandIcons.linkedin, color: '#0077B5' },
+                             github: { icon: BrandIcons.github, color: '#181717' },
+                             tiktok: { icon: BrandIcons.tiktok, color: '#000000' },
+                             whatsapp: { icon: BrandIcons.whatsapp, color: '#25D366' },
+                             spotify: { icon: BrandIcons.spotify, color: '#1DB954' }
+                           };
+                           
+                           const brandKey = Object.keys(brands).find(key => url.includes(key));
+                           if (brandKey) {
+                             const brand = brands[brandKey];
+                             return React.createElement(brand.icon, { className: "w-8 h-8", style: { color: brand.color } });
+                           }
+                           return <LinkIcon className="w-6 h-6 text-zinc-600" />;
+                         })()
                        )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -634,7 +655,7 @@ END:VCARD`;
                  </div>
                )}
 
-               {profile.address && (
+               {profile.address && profile.mapEnabled && (
                  <div className="space-y-6">
                     <div className="flex items-center gap-4 px-2">
                        <div className="w-12 h-12 bg-[#A3E635]/10 rounded-2xl flex items-center justify-center">
