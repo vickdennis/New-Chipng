@@ -71,7 +71,8 @@ if (!PAYSTACK_SECRET_KEY) {
 async function restFirestore(action: 'get' | 'patch' | 'post' | 'delete', collection: string, docId?: string, data?: any, queryPayload?: any) {
   if (!firebaseConfig) return null;
   const { projectId, firestoreDatabaseId, apiKey } = firebaseConfig;
-  const baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${firestoreDatabaseId}/documents`;
+  const dbId = firestoreDatabaseId && firestoreDatabaseId !== '' ? firestoreDatabaseId : '(default)';
+  const baseUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${dbId}/documents`;
   
   const headers = {
     'Content-Type': 'application/json'
@@ -87,7 +88,7 @@ async function restFirestore(action: 'get' | 'patch' | 'post' | 'delete', collec
         const url = `${baseUrl}:runQuery?key=${apiKey}`;
         const query = { structuredQuery: { from: [{ collectionId: collection }] } };
         const res = await axios.post(url, query, { headers });
-        return { documents: res.data.filter((r: any) => r.document).map((r: any) => r.document) };
+        return { documents: (res.data || []).filter((r: any) => r.document).map((r: any) => r.document) };
       }
     }
     
@@ -103,6 +104,7 @@ async function restFirestore(action: 'get' | 'patch' | 'post' | 'delete', collec
         else if (val instanceof Date || (typeof val === 'string' && val.includes('T') && val.includes('Z'))) payload.fields[key] = { timestampValue: typeof val === 'string' ? val : val.toISOString() };
         else if (typeof val === 'string') payload.fields[key] = { stringValue: val };
         else if (Array.isArray(val)) payload.fields[key] = { arrayValue: { values: val.map(v => ({ stringValue: String(v) })) } };
+        else if (typeof val === 'object' && val !== null) payload.fields[key] = { mapValue: { fields: {} } }; // Simple nested map support
       }
       
       const res = await axios.patch(url, payload, { headers });
@@ -115,7 +117,7 @@ async function restFirestore(action: 'get' | 'patch' | 'post' | 'delete', collec
         return res.data;
     }
   } catch (error: any) {
-    console.error(`REST Firestore ${action} failed:`, error.response?.data || error.message);
+    console.error(`REST Firestore ${action} failed for ${collection}:`, error.response?.data || error.message);
     throw error;
   }
 }
@@ -139,38 +141,44 @@ async function backendSafeWrite(collectionName: string, documentId: string, data
     // Backup before modification (for update and delete)
     if (action === 'update' || action === 'delete') {
       try {
-        const docRef = db.collection(collectionName).doc(documentId);
-        const docSnap = await docRef.get();
-        if (docSnap.exists) {
-          await db.collection(`${collectionName}_backup`).add({
+        const docSnap = await restFirestore('get', collectionName, documentId);
+        if (docSnap) {
+          const backupId = `back_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+          await restFirestore('patch', `${collectionName}_backup`, backupId, {
             originalId: documentId,
             collectionName,
-            data: docSnap.data(),
+            data: fromRest(docSnap),
             action,
             timestamp: now,
             performedBy
           });
         }
       } catch (e) {
-        console.warn(`Backup failed for ${collectionName}/${documentId}, continuing write...`);
+        console.warn(`REST Backup failed for ${collectionName}/${documentId}, continuing write...`);
       }
     }
 
-    const docRef = db.collection(collectionName).doc(documentId);
     if (action === 'delete') {
-      await docRef.update({
+      await restFirestore('patch', collectionName, documentId, {
         isDeleted: true,
         deletedAt: now,
         updatedAt: now
       });
     } else if (action === 'update') {
-      await docRef.set({ ...data, updatedAt: now }, { merge: true });
+      await restFirestore('patch', collectionName, documentId, {
+        ...data,
+        updatedAt: now
+      });
     } else {
-      await docRef.set({ ...data, createdAt: now, updatedAt: now });
+      await restFirestore('patch', collectionName, documentId, {
+        ...data,
+        createdAt: now,
+        updatedAt: now
+      });
     }
     return true;
   } catch (error) {
-    console.error(`Backend safeWrite failed for ${collectionName}/${documentId}:`, error);
+    console.error(`Backend REST SafeWrite failed for ${collectionName}/${documentId}:`, error);
     return false;
   }
 }
@@ -178,35 +186,52 @@ async function backendSafeWrite(collectionName: string, documentId: string, data
 // Rollback function
 async function rollbackDocument(collectionName: string, documentId: string, backupId?: string) {
   try {
+    const backupCollection = `${collectionName}_backup`;
     let backupData;
     let originalBackupId = backupId;
 
     if (backupId) {
-      const snap = await db.collection(`${collectionName}_backup`).doc(backupId).get();
-      if (!snap.exists) throw new Error("Backup not found");
-      backupData = snap.data();
+      const snap = await restFirestore('get', backupCollection, backupId);
+      backupData = fromRest(snap);
     } else {
-      const snap = await db.collection(`${collectionName}_backup`)
-        .where('originalId', '==', documentId)
-        .orderBy('timestamp', 'desc')
-        .limit(1)
-        .get();
-      
-      if (snap.empty) throw new Error("No backup found");
-      backupData = snap.docs[0].data();
-      originalBackupId = snap.docs[0].id;
+      const queryPayload = {
+        structuredQuery: {
+          from: [{ collectionId: backupCollection }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: 'originalId' },
+              op: 'EQUAL',
+              value: { stringValue: documentId }
+            }
+          },
+          orderBy: [{
+            field: { fieldPath: 'timestamp' },
+            direction: 'DESCENDING'
+          }],
+          limit: 1
+        }
+      };
+      const results = await restFirestore('post', backupCollection, undefined, undefined, queryPayload);
+      if (results && results[0]?.document) {
+        backupData = fromRest(results[0].document);
+        originalBackupId = backupData.id;
+      }
+    }
+
+    if (!backupData) {
+      throw new Error(`No backup found for ${collectionName}/${documentId}`);
     }
 
     const now = new Date().toISOString();
 
     // Create a special rollback backup before restoring
     try {
-      const currentSnap = await db.collection(collectionName).doc(documentId).get();
-      if (currentSnap.exists) {
-        await db.collection(`${collectionName}_backup`).add({
+      const currentSnap = await restFirestore('get', collectionName, documentId);
+      if (currentSnap) {
+        await restFirestore('patch', backupCollection, `rollback_${Date.now()}`, {
           originalId: documentId,
           collectionName,
-          data: currentSnap.data(),
+          data: fromRest(currentSnap),
           action: 'rollback',
           timestamp: now,
           performedBy: 'system-rollback'
@@ -215,17 +240,17 @@ async function rollbackDocument(collectionName: string, documentId: string, back
     } catch (e) {}
 
     // Restore the data
-    await db.collection(collectionName).doc(documentId).set({
+    await restFirestore('patch', collectionName, documentId, {
       ...backupData.data,
       isDeleted: false,
       updatedAt: now,
       restoredFrom: originalBackupId,
       restoredAt: now
-    }, { merge: true });
+    });
 
     return true;
   } catch (error: any) {
-    console.error(`Rollback failed for ${collectionName}/${documentId}:`, error.message);
+    console.error(`Backend REST Rollback failed for ${collectionName}/${documentId}:`, error.message);
     throw error;
   }
 }
@@ -365,8 +390,11 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       const key = process.env.GEMINI_API_KEY;
 
       if (!key) {
+        console.error("[AI Designer] GEMINI_API_KEY is missing from environment");
         return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
       }
+
+      console.log(`[AI Designer] Using key present (length: ${key.length})`);
 
       const systemInstruction = `
         You are the Chip NG "AI Designer", a professional profile engineer. 
@@ -681,22 +709,34 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
   app.post("/api/cron/check-subscriptions", async (req, res) => {
     const now = new Date().toISOString();
     try {
-      console.log('Running subscription expiry check via Admin SDK...');
+      console.log('Running subscription expiry check via REST API fallback...');
       
-      const snapshot = await db.collection('users')
-        .where('isPremium', '==', true)
-        .get();
+      const queryPayload = {
+        structuredQuery: {
+          from: [{ collectionId: 'users' }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: 'isPremium' },
+              op: 'EQUAL',
+              value: { booleanValue: true }
+            }
+          }
+        }
+      };
       
-      console.log(`Found ${snapshot.size} potential premium users to check`);
+      const results = await restFirestore('post', 'users', undefined, undefined, queryPayload);
+      console.log(`REST Query found ${results.length} potential premium users`);
 
       let expiredCount = 0;
-      for (const doc of snapshot.docs) {
-        const data = doc.data();
+      for (const result of results) {
+        if (!result.document) continue;
+        
+        const data = fromRest(result.document);
         const expired = data.premiumUntil && data.premiumUntil < now;
         
         if (expired) {
-          console.log(`Expiring user ${doc.id}`);
-          await backendSafeWrite('users', doc.id, {
+          console.log(`Expiring user ${data.id}`);
+          await backendSafeWrite('users', data.id, {
             isPremium: false,
             subscriptionStatus: 'inactive',
             plan: 'basic'
@@ -705,10 +745,10 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         }
       }
       
-      console.log(`✅ Successfully processed ${expiredCount} expired subscriptions`);
+      console.log(`✅ Successfully processed ${expiredCount} expired subscriptions via REST`);
       res.json({ status: 'success', count: expiredCount });
     } catch (error: any) {
-      console.error('❌ Subscription expiry check failed:', error.message);
+      console.error('❌ REST Subscription expiry check failed:', error.message);
       res.status(500).json({ error: error.message });
     }
   });

@@ -34,27 +34,18 @@ export const uploadImage = async (
   };
 
   const storagePath = pathMap[pathType];
-  
+  const storageRef = ref(storage, storagePath);
+
   try {
     if (onProgress) onProgress(10);
     
-    // Create FormData for the proxy
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('path', storagePath);
-
-    // Call the upload proxy
-    const response = await fetch('/api/upload', {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Upload failed');
-    }
-
-    const { url } = await response.json();
+    // Upload file using client-side SDK
+    const snapshot = await uploadBytes(storageRef, file);
+    
+    if (onProgress) onProgress(90);
+    
+    // Get download URL using client-side SDK
+    const url = await getDownloadURL(snapshot.ref);
     
     if (onProgress) onProgress(100);
     
