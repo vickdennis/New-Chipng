@@ -526,8 +526,23 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
 
       const result = await chat.sendMessage(lastMessage);
       const response = await result.response;
-      const functionCalls = response.functionCalls() || [];
-      const text = response.text() || "";
+      
+      let functionCalls = [];
+      try {
+        functionCalls = response.functionCalls() || [];
+      } catch (e) {
+        // No function calls
+      }
+
+      let text = "";
+      try {
+        text = response.text() || "";
+      } catch (e) {
+        // If there are function calls, text() might throw
+        if (functionCalls.length === 0) {
+           console.error("AI Designer response has no text and no function calls");
+        }
+      }
 
       res.json({ text, functionCalls });
     } catch (error: any) {
@@ -557,6 +572,54 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       res.json({ url: dataUrl });
     } catch (error: any) {
       console.error('[Upload] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // AI Blog Writer Endpoint
+  app.post("/api/ai/blog", async (req, res) => {
+    try {
+      const { topic } = req.body;
+      const key = process.env.GEMINI_API_KEY;
+
+      if (!key) {
+        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+      }
+
+      const ai = new GoogleGenerativeAI(key);
+      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      const prompt = `Write a professional blog post about "${topic}". 
+      Return the response in JSON format with the following keys:
+      - title: A catchy title
+      - content: Full blog post content in Markdown format (use proper headers, lists, etc.)
+      - excerpt: A short 2-sentence summary
+      - seoTitle: SEO optimized title (max 60 chars)
+      - seoDescription: SEO optimized description (max 160 chars)
+      - seoKeywords: Array of 5-10 relevant keywords
+      - tags: Array of 3-5 relevant tags
+      
+      IMPORTANT: Respond ONLY with valid JSON. No markdown backticks.`;
+
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let text = response.text();
+      
+      // Clean up potential markdown blocks if AI ignored instructions
+      text = text.trim();
+      if (text.startsWith('```')) {
+        text = text.replace(/^```json\n?/, '').replace(/\n?```$/, '');
+      }
+
+      try {
+        const data = JSON.parse(text);
+        res.json(data);
+      } catch (parseError) {
+        console.error("Failed to parse AI blog response:", text);
+        res.status(500).json({ error: "Failed to parse AI response as JSON", raw: text });
+      }
+    } catch (error: any) {
+      console.error("AI Blog Writer failed:", error.message);
       res.status(500).json({ error: error.message });
     }
   });

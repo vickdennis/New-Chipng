@@ -19,8 +19,9 @@ import Logo from '../components/Logo';
 import { BrandIcons } from '../components/icons/BrandIcons';
 import { toast } from 'sonner';
 import { User, Link as LinkType, Shout, Media } from '../types';
-import { Helmet } from 'react-helmet-async';
+import SEO from '../components/SEO';
 import { format } from 'date-fns';
+import { BASE_URL } from '../constants';
 
 const SocialIcon = ({ platform, username, className }: { platform: string; username: string; className?: string }) => {
   const brandKey = platform.toLowerCase() as keyof typeof BrandIcons;
@@ -287,9 +288,12 @@ END:VCARD`;
   
   return (
     <div className="min-h-screen bg-black text-white selection:bg-[#A3E635] selection:text-black font-sans overflow-x-hidden">
-      <Helmet>
-        <title>{profile.displayName || profile.username} (@{profile.username}) | Chip NG</title>
-      </Helmet>
+      <SEO 
+        title={`${profile.displayName || profile.username} (@${profile.username})`}
+        description={profile.bio || `Check out ${profile.displayName || profile.username}'s profile on Chip NG.`}
+        image={profile.photoURL || profile.coverImage}
+        url={`${BASE_URL}/${profile.username}`}
+      />
 
       {/* Top Fixed Header */}
       <motion.div 

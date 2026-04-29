@@ -36,20 +36,34 @@ export const blogService = {
         throw new Error('File must be an image');
       }
 
-      const filename = `${Date.now()}-${file.name}`;
-      const storageRef = ref(storage, `blog-images/${userId}/${filename}`);
+      if (file.size > 500 * 1024) {
+        throw new Error('Image is too large. Max size is 500KB for blog images.');
+      }
+
+      if (onProgress) onProgress(10);
       
-      if (onProgress) onProgress(10); // Start progress
+      const formData = new FormData();
+      formData.append('file', file);
+      const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      formData.append('path', `blog-images/${userId}/${filename}`);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
+
+      const { url } = await response.json();
+      if (onProgress) onProgress(100);
       
-      const result = await uploadBytes(storageRef, file);
-      
-      if (onProgress) onProgress(90); // Upload complete, getting URL
-      
-      const downloadURL = await getDownloadURL(result.ref);
-      
-      if (onProgress) onProgress(100); // Done
-      
-      return downloadURL;
+      return url;
     } catch (error) {
       console.error('Error in uploadImage:', error);
       throw error;

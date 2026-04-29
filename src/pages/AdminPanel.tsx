@@ -183,6 +183,11 @@ const AdminPanel: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 500 * 1024) {
+      toast.error('Product image is too large. Please use an image under 500KB.');
+      return;
+    }
+
     setIsUploadingProductImage(true);
     const timestamp = Date.now();
     const storagePath = `products/${user?.uid || 'admin'}/${timestamp}_${file.name}`;

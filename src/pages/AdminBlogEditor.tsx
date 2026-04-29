@@ -6,6 +6,7 @@ import {
   FileText, Search, Loader2, Trash2,
   Upload, X, CheckCircle2, Sparkles, Wand2
 } from 'lucide-react';
+import axios from 'axios';
 import { blogService } from '../services/blogService';
 import { BlogPost } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +14,6 @@ import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { clsx } from 'clsx';
 import ThemeToggle from '../components/ThemeToggle';
-import { GoogleGenAI } from '@google/genai';
 
 const AdminBlogEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -55,60 +55,27 @@ const AdminBlogEditor: React.FC = () => {
 
     setIsGenerating(true);
     try {
-      const key = process.env.GEMINI_API_KEY;
-      if (!key || key === 'undefined' || key === 'null') {
-        console.error('❌ AI Blog Writer Error: GEMINI_API_KEY is missing.');
-        toast.error('AI configuration is incomplete. Please go to Settings and add GEMINI_API_KEY.');
-        setIsGenerating(false);
-        return;
-      }
-      const ai = new GoogleGenAI({ apiKey: key });
-
-      const prompt = `Write a professional blog post about "${aiPrompt}". 
-      Return the response in JSON format with the following keys:
-      - title: A catchy title
-      - content: Full blog post content in Markdown format
-      - excerpt: A short 2-sentence summary
-      - seoTitle: SEO optimized title
-      - seoDescription: SEO optimized description
-      - seoKeywords: Array of 5-10 relevant keywords
-      - tags: Array of 3-5 relevant tags`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json'
-        }
+      const response = await axios.post('/api/ai/blog', {
+        topic: aiPrompt
       });
 
-      const text = response.text;
+      const data = response.data;
       
-      if (text) {
-        // More robust JSON parsing in case AI includes markdown code blocks
-        let cleanText = text.trim();
-        if (cleanText.startsWith('```')) {
-          cleanText = cleanText.replace(/^```json\n?/, '').replace(/\n?```$/, '');
-        }
-        
-        const data = JSON.parse(cleanText);
-        setFormData(prev => ({
-          ...prev,
-          title: data.title || prev.title,
-          content: data.content || prev.content,
-          excerpt: data.excerpt || prev.excerpt,
-          seoTitle: data.seoTitle || prev.seoTitle,
-          seoDescription: data.seoDescription || prev.seoDescription,
-          seoKeywords: data.seoKeywords || prev.seoKeywords,
-          tags: data.tags || prev.tags
-        }));
-        toast.success('Blog post generated successfully!');
-      } else {
-        throw new Error('Empty response from AI');
-      }
-    } catch (error) {
+      setFormData(prev => ({
+        ...prev,
+        title: data.title || prev.title,
+        content: data.content || prev.content,
+        excerpt: data.excerpt || prev.excerpt,
+        seoTitle: data.seoTitle || prev.seoTitle,
+        seoDescription: data.seoDescription || prev.seoDescription,
+        seoKeywords: data.seoKeywords || prev.seoKeywords,
+        tags: data.tags || prev.tags
+      }));
+      toast.success('Blog post generated successfully!');
+    } catch (error: any) {
       console.error('AI Generation error:', error);
-      toast.error('Failed to generate blog post with AI');
+      const errorMessage = error.response?.data?.error || error.message;
+      toast.error(`Failed to generate blog post: ${errorMessage}`);
     } finally {
       setIsGenerating(false);
     }

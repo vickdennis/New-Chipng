@@ -547,8 +547,8 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    if (file.size > 800 * 1024) { // 800KB limit to be safe with Firestore 1MB limit including other fields
-      toast.error('Image is too large. Please use an image under 800KB.');
+    if (file.size > 500 * 1024) { // 500KB limit to be safe with base64 conversion (1.33x size) and Firestore 1MB limit
+      toast.error('Image is too large. Please use an image under 500KB.');
       return;
     }
 
