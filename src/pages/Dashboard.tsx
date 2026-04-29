@@ -547,6 +547,11 @@ const Dashboard: React.FC = () => {
       return;
     }
 
+    if (file.size > 800 * 1024) { // 800KB limit to be safe with Firestore 1MB limit including other fields
+      toast.error('Image is too large. Please use an image under 800KB.');
+      return;
+    }
+
     setIsUploading(true);
     const folder = type === 'profile' ? 'profiles' : type === 'cover' ? 'covers' : type === 'background' ? 'backgrounds' : 'link-icons';
     
@@ -1265,7 +1270,14 @@ const Dashboard: React.FC = () => {
                                             whatsapp: { icon: BrandIcons.whatsapp, color: '#25D366' },
                                             spotify: { icon: BrandIcons.spotify, color: '#1DB954' }
                                           };
-                                          const brandKey = Object.keys(brands).find(key => url.includes(key));
+                                          const brandKey = Object.keys(brands).find(key => {
+                                            try {
+                                              const host = new URL(url.startsWith('http') ? url : `https://${url}`).hostname;
+                                              return host.includes(key);
+                                            } catch (e) {
+                                              return url.includes(`${key}.com`) || url.includes(`${key}.me`) || url.includes(`${key}.be`);
+                                            }
+                                          });
                                           if (brandKey) {
                                             const brand = brands[brandKey];
                                             return <brand.icon className="w-6 h-6" style={{ color: brand.color }} />;

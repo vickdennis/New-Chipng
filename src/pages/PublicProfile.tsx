@@ -520,7 +520,14 @@ END:VCARD`;
                              spotify: { icon: BrandIcons.spotify, color: '#1DB954' }
                            };
                            
-                           const brandKey = Object.keys(brands).find(key => url.includes(key));
+                           const brandKey = Object.keys(brands).find(key => {
+                             try {
+                               const host = new URL(url.startsWith('http') ? url : `https://${url}`).hostname;
+                               return host.includes(key);
+                             } catch (e) {
+                               return url.includes(`${key}.com`) || url.includes(`${key}.me`) || url.includes(`${key}.be`);
+                             }
+                           });
                            if (brandKey) {
                              const brand = brands[brandKey];
                              return React.createElement(brand.icon, { className: "w-8 h-8", style: { color: brand.color } });

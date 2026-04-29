@@ -9,8 +9,8 @@ import { getFirestore } from "firebase-admin/firestore";
 import fs from "fs";
 import crypto from "crypto";
 import axios from "axios";
-import multer from "multer";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import multer from "multer";
 
 dotenv.config();
 
@@ -415,9 +415,6 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
       }
 
-      const ai = new GoogleGenerativeAI(key);
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
-
       const systemInstruction = `
         You are the Chip NG "AI Designer", a professional profile engineer. 
         Your goal is to help users set up their perfect link-in-bio profile instantly.
@@ -429,6 +426,10 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
 
         Be helpful, creative, and efficient. 
         You have access to functions to: updateProfile, addLink, updateLink, deleteLink, applyTheme.
+        
+        IMPORTANT: When updating properties, use the correct field names:
+        - Profiles: displayName, bio, username, textColor, photoURL, coverImage, backgroundColor, theme, font, buttonStyle.
+        - Links: title, url, icon, active.
       `;
 
       const tools = [
@@ -444,7 +445,10 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
                   bio: { type: "STRING" },
                   username: { type: "STRING" },
                   textColor: { type: "STRING" },
-                  coverImage: { type: "STRING", description: "URL of the cover image" }
+                  photoURL: { type: "STRING" },
+                  coverImage: { type: "STRING" },
+                  backgroundColor: { type: "STRING" },
+                  theme: { type: "STRING" }
                 }
               }
             },
@@ -455,22 +459,20 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
                 type: "OBJECT",
                 properties: {
                   title: { type: "STRING" },
-                  url: { type: "STRING" },
-                  type: { type: "STRING" }
+                  url: { type: "STRING" }
                 },
                 required: ["title", "url"]
               }
             },
             {
               name: "updateLink",
-              description: "Update an existing link's title, URL, or type.",
+              description: "Update an existing link's title or URL.",
               parameters: {
                 type: "OBJECT",
                 properties: {
                   id: { type: "STRING" },
                   title: { type: "STRING" },
-                  url: { type: "STRING" },
-                  type: { type: "STRING" }
+                  url: { type: "STRING" }
                 },
                 required: ["id"]
               }
@@ -501,6 +503,13 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         }
       ];
 
+      const ai = new GoogleGenerativeAI(key);
+      const model = ai.getGenerativeModel({ 
+        model: "gemini-1.5-flash",
+        systemInstruction,
+        tools: tools as any[]
+      });
+
       const history = messages.map((m: any) => ({
         role: m.role === 'user' ? 'user' : 'model',
         parts: [{ text: m.content }]
@@ -511,19 +520,16 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       const lastMessage = messages[messages.length - 1].content;
 
       const chat = model.startChat({
-        history: validHistory,
-        generationConfig: { maxOutputTokens: 1000 },
-        tools: tools as any,
-        systemInstruction: systemInstruction
+        history: validHistory as any[],
+        generationConfig: { maxOutputTokens: 1000 }
       });
 
       const result = await chat.sendMessage(lastMessage);
       const response = await result.response;
-      const functionCalls = response.functionCalls();
-      let text = "";
-      try { text = response.text(); } catch (e) {}
+      const functionCalls = response.functionCalls() || [];
+      const text = response.text() || "";
 
-      res.json({ text: text || "", functionCalls: functionCalls || [] });
+      res.json({ text, functionCalls });
     } catch (error: any) {
       console.error("AI Designer Proxy failed:", error.message);
       res.status(500).json({ error: error.message });
@@ -536,40 +542,21 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       const file = req.file;
       const pathValue = req.body.path;
 
+      console.log(`[Upload] Processing: ${pathValue}, Size: ${file?.size || 0}`);
+
       if (!file || !pathValue) {
+        console.error("[Upload] Missing file or path");
         return res.status(400).json({ error: "Missing file or path" });
       }
 
-      const { projectId, apiKey } = firebaseConfig;
-      // We'll use a Cloud Function or Firebase Storage REST API if possible,
-      // but for simplicity and since we are in a container, we can use a mock URL 
-      // or if we have a real bucket, we'd use it.
-      // However, usually AIS apps use a common storage proxy.
-      // For now, let's assume we use a public image host or a placeholder if real storage is not configured,
-      // OR we can use the restFirestore to store it as a base64 (not recommended but works for small stuff).
-      // BETTER: The platform usually provides a way to upload.
-      
-      // If we don't have a real storage bucket configured, we can use a temporary upload service
-      // Or just return a placeholder for now to avoid the error.
-      // Actually, I'll try to use a real-looking implementation.
-      
-      // For this specific environment, we will use a mock successful response with a placeholder 
-      // because we don't have direct access to a writeable bucket without a service account key.
-      // BUT the user wants it to WORK. 
-      
-      // Let's use a public image hosting API or similar if we can't do real Firebase storage.
-      // Actually, I will implement a "successful upload" to a local memory cache or similar for the demo to feel real.
-      
+      // Base64 conversion for AIS environment
       const fileBase64 = file.buffer.toString('base64');
       const dataUrl = `data:${file.mimetype};base64,${fileBase64}`;
       
-      // In a real app we'd upload to Firebase Storage:
-      // await admin.storage().bucket().file(pathValue).save(file.buffer);
-      // const url = await admin.storage().bucket().file(pathValue).getSignedUrl({ action: 'read', expires: '03-09-2491' });
-      
+      console.log(`[Upload] Success. URL length: ${dataUrl.length}`);
       res.json({ url: dataUrl });
     } catch (error: any) {
-      console.error('Upload error:', error);
+      console.error('[Upload] Error:', error);
       res.status(500).json({ error: error.message });
     }
   });
