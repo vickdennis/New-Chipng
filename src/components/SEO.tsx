@@ -1,87 +1,74 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
-
 import { BASE_URL } from '../constants';
 
 interface SEOProps {
-  title?: string;
+  title: string;
   description?: string;
-  keywords?: string[];
   image?: string;
   url?: string;
-  type?: 'website' | 'article';
+  type?: 'website' | 'article' | 'profile';
   author?: string;
   publishedTime?: string;
   modifiedTime?: string;
+  keywords?: string[];
 }
 
-const SEO: React.FC<SEOProps> = ({
-  title = 'Chip NG - Your Digital Identity Simplified',
-  description,
-  keywords = ['digital identity', 'bio link', 'networking', 'personal brand'],
-  image = 'https://picsum.photos/seed/chipng/1200/630',
-  url = BASE_URL,
+const SEO: React.FC<SEOProps> = ({ 
+  title, 
+  description = "Chip NG - The ultimate link-in-bio platform for creators and businesses.", 
+  image = "https://chipng.com/og-image.png", // Fallback OG image
+  url,
   type = 'website',
-  author = 'Chip NG Team',
+  author = 'Chip NG',
   publishedTime,
-  modifiedTime
+  modifiedTime,
+  keywords = ['chip ng', 'link in bio', 'creator tools', 'bio link', 'social media marketing']
 }) => {
-  // Smarter defaults
-  const finalDescription = description || 'Create your professional digital identity with Chip NG. The smartest way to share your world.';
-  const siteTitle = title.includes('Chip NG') ? title : `${title} | Chip NG`;
-  const finalImage = image || 'https://picsum.photos/seed/chipng/1200/630';
+  const siteTitle = `${title} | Chip NG`;
+  const canonicalUrl = url || window.location.href;
 
   return (
     <Helmet>
-      {/* Standard Metadata */}
+      {/* Basic Meta Tags */}
       <title>{siteTitle}</title>
-      <meta name="description" content={finalDescription} />
+      <meta name="description" content={description} />
       <meta name="keywords" content={keywords.join(', ')} />
-      <meta name="robots" content="index, follow" />
-      <link rel="canonical" href={url} />
+      <link rel="canonical" href={canonicalUrl} />
 
       {/* Open Graph / Facebook */}
       <meta property="og:type" content={type} />
-      <meta property="og:url" content={url} />
+      <meta property="og:url" content={canonicalUrl} />
       <meta property="og:title" content={siteTitle} />
-      <meta property="og:description" content={finalDescription} />
-      <meta property="og:image" content={finalImage} />
-      <meta property="og:site_name" content="Chip NG" />
+      <meta property="og:description" content={description} />
+      <meta property="og:image" content={image} />
+      {publishedTime && <meta property="article:published_time" content={publishedTime} />}
+      {modifiedTime && <meta property="article:modified_time" content={modifiedTime} />}
 
       {/* Twitter */}
       <meta name="twitter:card" content="summary_large_image" />
-      <meta name="twitter:url" content={url} />
+      <meta name="twitter:url" content={canonicalUrl} />
       <meta name="twitter:title" content={siteTitle} />
-      <meta name="twitter:description" content={finalDescription} />
-      <meta name="twitter:image" content={finalImage} />
-      <meta name="twitter:creator" content="@chipng" />
+      <meta name="twitter:description" content={description} />
+      <meta name="twitter:image" content={image} />
 
-      {/* Article Specific */}
-      {type === 'article' && (
-        <>
-          {author && <meta property="article:author" content={author} />}
-          {publishedTime && <meta property="article:published_time" content={publishedTime} />}
-          {modifiedTime && <meta property="article:modified_time" content={modifiedTime} />}
-        </>
-      )}
-
-      {/* JSON-LD Structured Data */}
+      {/* Structured Data (JSON-LD) */}
       <script type="application/ld+json">
         {JSON.stringify({
           "@context": "https://schema.org",
-          "@type": type === 'article' ? "BlogPosting" : "WebSite",
+          "@type": type === 'article' ? 'BlogPosting' : type === 'profile' ? 'ProfilePage' : 'WebPage',
           "headline": title,
           "description": description,
           "image": image,
-          "url": url,
-          ...(type === 'article' ? {
+          "url": canonicalUrl,
+          ...(type === 'article' && {
             "author": {
               "@type": "Person",
               "name": author
             },
             "datePublished": publishedTime,
             "dateModified": modifiedTime
-          } : {})
+          })
         })}
       </script>
     </Helmet>

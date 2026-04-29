@@ -22,6 +22,7 @@ import {
 import { db, storage, handleFirestoreError, OperationType } from '../firebase';
 import { BlogPost } from '../types';
 import { safeWrite } from './backupService';
+import { uploadImage } from './imageService';
 
 const BLOGS_COLLECTION = 'blogs';
 
@@ -31,43 +32,7 @@ export const blogService = {
     userId: string, 
     onProgress?: (progress: number) => void
   ): Promise<string> {
-    try {
-      if (!file.type.startsWith('image/')) {
-        throw new Error('File must be an image');
-      }
-
-      if (file.size > 500 * 1024) {
-        throw new Error('Image is too large. Max size is 500KB for blog images.');
-      }
-
-      if (onProgress) onProgress(10);
-      
-      const formData = new FormData();
-      formData.append('file', file);
-      const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-      formData.append('path', `blog-images/${userId}/${filename}`);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      const { url } = await response.json();
-      if (onProgress) onProgress(100);
-      
-      return url;
-    } catch (error) {
-      console.error('Error in uploadImage:', error);
-      throw error;
-    }
+    return uploadImage(file, userId, 'blogs', onProgress);
   },
 
   async getAllBlog(includeUnpublished = false): Promise<BlogPost[]> {

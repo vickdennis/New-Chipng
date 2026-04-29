@@ -24,6 +24,7 @@ import { storage } from '../firebase';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { rollbackToVersion, BackupData, safeWrite, createBackup } from '../services/backupService';
+import { uploadImage } from '../services/imageService';
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -181,40 +182,17 @@ const AdminPanel: React.FC = () => {
 
   const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 500 * 1024) {
-      toast.error('Product image is too large. Please use an image under 500KB.');
-      return;
-    }
+    if (!file || !user) return;
 
     setIsUploadingProductImage(true);
-    const timestamp = Date.now();
-    const storagePath = `products/${user?.uid || 'admin'}/${timestamp}_${file.name}`;
-
     try {
-      console.log('Uploading product image via proxy...', storagePath);
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('path', storagePath);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      const { url } = await response.json();
-      console.log('Product image uploaded successfully via proxy:', url);
+      toast.loading('Uploading product image...', { id: 'product-upload' });
+      const url = await uploadImage(file, user.uid, 'products');
       setProductForm(prev => ({ ...prev, image: url }));
-      toast.success('Product image uploaded');
+      toast.success('Product image uploaded', { id: 'product-upload' });
     } catch (error: any) {
       console.error('Product image upload error:', error);
-      toast.error(`Failed to upload product image: ${error.message}`);
+      toast.error(`Upload failed: ${error.message}`, { id: 'product-upload' });
     } finally {
       setIsUploadingProductImage(false);
     }

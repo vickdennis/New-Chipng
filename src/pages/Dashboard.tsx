@@ -48,6 +48,7 @@ import { Sparkles, Wand2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { uploadImage, validateImage, UploadPath } from '../services/imageService';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -547,41 +548,28 @@ const Dashboard: React.FC = () => {
       return;
     }
 
-    if (file.size > 500 * 1024) { // 500KB limit to be safe with base64 conversion (1.33x size) and Firestore 1MB limit
-      toast.error('Image is too large. Please use an image under 500KB.');
+    const error = validateImage(file, 2);
+    if (error) {
+      toast.error(error);
       return;
     }
 
     setIsUploading(true);
-    const folder = type === 'profile' ? 'profiles' : type === 'cover' ? 'covers' : type === 'background' ? 'backgrounds' : 'link-icons';
     
-    // Sanitize filename to avoid "string did not match expected pattern" if there are weird characters
-    const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const timestamp = Date.now();
-    const storagePath = `${folder}/${user.uid}/${timestamp}_${safeFileName}`;
+    // Map internal type to uploadPath
+    const pathTypeMap: Record<string, UploadPath> = {
+      profile: 'profiles',
+      cover: 'covers',
+      background: 'backgrounds',
+      'link-icon': 'link-icons'
+    };
     
-    console.log(`Starting server-side upload proxy to: ${storagePath}`);
+    const pathType = pathTypeMap[type];
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('path', storagePath);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
-
-      const { url } = await response.json();
-      console.log('Upload successful via proxy, URL:', url);
+      toast.loading(`Uploading ${type.replace('-', ' ')}...`, { id: 'upload-toast' });
+      
+      const url = await uploadImage(file, user.uid, pathType);
       
       if (type === 'profile') {
         await handleUpdateProfile({ photoURL: url });
@@ -592,10 +580,11 @@ const Dashboard: React.FC = () => {
       } else if (type === 'link-icon' && linkId) {
         await handleUpdateLink(linkId, { icon: url });
       }
-      toast.success(`${type.replace('-', ' ')} updated`);
+      
+      toast.success(`${type.replace('-', ' ')} updated`, { id: 'upload-toast' });
     } catch (error: any) {
       console.error('Upload error:', error);
-      toast.error(`Failed to upload ${type.replace('-', ' ')} image: ${error.message}`);
+      toast.error(`Upload failed: ${error.message}`, { id: 'upload-toast' });
     } finally {
       setIsUploading(false);
       e.target.value = '';

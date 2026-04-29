@@ -521,28 +521,50 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
 
       const chat = model.startChat({
         history: validHistory as any[],
-        generationConfig: { maxOutputTokens: 1000 }
+        generationConfig: { 
+          maxOutputTokens: 1000,
+          temperature: 0.7,
+        }
       });
 
       const result = await chat.sendMessage(lastMessage);
       const response = await result.response;
       
       let functionCalls = [];
-      try {
-        functionCalls = response.functionCalls() || [];
-      } catch (e) {
-        // No function calls
-      }
-
       let text = "";
-      try {
-        text = response.text() || "";
-      } catch (e) {
-        // If there are function calls, text() might throw
-        if (functionCalls.length === 0) {
-           console.error("AI Designer response has no text and no function calls");
+
+      // Improved response parsing for function calls and text
+      const parts = response.candidates?.[0]?.content?.parts || [];
+      
+      for (const part of parts) {
+        if (part.functionCall) {
+          functionCalls.push({
+            name: part.functionCall.name,
+            args: part.functionCall.args
+          });
+        }
+        if (part.text) {
+          text += part.text;
         }
       }
+
+      // Fallback if parts didn't work as expected
+      if (functionCalls.length === 0) {
+        try {
+          const calls = response.functionCalls();
+          if (calls && calls.length > 0) {
+            functionCalls = calls;
+          }
+        } catch (e) {}
+      }
+
+      if (!text && functionCalls.length === 0) {
+         try {
+           text = response.text();
+         } catch (e) {}
+      }
+
+      console.log(`[AI Designer] Generated ${functionCalls.length} function calls and ${text.length} chars of text`);
 
       res.json({ text, functionCalls });
     } catch (error: any) {

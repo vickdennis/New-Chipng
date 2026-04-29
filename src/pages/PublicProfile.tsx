@@ -293,6 +293,7 @@ END:VCARD`;
         description={profile.bio || `Check out ${profile.displayName || profile.username}'s profile on Chip NG.`}
         image={profile.photoURL || profile.coverImage}
         url={`${BASE_URL}/${profile.username}`}
+        type="profile"
       />
 
       {/* Top Fixed Header */}
