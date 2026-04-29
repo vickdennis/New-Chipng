@@ -28,12 +28,43 @@ let firebaseConfig: any = null;
 if (fs.existsSync(configPath)) {
   try {
     firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    if (firebaseConfig?.projectId) {
-      // DO NOT set these, they cause axios to auto-auth with service account which lacks permissions
-      // process.env.GOOGLE_CLOUD_PROJECT = firebaseConfig.projectId;
-      // process.env.GCLOUD_PROJECT = firebaseConfig.projectId;
-    }
   } catch (e) {}
+}
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Firebase Admin initialized with discovery
+let db: any;
+let bucket: any;
+
+try {
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      projectId: firebaseConfig?.projectId,
+      storageBucket: firebaseConfig?.storageBucket
+    });
+    console.log("✅ Firebase Admin initialized");
+  }
+
+  const app = admin.app();
+  const databaseId = firebaseConfig?.firestoreDatabaseId;
+  
+  if (databaseId) {
+    db = getFirestore(app, databaseId);
+    console.log(`🎯 Targeting named database: ${databaseId}`);
+  } else {
+    db = getFirestore(app);
+  }
+  
+  bucket = admin.storage().bucket();
+} catch (error: any) {
+  console.error("❌ Firebase Admin initialization failed:", error.message);
+}
+
+const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
+if (!PAYSTACK_SECRET_KEY) {
+  console.error("❌ PAYSTACK_SECRET_KEY is not set. Transactions will fail.");
 }
 
 // REST Firestore Helpers (Fallback for Admin SDK IAM issues)
@@ -50,23 +81,13 @@ async function restFirestore(action: 'get' | 'patch' | 'post' | 'delete', collec
     if (action === 'get') {
       if (docId) {
         const url = `${baseUrl}/${collection}/${docId}?key=${apiKey}`;
-        const res = await fetch(url, { headers });
-        if (!res.ok) {
-            const body = await res.json();
-            throw { response: { data: body }, message: `Request failed with status ${res.status}` };
-        }
-        return await res.json();
+        const res = await axios.get(url, { headers });
+        return res.data;
       } else {
-        // Use runQuery as fallback for LIST
         const url = `${baseUrl}:runQuery?key=${apiKey}`;
-        const queryPayload = { structuredQuery: { from: [{ collectionId: collection }] } };
-        const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(queryPayload) });
-        if (!res.ok) {
-            const body = await res.json();
-            throw { response: { data: body }, message: `Request failed with status ${res.status}` };
-        }
-        const results = await res.json();
-        return { documents: results.filter((r: any) => r.document).map((r: any) => r.document) };
+        const query = { structuredQuery: { from: [{ collectionId: collection }] } };
+        const res = await axios.post(url, query, { headers });
+        return { documents: res.data.filter((r: any) => r.document).map((r: any) => r.document) };
       }
     }
     
@@ -83,8 +104,6 @@ async function restFirestore(action: 'get' | 'patch' | 'post' | 'delete', collec
         else if (typeof val === 'string') payload.fields[key] = { stringValue: val };
         else if (Array.isArray(val)) payload.fields[key] = { arrayValue: { values: val.map(v => ({ stringValue: String(v) })) } };
       }
-      // Add internal bypass
-      payload.fields['_is_internal'] = { booleanValue: true };
       
       const res = await axios.patch(url, payload, { headers });
       return res.data;
@@ -112,46 +131,6 @@ function fromRest(doc: any) {
   return data;
 }
 
-// Firebase Admin initialized with discovery
-let db: any;
-
-try {
-  // Initialize Admin
-  /*
-  if (!admin.apps?.length) {
-    admin.initializeApp({
-      projectId: firebaseConfig?.projectId
-    });
-    console.log("✅ Firebase Admin initialized with project:", firebaseConfig?.projectId);
-  }
-  */
-
-  const app = admin.app();
-  const databaseId = firebaseConfig?.firestoreDatabaseId;
-  
-  // Explicitly target the database instance
-  if (databaseId) {
-    console.log(`🎯 Targeting named Firestore database via env and param: ${databaseId}`);
-    process.env.FIRESTORE_DATABASE = databaseId;
-    db = getFirestore(app, databaseId);
-  } else {
-    db = getFirestore(app);
-  }
-} catch (error: any) {
-  console.error("❌ Firebase Admin initialization failed:", error.message);
-  // Fallback
-  if (!db) {
-    try {
-      db = getFirestore();
-    } catch (e) {}
-  }
-}
-
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
-if (!PAYSTACK_SECRET_KEY) {
-  console.error("❌ PAYSTACK_SECRET_KEY is not set. Transactions will fail.");
-}
-
 // Helper for backend safe write with backups
 async function backendSafeWrite(collectionName: string, documentId: string, data: any, action: 'update' | 'create' | 'delete', performedBy: string = 'system') {
   try {
@@ -160,12 +139,13 @@ async function backendSafeWrite(collectionName: string, documentId: string, data
     // Backup before modification (for update and delete)
     if (action === 'update' || action === 'delete') {
       try {
-        const docSnap = await restFirestore('get', collectionName, documentId);
-        if (docSnap) {
-          await restFirestore('patch', `${collectionName}_backup`, `backup_${Date.now()}`, {
+        const docRef = db.collection(collectionName).doc(documentId);
+        const docSnap = await docRef.get();
+        if (docSnap.exists) {
+          await db.collection(`${collectionName}_backup`).add({
             originalId: documentId,
             collectionName,
-            data: fromRest(docSnap),
+            data: docSnap.data(),
             action,
             timestamp: now,
             performedBy
@@ -176,23 +156,17 @@ async function backendSafeWrite(collectionName: string, documentId: string, data
       }
     }
 
+    const docRef = db.collection(collectionName).doc(documentId);
     if (action === 'delete') {
-      await restFirestore('patch', collectionName, documentId, {
+      await docRef.update({
         isDeleted: true,
         deletedAt: now,
         updatedAt: now
       });
     } else if (action === 'update') {
-      await restFirestore('patch', collectionName, documentId, {
-        ...data,
-        updatedAt: now
-      });
+      await docRef.set({ ...data, updatedAt: now }, { merge: true });
     } else {
-      await restFirestore('patch', collectionName, documentId, {
-        ...data,
-        createdAt: now,
-        updatedAt: now
-      });
+      await docRef.set({ ...data, createdAt: now, updatedAt: now });
     }
     return true;
   } catch (error) {
@@ -200,72 +174,54 @@ async function backendSafeWrite(collectionName: string, documentId: string, data
     return false;
   }
 }
+
 // Rollback function
 async function rollbackDocument(collectionName: string, documentId: string, backupId?: string) {
   try {
-    const backupCollection = `${collectionName}_backup`;
     let backupData;
     let originalBackupId = backupId;
 
     if (backupId) {
-      const snap = await restFirestore('get', backupCollection, backupId);
-      backupData = fromRest(snap);
+      const snap = await db.collection(`${collectionName}_backup`).doc(backupId).get();
+      if (!snap.exists) throw new Error("Backup not found");
+      backupData = snap.data();
     } else {
-      const queryPayload = {
-        structuredQuery: {
-          from: [{ collectionId: backupCollection }],
-          where: {
-            fieldFilter: {
-              field: { fieldPath: 'originalId' },
-              op: 'EQUAL',
-              value: { stringValue: documentId }
-            }
-          },
-          orderBy: [{
-            field: { fieldPath: 'timestamp' },
-            direction: 'DESCENDING'
-          }],
-          limit: 1
-        }
-      };
-      const results = await restFirestore('post', backupCollection, undefined, undefined, queryPayload);
-      if (results && results[0]?.document) {
-        backupData = fromRest(results[0].document);
-        originalBackupId = backupData.id;
-      }
-    }
-
-    if (!backupData) {
-      throw new Error(`No backup found for ${collectionName}/${documentId}`);
+      const snap = await db.collection(`${collectionName}_backup`)
+        .where('originalId', '==', documentId)
+        .orderBy('timestamp', 'desc')
+        .limit(1)
+        .get();
+      
+      if (snap.empty) throw new Error("No backup found");
+      backupData = snap.docs[0].data();
+      originalBackupId = snap.docs[0].id;
     }
 
     const now = new Date().toISOString();
 
     // Create a special rollback backup before restoring
     try {
-      const currentSnap = await restFirestore('get', collectionName, documentId);
-      if (currentSnap) {
-        await restFirestore('patch', backupCollection, `rollback_${Date.now()}`, {
+      const currentSnap = await db.collection(collectionName).doc(documentId).get();
+      if (currentSnap.exists) {
+        await db.collection(`${collectionName}_backup`).add({
           originalId: documentId,
           collectionName,
-          data: fromRest(currentSnap),
+          data: currentSnap.data(),
           action: 'rollback',
           timestamp: now,
           performedBy: 'system-rollback'
         });
       }
-    } catch (e) {
-      console.warn("Pre-rollback backup failed, continuing...");
-    }
+    } catch (e) {}
 
     // Restore the data
-    await restFirestore('patch', collectionName, documentId, {
+    await db.collection(collectionName).doc(documentId).set({
       ...backupData.data,
       isDeleted: false,
       updatedAt: now,
       restoredFrom: originalBackupId,
       restoredAt: now
-    });
+    }, { merge: true });
 
     return true;
   } catch (error: any) {
@@ -273,9 +229,6 @@ async function rollbackDocument(collectionName: string, documentId: string, back
     throw error;
   }
 }
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
@@ -582,16 +535,21 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       console.log(`[Upload] Processing: ${pathValue}, Size: ${file?.size || 0}`);
 
       if (!file || !pathValue) {
-        console.error("[Upload] Missing file or path");
         return res.status(400).json({ error: "Missing file or path" });
       }
 
-      // Base64 conversion for AIS environment
-      const fileBase64 = file.buffer.toString('base64');
-      const dataUrl = `data:${file.mimetype};base64,${fileBase64}`;
+      const fileRef = bucket.file(pathValue);
+      await fileRef.save(file.buffer, {
+        metadata: { contentType: file.mimetype }
+      });
       
-      console.log(`[Upload] Success. URL length: ${dataUrl.length}`);
-      res.json({ url: dataUrl });
+      // Make public or get signed URL
+      // In this environment, we'll use a public URL if bucket is configured, 
+      // or a signed URL. Simpler for chip-ng: 
+      const url = `https://firebasestorage.googleapis.com/v1/b/${bucket.name}/o/${encodeURIComponent(pathValue)}?alt=media`;
+      
+      console.log(`[Upload] Success: ${url}`);
+      res.json({ url });
     } catch (error: any) {
       console.error('[Upload] Error:', error);
       res.status(500).json({ error: error.message });
@@ -653,17 +611,8 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      // Try internal admin first, fallback to REST
-      try {
-        const docRef = db.collection(collectionName).doc(id);
-        await docRef.update({ [field]: admin.firestore.FieldValue.increment(1) });
-      } catch (e) {
-        const doc = await restFirestore('get', collectionName, id);
-        if (doc) {
-          const currentVal = doc.fields[field]?.doubleValue || doc.fields[field]?.integerValue || 0;
-          await restFirestore('patch', collectionName, id, { [field]: currentVal + 1 });
-        }
-      }
+      const docRef = db.collection(collectionName).doc(id);
+      await docRef.update({ [field]: admin.firestore.FieldValue.increment(1) });
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -672,14 +621,7 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
 
   app.post("/api/admin/rollback", async (req, res) => {
     try {
-      const { collectionName, documentId, backupId, adminToken } = req.body;
-      
-      // Simple security check (in reality use proper auth)
-      if (adminToken !== process.env.ADMIN_SECRET_KEY && process.env.NODE_ENV === 'production') {
-        // We'll rely on Firebase Auth in the real app, but for this API endpoint:
-        // Ideally verify the Firebase ID Token
-      }
-
+      const { collectionName, documentId, backupId } = req.body;
       const success = await rollbackDocument(collectionName, documentId, backupId);
       res.json({ success });
     } catch (error: any) {
@@ -688,67 +630,37 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
   });
 
   app.post("/api/verify-paystack", async (req, res) => {
-    const { reference, userId, plan, isVerification, isOrder, amount } = req.body;
+    const { reference, userId, plan, isVerification, isOrder } = req.body;
     console.log(`Verifying Paystack transaction: ${reference} for user: ${userId}`);
     
-    // 1. Double-check for duplicate transaction references
     try {
-      const existingTx = await db.collection('transactions').where('reference', '==', reference).get();
-      if (!existingTx.empty) {
-        console.warn(`Attempted duplicate processing for reference: ${reference}`);
-        return res.status(400).json({ status: 'failed', error: 'Transaction already processed' });
-      }
-
-      let paystackData: any;
-
       if (!PAYSTACK_SECRET_KEY) {
-        throw new Error("Paystack Secret Key is missing. Cannot verify transaction.");
+        throw new Error("Paystack Secret Key is missing.");
       }
 
       const response = await axios.get(`https://api.paystack.co/transaction/verify/${reference}`, {
-        headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`
-        }
+        headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` }
       });
-      paystackData = response.data.data;
-
-      console.log(`Paystack verification status for ${reference}:`, paystackData.status);
+      const paystackData = response.data.data;
 
       if (paystackData.status === 'success') {
-        // 2. Save transaction history BEFORE upgrading to ensure we have a record
+        const amount = (paystackData.amount / 100);
+        
         await db.collection('transactions').add({
           userId: userId || 'guest',
           reference: reference,
           paystack_id: paystackData.id,
-          amount: (paystackData.amount / 100), // Convert Kobo to Naira
+          amount,
           plan: isVerification ? 'verification' : (isOrder ? 'order' : (plan || 'pro')),
           status: 'success',
-          createdAt: new Date().toISOString(),
-          metadata: {
-            channel: paystackData.channel,
-            card_type: paystackData.authorization?.card_type,
-            last4: paystackData.authorization?.last4,
-            bank: paystackData.authorization?.bank
-          }
+          createdAt: new Date().toISOString()
         });
 
-        if (isVerification) {
-          if (!userId) throw new Error("User ID is required for verification");
+        if (isVerification && userId) {
           await backendSafeWrite('users', userId, { isVerified: true }, 'update', 'paystack-verify');
-        } else if (isOrder) {
-          // Log the order
-          await db.collection('orders').add({
-            userId: userId || 'guest',
-            amount: (paystackData.amount / 100),
-            reference: reference,
-            status: 'paid',
-            createdAt: new Date().toISOString()
-          });
-        } else {
-          if (!userId) throw new Error("User ID is required for subscription");
+        } else if (!isOrder && userId) {
           const premiumUntil = new Date();
           premiumUntil.setDate(premiumUntil.getDate() + 30);
-          
           await backendSafeWrite('users', userId, {
             plan: plan || 'pro',
             isPremium: true,
@@ -759,93 +671,45 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         
         return res.json({ status: 'success' });
       }
-      
       res.status(400).json({ status: 'failed' });
     } catch (error: any) {
-      console.error('Paystack verification error:', error.message);
       res.status(500).json({ error: error.message });
     }
   });
 
-// 3. Subscription Expiry Logic
+  // 3. Subscription Expiry Logic
   app.post("/api/cron/check-subscriptions", async (req, res) => {
     const now = new Date().toISOString();
     try {
-      console.log('Running subscription expiry check using client SDK fallback...');
+      console.log('Running subscription expiry check via Admin SDK...');
       
-      // Use Client SDK as a fallback because Admin SDK is receiving PERMISSION_DENIED
-      // Note: This requires the security rules to be open or support this bypass
-      const config = firebaseConfig;
-      if (!config) throw new Error("Firebase config missing");
-
-      // We'll use the REST API here for simplicity to avoid initializing full Client SDK
-      // but raw REST query is a bit verbose, let's try a simpler approach if possible
-      // Actually, let's just use axios for a direct REST call as we know it works from test-rest.ts
+      const snapshot = await db.collection('users')
+        .where('isPremium', '==', true)
+        .get();
       
-      const { projectId, firestoreDatabaseId, apiKey } = config;
-      const queryUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/${firestoreDatabaseId}/documents:runQuery?key=${apiKey}`;
-      
-      const queryPayload = {
-          structuredQuery: {
-              from: [{ collectionId: 'users' }],
-              where: {
-                  fieldFilter: {
-                      field: { fieldPath: 'isPremium' },
-                      op: 'EQUAL',
-                      value: { booleanValue: true }
-                  }
-              }
-          }
-      };
-      
-      const queryRes = await axios.post(queryUrl, queryPayload);
-      const results = queryRes.data;
-      
-      console.log(`REST Query success, found ${results.length} potentials`);
+      console.log(`Found ${snapshot.size} potential premium users to check`);
 
       let expiredCount = 0;
-      for (const result of results) {
-        if (!result.document) continue;
-        
-        const doc = result.document;
-        const data: any = {};
-        // Map REST fields to JS object
-        for (const [key, val] of Object.entries(doc.fields)) {
-          const v: any = val;
-          data[key] = v.stringValue || v.booleanValue || v.integerValue || v.doubleValue || v.timestampValue;
-        }
-
+      for (const doc of snapshot.docs) {
+        const data = doc.data();
         const expired = data.premiumUntil && data.premiumUntil < now;
+        
         if (expired) {
-          console.log(`Expiring user ${doc.name}`);
-          const docId = doc.name.split('/').pop();
-          
-          // PATCH the document
-          const patchUrl = `https://firestore.googleapis.com/v1/${doc.name}?key=${apiKey}&updateMask.fieldPaths=isPremium&updateMask.fieldPaths=subscriptionStatus&updateMask.fieldPaths=plan&updateMask.fieldPaths=updatedAt&updateMask.fieldPaths=_is_internal`;
-          
-          const patchPayload = {
-            fields: {
-              isPremium: { booleanValue: false },
-              subscriptionStatus: { stringValue: 'inactive' },
-              plan: { stringValue: 'basic' },
-              updatedAt: { stringValue: now },
-              _is_internal: { booleanValue: true } // Bypass secret
-            }
-          };
-          
-          await axios.patch(patchUrl, patchPayload);
+          console.log(`Expiring user ${doc.id}`);
+          await backendSafeWrite('users', doc.id, {
+            isPremium: false,
+            subscriptionStatus: 'inactive',
+            plan: 'basic'
+          }, 'update', 'cron-expiry');
           expiredCount++;
         }
       }
       
-      console.log(`✅ Successfully processed ${expiredCount} expired subscriptions via REST`);
+      console.log(`✅ Successfully processed ${expiredCount} expired subscriptions`);
       res.json({ status: 'success', count: expiredCount });
     } catch (error: any) {
-      console.error('❌ REST Subscription expiry check failed:', error.message);
-      res.status(500).json({ 
-        error: error.message,
-        details: error.response?.data
-      });
+      console.error('❌ Subscription expiry check failed:', error.message);
+      res.status(500).json({ error: error.message });
     }
   });
 
