@@ -22,7 +22,8 @@ import {
   Crown, CheckCircle2, TrendingUp, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash,
   CreditCard, Calendar, LayoutGrid, Star, Square, AlertCircle, Lightbulb, Camera,
   Briefcase, Play, Heart, Coffee, BookOpen, Globe, Search, ChevronRight, X,
-  History as HistoryIcon, RotateCcw, Megaphone, Clock, BadgeCheck, ArrowUpRight
+  History as HistoryIcon, RotateCcw, Megaphone, Clock, BadgeCheck, ArrowUpRight,
+  FileText, ShoppingCart, Tag, Filter, Edit, Package, DollarSign
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -32,7 +33,7 @@ import {
 } from 'recharts';
 import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { toast } from 'sonner';
-import { Link, Transaction, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment, Shout, Media } from '../types';
+import { Link, Transaction, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment, Shout, Media, BlogPost, Product } from '../types';
 import { auth } from '../firebase';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { DISPLAY_DOMAIN } from '../constants';
@@ -299,8 +300,10 @@ const Dashboard: React.FC = () => {
   const [links, setLinks] = useState<Link[]>([]);
   const [shouts, setShouts] = useState<Shout[]>([]);
   const [media, setMedia] = useState<Media[]>([]);
+  const [blogs, setBlogs] = useState<BlogPost[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup' | 'ai' | 'posts'>('links');
+  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup' | 'ai' | 'posts' | 'blogs' | 'shop'>('links');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isAddPlatformModalOpen, setIsAddPlatformModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<keyof typeof PLATFORMS>('socials');
@@ -411,6 +414,24 @@ const Dashboard: React.FC = () => {
       setMedia(sortedMedia);
     });
 
+    const qBlogs = query(collection(db, 'blogs'), where('userId', '==', user.uid));
+    const unsubBlogs = onSnapshot(qBlogs, (snapshot) => {
+      const sortedBlogs = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as BlogPost))
+        .filter(b => !(b as any).isDeleted)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setBlogs(sortedBlogs);
+    });
+
+    const qProducts = query(collection(db, 'products'), where('userId', '==', user.uid));
+    const unsubProducts = onSnapshot(qProducts, (snapshot) => {
+      const sortedProducts = snapshot.docs
+        .map(doc => ({ id: doc.id, ...doc.data() } as Product))
+        .filter(p => !(p as any).isDeleted)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setProducts(sortedProducts);
+    });
+
     // Trigger subscription expiry check on load
     fetch('/api/cron/check-subscriptions', { method: 'POST' })
       .catch(err => console.error('Expiry check failed:', err));
@@ -421,6 +442,8 @@ const Dashboard: React.FC = () => {
       unsubTx();
       unsubShouts();
       unsubMedia();
+      unsubBlogs();
+      unsubProducts();
     };
   }, [user]);
 
@@ -742,7 +765,9 @@ const Dashboard: React.FC = () => {
       profile.address,
       profile.contactEmail,
       profile.socialLinks && Object.values(profile.socialLinks).some(v => v),
-      links.length > 0
+      links.length > 0,
+      blogs.length > 0,
+      products.length > 0
     ];
     const filledFields = fields.filter(f => !!f).length;
     return Math.round((filledFields / fields.length) * 100);
@@ -849,6 +874,8 @@ const Dashboard: React.FC = () => {
               {[
                 { id: 'links', icon: LayoutGrid, label: 'Profile Links' },
                 { id: 'posts', icon: ImageIcon, label: 'Posts & Feed' },
+                { id: 'blogs', icon: FileText, label: 'Blog Studio' },
+                { id: 'shop', icon: ShoppingCart, label: 'Shop Manager' },
                 { id: 'ai', icon: Sparkles, label: 'AI Designer', badge: 'New' },
               ].map((item) => (
                 <button
@@ -1382,7 +1409,7 @@ const Dashboard: React.FC = () => {
 
             {activeTab === 'posts' && (
               <motion.div 
-                key="posts"
+                key="feed"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
@@ -1559,6 +1586,203 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
                   <AIDesigner user={user} profile={profile} links={links} />
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'blogs' && (
+              <motion.div 
+                key="blogs"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-6 space-y-8"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-[28px] font-black tracking-tighter dark:text-white text-zinc-900">Blog Studio</h2>
+                    <p className="text-[#6B7280] text-[14px] font-medium">Write stories and share your expertise.</p>
+                  </div>
+                  <RouterLink 
+                    to="/admin/blog/new"
+                    className="flex items-center gap-2 bg-lime-400 text-zinc-950 px-6 py-3 rounded-2xl font-bold hover:bg-lime-300 transition-all shadow-lg shadow-lime-100 dark:shadow-none"
+                  >
+                    <Plus className="w-5 h-5" />
+                    New Post
+                  </RouterLink>
+                </div>
+
+                <div className="space-y-4">
+                  {blogs.length === 0 ? (
+                    <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-12 rounded-[2.5rem] text-center flex flex-col items-center justify-center">
+                      <div className="w-20 h-20 bg-zinc-50 dark:bg-zinc-800 rounded-3xl flex items-center justify-center mb-6">
+                        <FileText className="w-10 h-10 text-zinc-200" />
+                      </div>
+                      <h3 className="text-xl font-bold mb-2 dark:text-white">No blog posts yet</h3>
+                      <p className="text-zinc-500 mb-8 max-w-sm">Every great brand starts with a story. Start writing your first post today.</p>
+                      <RouterLink to="/admin/blog/new" className="text-lime-500 font-bold hover:underline">Start Writing &rarr;</RouterLink>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4">
+                      {blogs.map(post => (
+                        <div key={post.id} className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-6 rounded-[2.5rem] group hover:border-lime-200 dark:hover:border-lime-900/30 transition-all flex items-center gap-6">
+                           {post.coverImage ? (
+                             <img src={post.coverImage} className="w-24 h-24 rounded-[2rem] object-cover" alt="" referrerPolicy="no-referrer" />
+                           ) : (
+                             <div className="w-24 h-24 rounded-[2rem] bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center text-zinc-300">
+                               <FileText className="w-10 h-10" />
+                             </div>
+                           )}
+                           <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-3 mb-1">
+                                <span className={cn(
+                                  "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                                  post.published ? "bg-lime-100 text-lime-600" : "bg-zinc-100 text-zinc-400"
+                                )}>
+                                  {post.published ? 'Published' : 'Draft'}
+                                </span>
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{format(new Date(post.createdAt), 'MMM d, yyyy')}</span>
+                              </div>
+                              <h3 className="text-lg font-black tracking-tight text-zinc-900 dark:text-white truncate">{post.title}</h3>
+                              <p className="text-sm text-zinc-500 line-clamp-1">{post.excerpt}</p>
+                           </div>
+                           <div className="flex items-center gap-2">
+                             <RouterLink 
+                               to={`/admin/blog/edit/${post.id}`}
+                               className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-2xl text-zinc-400 hover:text-zinc-950 dark:hover:text-white transition-all"
+                             >
+                               <Edit className="w-5 h-5" />
+                             </RouterLink>
+                             <button 
+                               onClick={async () => {
+                                 if (window.confirm('Delete this post?')) {
+                                   await safeWrite('blogs', post.id, null, 'delete');
+                                   toast.success('Post deleted');
+                                 }
+                               }}
+                               className="p-3 bg-zinc-50 dark:bg-zinc-800 rounded-2xl text-zinc-400 hover:text-red-500 transition-all"
+                             >
+                               <Trash2 className="w-5 h-5" />
+                             </button>
+                           </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'shop' && (
+              <motion.div 
+                key="shop"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="px-6 py-6 space-y-8"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-[28px] font-black tracking-tighter dark:text-white text-zinc-900">Shop Manager</h2>
+                    <p className="text-[#6B7280] text-[14px] font-medium">Sell products directly from your profile.</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const name = window.prompt('Product Name:');
+                      const price = window.prompt('Price:');
+                      if (!name || !price) return;
+                      safeWrite('products', null, {
+                        userId: user?.uid,
+                        name,
+                        price: parseFloat(price),
+                        description: 'Product description...',
+                        image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=800',
+                        category: 'General',
+                        active: true,
+                        stock: 10
+                      }, 'create').then(() => toast.success('Product added!'));
+                    }}
+                    className="flex items-center gap-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 px-6 py-3 rounded-2xl font-bold hover:scale-105 transition-all shadow-xl"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add Product
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {products.length === 0 ? (
+                    <div className="col-span-full bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-12 rounded-[2.5rem] text-center flex flex-col items-center justify-center">
+                       <ShoppingCart className="w-12 h-12 text-zinc-200 mb-4" />
+                       <h3 className="text-xl font-bold mb-2 dark:text-white">Your shop is empty</h3>
+                       <p className="text-zinc-500">Add your first product to start earning.</p>
+                    </div>
+                  ) : (
+                    products.map(product => (
+                      <div key={product.id} className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] p-5 group flex gap-5">
+                         <div className="w-32 h-32 rounded-[2rem] bg-zinc-100 dark:bg-zinc-800 overflow-hidden relative">
+                            <img src={product.image} className="w-full h-full object-cover" alt="" />
+                            <button className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                               <label className="cursor-pointer p-2 bg-white/20 backdrop-blur-md rounded-full">
+                                  <Camera className="w-4 h-4" />
+                                  <input 
+                                    type="file" 
+                                    className="hidden" 
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      const url = await uploadImage(file, user?.uid || '', 'products');
+                                      await safeWrite('products', product.id, { image: url }, 'update');
+                                      toast.success('Image updated');
+                                    }}
+                                  />
+                               </label>
+                            </button>
+                         </div>
+                         <div className="flex-1 flex flex-col justify-center">
+                            <div className="flex items-center gap-2 mb-1">
+                               <button 
+                                 onClick={() => safeWrite('products', product.id, { active: !product.active }, 'update')}
+                                 className={cn(
+                                   "px-2 py-0.5 rounded-full text-[10px] font-black uppercase",
+                                   product.active ? "bg-lime-100 text-lime-600" : "bg-zinc-100 text-zinc-400"
+                                 )}
+                               >
+                                 {product.active ? 'Active' : 'Hidden'}
+                               </button>
+                               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{product.category}</span>
+                            </div>
+                            <h4 className="font-black text-lg text-zinc-900 dark:text-white leading-tight mb-0.5">{product.name}</h4>
+                            <p className="text-2xl font-black text-lime-500">₦{product.price.toLocaleString()}</p>
+                            
+                            <div className="flex items-center gap-3 mt-4">
+                               <button 
+                                 onClick={() => {
+                                    const newName = window.prompt('Name:', product.name);
+                                    const newPrice = window.prompt('Price:', product.price.toString());
+                                    if (newName && newPrice) {
+                                      safeWrite('products', product.id, { name: newName, price: parseFloat(newPrice) }, 'update');
+                                    }
+                                 }}
+                                 className="text-zinc-400 hover:text-zinc-950 dark:hover:text-white transition-colors p-1"
+                               >
+                                  <Edit className="w-4 h-4" />
+                               </button>
+                               <button 
+                                 onClick={async () => {
+                                    if (window.confirm('Delete product?')) {
+                                      await safeWrite('products', product.id, null, 'delete');
+                                      toast.success('Product deleted');
+                                    }
+                                 }}
+                                 className="text-zinc-400 hover:text-red-500 transition-colors p-1"
+                               >
+                                  <Trash2 className="w-4 h-4" />
+                               </button>
+                            </div>
+                         </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </motion.div>
             )}

@@ -7,6 +7,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import BlogSection from '../components/BlogSection';
 import SEO from '../components/SEO';
+import NFCBusinessCard from '../components/NFCBusinessCard';
 import { DISPLAY_DOMAIN } from '../constants';
 
 const LandingPage: React.FC = () => {
@@ -109,9 +110,86 @@ const LandingPage: React.FC = () => {
               <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-shine"></div>
             </Link>
           </motion.div>
+
+          {/* 3D Card Section */}
+          <NFCBusinessCard />
         </div>
 
-        {/* Features Grid */}
+        {/* Bento Grid Features */}
+        <div className="mt-40">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-4">Powerful from the ground up.</h2>
+            <p className="text-zinc-500 text-lg">Every feature built with precision for Nigerian creators.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-6 h-auto md:h-[800px]">
+             {/* Big Feature 1 */}
+             <motion.div 
+               whileHover={{ y: -5 }}
+               className="md:col-span-2 md:row-span-2 bg-zinc-900 rounded-[3rem] p-12 flex flex-col justify-between overflow-hidden relative group"
+             >
+                <div className="relative z-10">
+                  <div className="w-16 h-16 bg-lime-400 rounded-2xl flex items-center justify-center mb-8">
+                    <Smartphone className="w-8 h-8 text-black" />
+                  </div>
+                  <h3 className="text-4xl font-black text-white mb-4 tracking-tight leading-none">The Digital <br /> Business Card.</h3>
+                  <p className="text-zinc-400 text-lg max-w-xs">Share your entire world with a single tap. The only card you'll ever need.</p>
+                </div>
+                
+                {/* Visual element */}
+                <div className="absolute top-0 right-0 w-full h-full pointer-events-none opacity-20 group-hover:opacity-40 transition-opacity">
+                   <div className="absolute top-1/2 left-1/2 -translate-y-1/4 w-[400px] h-[600px] bg-lime-400 blur-[100px] rounded-full" />
+                </div>
+
+                <div className="relative z-10 mt-12">
+                   <div className="flex gap-4">
+                      <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/10 uppercase tracking-widest">NFC Ready</div>
+                      <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/10 uppercase tracking-widest">QR Integrated</div>
+                   </div>
+                </div>
+             </motion.div>
+
+             {/* Small Feature 1 */}
+             <motion.div 
+               whileHover={{ y: -5 }}
+               className="md:col-span-2 bg-lime-400 rounded-[3rem] p-10 flex items-center justify-between overflow-hidden relative group"
+             >
+                <div className="relative z-10">
+                   <h3 className="text-3xl font-black text-black tracking-tight mb-2">Shop Manager</h3>
+                   <p className="text-black/60 font-medium max-w-[200px]">Sell anything, anywhere. Integrated payments ready.</p>
+                </div>
+                <div className="w-32 h-32 bg-black/10 rounded-[2rem] flex items-center justify-center rotate-12 -mr-4 group-hover:rotate-0 transition-transform">
+                   <Zap className="w-16 h-16 text-black" />
+                </div>
+             </motion.div>
+
+             {/* Small Feature 2 */}
+             <motion.div 
+               whileHover={{ y: -5 }}
+               className="bg-zinc-100 dark:bg-zinc-900 rounded-[3rem] p-8 flex flex-col justify-center border border-zinc-200 dark:border-zinc-800"
+             >
+                <div className="w-12 h-12 bg-white dark:bg-zinc-800 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+                   <Shield className="w-6 h-6 text-lime-500" />
+                </div>
+                <h4 className="text-xl font-bold mb-2">Secure Payouts</h4>
+                <p className="text-sm text-zinc-500">Your earnings are protected and paid out on time, every time.</p>
+             </motion.div>
+
+             {/* Small Feature 3 */}
+             <motion.div 
+               whileHover={{ y: -5 }}
+               className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[3rem] p-8 flex flex-col justify-center shadow-2xl shadow-zinc-200/50 dark:shadow-none"
+             >
+                <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-900 rounded-2xl flex items-center justify-center mb-6">
+                   <ArrowRight className="w-6 h-6 text-zinc-400" />
+                </div>
+                <h4 className="text-xl font-bold mb-2">Cloud Synced</h4>
+                <p className="text-sm text-zinc-500">Update your links once, it reflects everywhere instantly.</p>
+             </motion.div>
+          </div>
+        </div>
+
+        {/* Traditional Features Grid */}
         <div id="features" className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-40">
           {[
             { icon: Zap, title: "Lightning Fast", desc: "Optimized for speed. Your profile loads in milliseconds." },

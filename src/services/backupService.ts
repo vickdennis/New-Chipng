@@ -12,7 +12,7 @@ import {
   Timestamp,
   updateDoc
 } from 'firebase/firestore';
-import { db, auth } from '../firebase';
+import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 
 export interface BackupData {
   id?: string;
@@ -28,12 +28,12 @@ export interface BackupData {
  * Creates a backup snapshot of a document before a mutation
  */
 export const createBackup = async (collectionName: string, documentId: string, action: 'create' | 'update' | 'delete' | 'rollback') => {
+  const path = `${collectionName}/${documentId}`;
   try {
     const docRef = doc(db, collectionName, documentId);
     const docSnap = await getDoc(docRef);
     
     // For update and delete, we need existing data
-    // For create, there is no existing data, so we might just log the attempt or the post-create state
     const existingData = docSnap.exists() ? docSnap.data() : null;
 
     const backupRef = doc(collection(db, `${collectionName}_backup`));
@@ -49,7 +49,7 @@ export const createBackup = async (collectionName: string, documentId: string, a
     await setDoc(backupRef, backupData);
     return backupRef.id;
   } catch (error) {
-    console.error(`Backup failed for ${collectionName}/${documentId}:`, error);
+    handleFirestoreError(error, OperationType.WRITE, `${collectionName}_backup`);
     return null;
   }
 };
@@ -58,19 +58,29 @@ export const createBackup = async (collectionName: string, documentId: string, a
  * Safe write wrapper that performs a backup before writing
  */
 export const safeWrite = async (collectionName: string, documentId: string | null, data: any, action: 'update' | 'create' | 'delete') => {
+  const path = documentId ? `${collectionName}/${documentId}` : collectionName;
   try {
     // 1. Create Backup (if document exists)
     if (documentId) {
-      await createBackup(collectionName, documentId, action);
+      // Check if document exists before backup for updates/deletes
+      if (action !== 'create') {
+        await createBackup(collectionName, documentId, action);
+      }
     }
 
     // 2. Perform Write
     if (action === 'create') {
       const colRef = collection(db, collectionName);
       const newDocRef = documentId ? doc(db, collectionName, documentId) : doc(colRef);
-      await setDoc(newDocRef, { ...data, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), isDeleted: false });
+      const finalData = { 
+        ...data, 
+        createdAt: serverTimestamp(), 
+        updatedAt: serverTimestamp(), 
+        isDeleted: false 
+      };
+      await setDoc(newDocRef, finalData);
       
-      // Create an initial snapshot for the new document
+      // Create an initial snapshot for the new document (now it exists)
       await createBackup(collectionName, newDocRef.id, 'create');
       
       return newDocRef.id;
@@ -92,7 +102,7 @@ export const safeWrite = async (collectionName: string, documentId: string | nul
 
     return true;
   } catch (error) {
-    console.error(`Safe write failed for ${collectionName}/${documentId}:`, error);
+    handleFirestoreError(error, action === 'create' ? OperationType.CREATE : action === 'delete' ? OperationType.DELETE : OperationType.UPDATE, path);
     throw error;
   }
 };
@@ -101,6 +111,7 @@ export const safeWrite = async (collectionName: string, documentId: string | nul
  * Rollback a document to a specific backup version
  */
 export const rollbackToVersion = async (collectionName: string, documentId: string, backupId: string) => {
+  const path = `${collectionName}/${documentId}`;
   try {
     const backupRef = doc(db, `${collectionName}_backup`, backupId);
     const backupSnap = await getDoc(backupRef);
@@ -120,7 +131,7 @@ export const rollbackToVersion = async (collectionName: string, documentId: stri
 
     return true;
   } catch (error) {
-    console.error(`Rollback version failed for ${collectionName}/${documentId}:`, error);
+    handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
   }
 };
@@ -129,6 +140,7 @@ export const rollbackToVersion = async (collectionName: string, documentId: stri
  * Rollback a document to its previous state
  */
 export const rollbackDocument = async (collectionName: string, documentId: string) => {
+  const path = `${collectionName}/${documentId}`;
   try {
     // 1. Find the latest backup
     const backupsQuery = query(
@@ -156,7 +168,7 @@ export const rollbackDocument = async (collectionName: string, documentId: strin
 
     return true;
   } catch (error) {
-    console.error(`Rollback failed for ${collectionName}/${documentId}:`, error);
+    handleFirestoreError(error, OperationType.WRITE, path);
     throw error;
   }
 };
@@ -165,6 +177,7 @@ export const rollbackDocument = async (collectionName: string, documentId: strin
  * Fetch backup history for a document
  */
 export const getBackupHistory = async (collectionName: string, documentId: string) => {
+  const path = `${collectionName}_backup`;
   try {
     const backupsQuery = query(
       collection(db, `${collectionName}_backup`),
@@ -175,7 +188,7 @@ export const getBackupHistory = async (collectionName: string, documentId: strin
     const snap = await getDocs(backupsQuery);
     return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as BackupData));
   } catch (error) {
-    console.error(`Failed to fetch backup history for ${collectionName}/${documentId}:`, error);
+    handleFirestoreError(error, OperationType.LIST, path);
     return [];
   }
 };

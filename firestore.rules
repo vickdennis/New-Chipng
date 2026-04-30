@@ -11,7 +11,7 @@ service cloud.firestore {
 
     function isSignedIn() { return request.auth != null; }
     function isEmailVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
-    function isOwner(userId) { return isEmailVerified() && request.auth.uid == userId; }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function isAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
@@ -27,38 +27,58 @@ service cloud.firestore {
     // ---------------------------------------------------------
 
     function isValidUser(data) {
-      return data.keys().hasAll(['username', 'email']) &&
+      return data.keys().hasAll(['username', 'email', 'createdAt', 'updatedAt', 'isDeleted']) &&
              data.username is string && data.username.size() >= 3 && data.username.size() <= 30 &&
              data.email is string && data.email.size() <= 100 &&
              data.get('displayName', '') is string && data.get('displayName', '').size() <= 100 &&
-             data.get('isDeleted', false) is bool;
+             data.isDeleted is bool;
     }
 
     function isValidLink(data) {
-      return data.keys().hasAll(['userId', 'title', 'url']) &&
+      return data.keys().hasAll(['userId', 'title', 'url', 'createdAt', 'updatedAt', 'isDeleted']) &&
              data.userId is string && data.userId.size() <= 128 &&
              data.title is string && data.title.size() <= 100 &&
-             data.url is string && data.url.size() <= 2000;
+             data.url is string && data.url.size() <= 2000 &&
+             data.isDeleted is bool;
+    }
+
+    function isValidBlog(data) {
+      return data.keys().hasAll(['userId', 'title', 'slug', 'content', 'createdAt', 'updatedAt', 'isDeleted']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.slug is string && data.slug.size() <= 200 &&
+             data.content is string && data.content.size() <= 50000 &&
+             data.isDeleted is bool;
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['userId', 'name', 'price', 'createdAt', 'updatedAt', 'isDeleted']) &&
+             data.userId is string && data.userId.size() <= 128 &&
+             data.name is string && data.name.size() <= 100 &&
+             data.price is number && data.price >= 0 &&
+             data.isDeleted is bool;
     }
 
     function isValidShout(data) {
-      return data.keys().hasAll(['userId', 'content']) &&
+      return data.keys().hasAll(['userId', 'content', 'createdAt', 'updatedAt', 'isDeleted']) &&
              data.userId is string && data.userId.size() <= 128 &&
-             data.content is string && data.content.size() <= 500;
+             data.content is string && data.content.size() <= 500 &&
+             data.isDeleted is bool;
     }
 
     function isValidMedia(data) {
-      return data.keys().hasAll(['userId', 'url', 'type']) &&
+      return data.keys().hasAll(['userId', 'url', 'type', 'createdAt', 'updatedAt', 'isDeleted']) &&
              data.userId is string && data.userId.size() <= 128 &&
              data.url is string && data.url.size() <= 2000 &&
-             data.type in ['image', 'video'];
+             data.type in ['image', 'video'] &&
+             data.isDeleted is bool;
     }
 
     function isValidBackup(data) {
-      return data.keys().hasAll(['originalId', 'collectionName', 'data', 'action', 'performedBy']) &&
+      return data.keys().hasAll(['originalId', 'collectionName', 'data', 'action', 'performedBy', 'timestamp']) &&
              data.originalId is string && data.collectionName is string &&
              data.action in ['create', 'update', 'delete', 'rollback'] &&
-             data.performedBy is string;
+             data.performedBy is string && data.timestamp is timestamp;
     }
 
     // ---------------------------------------------------------
@@ -66,7 +86,7 @@ service cloud.firestore {
     // ---------------------------------------------------------
 
     match /users/{userId} {
-      allow get: if true;
+      allow get: if isValidId(userId);
       allow list: if true; // Public list allowed for discovery
       allow create: if isOwner(userId) && isValidUser(incoming()) && (
         !incoming().keys().hasAny(['role', 'isPremium', 'plan', 'isVerified', 'status'])
@@ -83,9 +103,9 @@ service cloud.firestore {
     }
 
     match /links/{linkId} {
-      allow get: if true;
+      allow get: if isValidId(linkId);
       allow list: if resource.data.active == true || (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-      allow create: if isEmailVerified() && isValidLink(incoming()) && incoming().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(linkId) && isValidLink(incoming()) && incoming().userId == request.auth.uid;
       allow update: if (isOwner(existing().userId) || isAdmin()) && (
         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'url', 'icon', 'active', 'position', 'isDeleted', 'deletedAt', 'updatedAt', 'type', 'scheduledStart', 'scheduledEnd', 'styles'])
       );
@@ -98,8 +118,9 @@ service cloud.firestore {
     }
 
     match /shouts/{shoutId} {
-      allow read: if true;
-      allow create: if isEmailVerified() && isValidShout(incoming()) && incoming().userId == request.auth.uid;
+      allow get: if isValidId(shoutId);
+      allow list: if true;
+      allow create: if isSignedIn() && isValidId(shoutId) && isValidShout(incoming()) && incoming().userId == request.auth.uid;
       allow update: if (isOwner(existing().userId) || isAdmin());
       allow delete: if (isOwner(existing().userId) || isAdmin());
     }
@@ -110,8 +131,9 @@ service cloud.firestore {
     }
 
     match /media/{mediaId} {
-      allow read: if true;
-      allow create: if isEmailVerified() && isValidMedia(incoming()) && incoming().userId == request.auth.uid;
+      allow get: if isValidId(mediaId);
+      allow list: if true;
+      allow create: if isSignedIn() && isValidId(mediaId) && isValidMedia(incoming()) && incoming().userId == request.auth.uid;
       allow update: if (isOwner(existing().userId) || isAdmin());
       allow delete: if (isOwner(existing().userId) || isAdmin());
     }
@@ -122,23 +144,33 @@ service cloud.firestore {
     }
 
     match /blogs/{blogId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow get: if isValidId(blogId);
+      allow list: if resource.data.published == true || (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() && isValidId(blogId) && isValidBlog(incoming()) && incoming().userId == request.auth.uid;
+      allow update: if (isOwner(existing().userId) || isAdmin()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'slug', 'content', 'excerpt', 'coverImage', 'published', 'tags', 'updatedAt', 'isDeleted', 'seoTitle', 'seoDescription', 'seoKeywords'])
+      );
+      allow delete: if (isOwner(existing().userId) || isAdmin());
     }
 
     match /blogs_backup/{id} {
       allow read: if isAdmin();
-      allow create: if isAdmin() && isValidBackup(incoming());
+      allow create: if isSignedIn() && isValidBackup(incoming());
     }
 
     match /products/{productId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow get: if isValidId(productId);
+      allow list: if resource.data.active == true || (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() && isValidId(productId) && isValidProduct(incoming()) && incoming().userId == request.auth.uid;
+      allow update: if (isOwner(existing().userId) || isAdmin()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'price', 'image', 'category', 'stock', 'active', 'updatedAt', 'isDeleted'])
+      );
+      allow delete: if (isOwner(existing().userId) || isAdmin());
     }
 
     match /products_backup/{id} {
       allow read: if isAdmin();
-      allow create: if isAdmin() && isValidBackup(incoming());
+      allow create: if isSignedIn() && isValidBackup(incoming());
     }
 
     match /transactions/{id} {

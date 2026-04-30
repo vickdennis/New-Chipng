@@ -35,9 +35,10 @@
     },
     "BlogPost": {
       "title": "Blog Post",
-      "description": "A blog post created by administrators.",
+      "description": "A blog post created by users or administrators.",
       "type": "object",
       "properties": {
+        "userId": { "type": "string" },
         "title": { "type": "string" },
         "slug": { "type": "string" },
         "content": { "type": "string" },
@@ -47,7 +48,7 @@
         "tags": { "type": "array" },
         "isDeleted": { "type": "boolean" }
       },
-      "required": ["title", "slug", "content"]
+      "required": ["userId", "title", "slug", "content"]
     },
     "Backup": {
       "title": "Data Backup",
@@ -89,16 +90,20 @@
     },
     "Product": {
       "title": "Store Product",
-      "description": "Product sold in the platform store.",
+      "description": "Product sold in the platform store by users or admins.",
       "type": "object",
       "properties": {
+        "userId": { "type": "string" },
         "name": { "type": "string" },
         "description": { "type": "string" },
         "price": { "type": "number" },
         "image": { "type": "string" },
+        "category": { "type": "string" },
         "stock": { "type": "number" },
-        "active": { "type": "boolean" }
-      }
+        "active": { "type": "boolean" },
+        "isDeleted": { "type": "boolean" }
+      },
+      "required": ["userId", "name", "price"]
     },
     "Transaction": {
       "title": "Financial Transaction",

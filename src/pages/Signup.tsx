@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db, getUserByUsername, handleFirestoreError, OperationType } from '../firebase';
+import { safeWrite } from '../services/backupService';
 import { toast } from 'sonner';
 import { Mail, Lock, User as UserIcon, ArrowRight } from 'lucide-react';
 import Logo from '../components/Logo';
@@ -56,7 +57,7 @@ const Signup: React.FC = () => {
 
       // Create user doc with all profile data merged
       try {
-        await setDoc(doc(db, 'users', uid), {
+        await safeWrite('users', uid, {
           uid,
           email,
           username: finalUsername,
@@ -64,7 +65,6 @@ const Signup: React.FC = () => {
           bio: 'Welcome to my Chip NG profile!',
           photoURL: null,
           role: 'user',
-          createdAt: serverTimestamp(),
           status: 'active',
           theme: 'minimal',
           buttonStyle: 'rounded',
@@ -74,7 +74,7 @@ const Signup: React.FC = () => {
           plan: 'basic',
           subscriptionStatus: 'active',
           onboardingCompleted: false
-        });
+        }, 'create');
       } catch (error) {
         handleFirestoreError(error, OperationType.CREATE, `users/${uid}`);
       }
@@ -118,7 +118,7 @@ const Signup: React.FC = () => {
 
         // Create user doc with all profile data merged
         try {
-          await setDoc(doc(db, 'users', user.uid), {
+          await safeWrite('users', user.uid, {
             uid: user.uid,
             email: user.email,
             username: finalUsername,
@@ -126,7 +126,6 @@ const Signup: React.FC = () => {
             photoURL: user.photoURL || null,
             bio: 'Welcome to my Chip NG profile!',
             role: 'user',
-            createdAt: serverTimestamp(),
             status: 'active',
             theme: 'minimal',
             buttonStyle: 'rounded',
@@ -136,7 +135,7 @@ const Signup: React.FC = () => {
             plan: 'basic',
             subscriptionStatus: 'active',
             onboardingCompleted: false
-          });
+          }, 'create');
         } catch (error) {
           handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}`);
         }

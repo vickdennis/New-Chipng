@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db, getUserByUsername } from '../firebase';
+import { auth, db, getUserByUsername, handleFirestoreError, OperationType } from '../firebase';
+import { safeWrite } from '../services/backupService';
 import { toast } from 'sonner';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 import Logo from '../components/Logo';
@@ -36,7 +37,7 @@ const Login: React.FC = () => {
           finalUsername = `${baseUsername}${Math.floor(Math.random() * 10000)}`;
         }
 
-        await setDoc(doc(db, 'users', user.uid), {
+        await safeWrite('users', user.uid, {
           uid: user.uid,
           email: user.email,
           username: finalUsername,
@@ -44,7 +45,6 @@ const Login: React.FC = () => {
           photoURL: user.photoURL || null,
           bio: 'Welcome to my Chip NG profile!',
           role: 'user',
-          createdAt: serverTimestamp(),
           status: 'active',
           theme: 'minimal',
           buttonStyle: 'rounded',
@@ -53,7 +53,7 @@ const Login: React.FC = () => {
           totalClicks: 0,
           plan: 'basic',
           subscriptionStatus: 'active'
-        });
+        }, 'create');
       }
 
       toast.success('Welcome back!');
@@ -88,7 +88,7 @@ const Login: React.FC = () => {
         }
 
         // Create user doc with all profile data merged
-        await setDoc(doc(db, 'users', user.uid), {
+        await safeWrite('users', user.uid, {
           uid: user.uid,
           email: user.email,
           username: finalUsername,
@@ -96,14 +96,13 @@ const Login: React.FC = () => {
           photoURL: user.photoURL || null,
           bio: 'Welcome to my Chip NG profile!',
           role: 'user',
-          createdAt: serverTimestamp(),
           status: 'active',
           theme: 'minimal',
           buttonStyle: 'rounded',
           backgroundType: 'solid',
           backgroundColor: '#ffffff',
           totalClicks: 0
-        });
+        }, 'create');
       }
 
       toast.success('Welcome back!');

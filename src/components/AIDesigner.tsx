@@ -11,9 +11,10 @@ import { doc, updateDoc, addDoc, collection, deleteDoc } from 'firebase/firestor
 import { safeWrite } from '../services/backupService';
 import { User, Link as UserLink, THEMES } from '../types';
 import { toast } from 'sonner';
+import { GoogleGenAI, Type } from "@google/genai";
 
 interface Message {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'model';
   content: string;
   isAction?: boolean;
 }
@@ -40,6 +41,10 @@ You have access to the following actions:
 - deleteLink: Removes a link.
 - applyTheme: Changes the visual theme of the profile.
 
+IMPORTANT: Use the correct field names:
+- Profiles: displayName, bio, username, textColor, photoURL, coverImage, backgroundColor, theme.
+- Links: title, url.
+
 Always confirm with the user after performing an action.
 `;
 
@@ -53,8 +58,15 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
   const [isMuted, setIsMuted] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const currentSourceRef = useRef<AudioBufferSourceNode | null>(null);
+
+  const aiRef = useRef<any>(null);
+
+  useEffect(() => {
+    const key = process.env.GEMINI_API_KEY;
+    if (key) {
+      aiRef.current = new GoogleGenAI({ apiKey: key });
+    }
+  }, []);
   
   useEffect(() => {
     if (scrollRef.current) {
@@ -187,13 +199,20 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
     const userMessage = (overrideInput || input).trim();
     if (!userMessage || isLoading) return;
 
+    if (!aiRef.current) {
+      toast.error("AI Service is temporarily unavailable (Key missing)");
+      return;
+    }
+
     setInput('');
     const newMessages: Message[] = [...messages, { role: 'user', content: userMessage }];
     setMessages(newMessages);
     setIsLoading(true);
 
     try {
-      const response = await axios.post('/api/ai/design', {
+      console.log('🚀 AI Designer sending request to /api/ai-designer');
+      
+      const response = await axios.post('/api/ai-designer', {
         messages: newMessages,
         userContext: {
           profile: profile || {},
@@ -231,8 +250,7 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
       }
     } catch (error: any) {
       console.error('❌ AI Designer Error:', error);
-      const errorMsg = error.response?.data?.error || error.message;
-      toast.error(`AI Error: ${errorMsg}`);
+      toast.error(`AI Error: ${error.message || 'Check your connection'}`);
     } finally {
       setIsLoading(false);
     }

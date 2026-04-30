@@ -69,6 +69,35 @@ if (!PAYSTACK_SECRET_KEY) {
 
 // REST Firestore Helpers (Fallback for Admin SDK IAM issues)
 async function restFirestore(action: 'get' | 'patch' | 'post' | 'delete', collection: string, docId?: string, data?: any, queryPayload?: any) {
+  // Try Admin SDK first if available
+  if (db) {
+    try {
+      const colRef = db.collection(collection);
+      if (action === 'get') {
+        if (docId) {
+          const docSnap = await colRef.doc(docId).get();
+          if (!docSnap.exists) return null;
+          // Return a REST-like structure so fromRest works
+          return { name: docSnap.ref.path, fields: toRestFields(docSnap.data()) };
+        } else {
+          const snapshot = await colRef.get();
+          return { documents: snapshot.docs.map(doc => ({ document: { name: doc.ref.path, fields: toRestFields(doc.data()) } })) };
+        }
+      }
+      if (action === 'post' && queryPayload) {
+        // Limited support for structured queries via Admin SDK for now
+        const snapshot = await colRef.get();
+        return snapshot.docs.map(doc => ({ document: { name: doc.ref.path, fields: toRestFields(doc.data()) } }));
+      }
+      if (action === 'patch' && docId && data) {
+        await colRef.doc(docId).set(data, { merge: true });
+        return { name: docId };
+      }
+    } catch (adminError) {
+      console.warn('Admin SDK failed in restFirestore, falling back to REST:', adminError);
+    }
+  }
+
   if (!firebaseConfig) return null;
   const { projectId, firestoreDatabaseId, apiKey } = firebaseConfig;
   const dbId = firestoreDatabaseId && firestoreDatabaseId !== '' ? firestoreDatabaseId : '(default)';
@@ -104,7 +133,7 @@ async function restFirestore(action: 'get' | 'patch' | 'post' | 'delete', collec
         else if (val instanceof Date || (typeof val === 'string' && val.includes('T') && val.includes('Z'))) payload.fields[key] = { timestampValue: typeof val === 'string' ? val : val.toISOString() };
         else if (typeof val === 'string') payload.fields[key] = { stringValue: val };
         else if (Array.isArray(val)) payload.fields[key] = { arrayValue: { values: val.map(v => ({ stringValue: String(v) })) } };
-        else if (typeof val === 'object' && val !== null) payload.fields[key] = { mapValue: { fields: {} } }; // Simple nested map support
+        else if (typeof val === 'object' && val !== null) payload.fields[key] = { mapValue: { fields: {} } }; 
       }
       
       const res = await axios.patch(url, payload, { headers });
@@ -122,22 +151,74 @@ async function restFirestore(action: 'get' | 'patch' | 'post' | 'delete', collec
   }
 }
 
+// Helper to convert JS Object to REST Fields
+function toRestFields(data: any) {
+  if (!data) return {};
+  const fields: any = {};
+  for (const [key, val] of Object.entries(data)) {
+    if (typeof val === 'boolean') fields[key] = { booleanValue: val };
+    else if (typeof val === 'number') fields[key] = { doubleValue: val };
+    else if (val instanceof admin.firestore.Timestamp) fields[key] = { timestampValue: val.toDate().toISOString() };
+    else if (val instanceof Date) fields[key] = { timestampValue: val.toISOString() };
+    else if (typeof val === 'string') fields[key] = { stringValue: val };
+    else if (Array.isArray(val)) fields[key] = { arrayValue: { values: val.map(v => ({ stringValue: String(v) })) } };
+    else if (typeof val === 'object' && val !== null) fields[key] = { mapValue: { fields: toRestFields(val) } };
+  }
+  return fields;
+}
+
 // Convert REST Document to JS Object
 function fromRest(doc: any) {
   if (!doc || !doc.fields) return null;
   const data: any = { id: doc.name?.split('/').pop() };
   for (const [key, val] of Object.entries(doc.fields)) {
     const v: any = val;
-    data[key] = v.stringValue ?? v.booleanValue ?? v.doubleValue ?? v.integerValue ?? v.timestampValue ?? v.arrayValue?.values?.map((iv: any) => iv.stringValue);
+    data[key] = v.stringValue ?? v.booleanValue ?? v.doubleValue ?? v.integerValue ?? v.timestampValue ?? v.mapValue?.fields ? fromRest({ fields: v.mapValue.fields }) : v.arrayValue?.values?.map((iv: any) => iv.stringValue);
   }
   return data;
 }
 
-// Helper for backend safe write with backups
+// Helper for backend safe write with backups (Admin SDK First)
 async function backendSafeWrite(collectionName: string, documentId: string, data: any, action: 'update' | 'create' | 'delete', performedBy: string = 'system') {
   try {
     const now = new Date().toISOString();
     
+    if (db) {
+       const docRef = documentId ? db.collection(collectionName).doc(documentId) : db.collection(collectionName).doc();
+       const finalId = docRef.id;
+
+       // 1. Backup before modification
+       if (action === 'update' || action === 'delete') {
+         const docSnap = await docRef.get();
+         if (docSnap.exists) {
+           const backupId = `back_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+           await db.collection(`${collectionName}_backup`).doc(backupId).set({
+             originalId: finalId,
+             collectionName,
+             data: docSnap.data(),
+             action,
+             timestamp: admin.firestore.FieldValue.serverTimestamp(),
+             performedBy
+           });
+         }
+       }
+
+       // 2. Write
+       if (action === 'delete') {
+         await docRef.set({ isDeleted: true, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+       } else if (action === 'update') {
+         await docRef.set({ ...data, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+       } else {
+         await docRef.set({ 
+           ...data, 
+           createdAt: admin.firestore.FieldValue.serverTimestamp(),
+           updatedAt: admin.firestore.FieldValue.serverTimestamp() 
+         });
+       }
+       return true;
+    }
+
+    // Fallback logic (original REST implementation)
     // Backup before modification (for update and delete)
     if (action === 'update' || action === 'delete') {
       try {
@@ -159,26 +240,15 @@ async function backendSafeWrite(collectionName: string, documentId: string, data
     }
 
     if (action === 'delete') {
-      await restFirestore('patch', collectionName, documentId, {
-        isDeleted: true,
-        deletedAt: now,
-        updatedAt: now
-      });
+      await restFirestore('patch', collectionName, documentId, { isDeleted: true, deletedAt: now, updatedAt: now });
     } else if (action === 'update') {
-      await restFirestore('patch', collectionName, documentId, {
-        ...data,
-        updatedAt: now
-      });
+      await restFirestore('patch', collectionName, documentId, { ...data, updatedAt: now });
     } else {
-      await restFirestore('patch', collectionName, documentId, {
-        ...data,
-        createdAt: now,
-        updatedAt: now
-      });
+      await restFirestore('patch', collectionName, documentId, { ...data, createdAt: now, updatedAt: now });
     }
     return true;
-  } catch (error) {
-    console.error(`Backend REST SafeWrite failed for ${collectionName}/${documentId}:`, error);
+  } catch (error: any) {
+    console.error(`backendSafeWrite failed for ${collectionName}:`, error.message);
     return false;
   }
 }
@@ -383,21 +453,16 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     }
   });
 
-  // AI Designer Proxy Endpoint
   // AI Designer Endpoint (Fixing model/key usage)
-  app.post("/api/ai/design", async (req, res) => {
+  app.post("/api/ai-designer", async (req, res) => {
     try {
+      console.log("[AI Designer] Request received:", JSON.stringify(req.body));
       const { messages, userContext } = req.body;
       const key = process.env.GEMINI_API_KEY;
 
       if (!key) {
         console.error("[AI Designer] Error: GEMINI_API_KEY is missing from environment");
         return res.status(500).json({ error: "AI Designer is currently unavailable. Please configure the GEMINI_API_KEY." });
-      }
-
-      // Check for potentially invalid key format (just length check)
-      if (key.length < 20) {
-         console.warn(`[AI Designer] Warning: GEMINI_API_KEY seems too short (${key.length}). Check configuration.`);
       }
 
       const systemInstruction = `
@@ -495,14 +560,14 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         tools: tools as any[]
       });
 
-      const history = messages.map((m: any) => ({
+      const history = (messages || []).map((m: any) => ({
         role: m.role === 'user' ? 'user' : 'model',
         parts: [{ text: m.content }]
       })).slice(0, -1);
 
       let firstUserIndex = history.findIndex((h: any) => h.role === 'user');
       const validHistory = firstUserIndex !== -1 ? history.slice(firstUserIndex) : [];
-      const lastMessage = messages[messages.length - 1].content;
+      const lastMessage = messages?.[messages.length - 1]?.content || "Hello";
 
       const chat = model.startChat({
         history: validHistory as any[],
@@ -518,7 +583,6 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       let functionCalls = [];
       let text = "";
 
-      // Improved response parsing for function calls and text
       const parts = response.candidates?.[0]?.content?.parts || [];
       
       for (const part of parts) {
@@ -533,7 +597,6 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         }
       }
 
-      // Fallback if parts didn't work as expected
       if (functionCalls.length === 0) {
         try {
           const calls = response.functionCalls();
@@ -550,12 +613,16 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       }
 
       console.log(`[AI Designer] Generated ${functionCalls.length} function calls and ${text.length} chars of text`);
-
       res.json({ text, functionCalls });
     } catch (error: any) {
-      console.error("AI Designer Proxy failed:", error.message);
+      console.error("AI Designer failed:", error.message);
       res.status(500).json({ error: error.message });
     }
+  });
+
+  // Alias for backward compatibility
+  app.post("/api/ai/design", (req, res) => {
+    res.redirect(307, "/api/ai-designer");
   });
 
   // Upload Proxy Endpoint
@@ -589,35 +656,39 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
   });
 
   // AI Blog Writer Endpoint
-  app.post("/api/ai/blog", async (req, res) => {
+  app.post("/api/ai-blog", async (req, res) => {
     try {
-      const { topic } = req.body;
+      console.log("[AI Blog] Generating post for topic:", req.body.topic);
+      const { topic, keywords } = req.body;
       const key = process.env.GEMINI_API_KEY;
 
       if (!key) {
-        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+        console.error("[AI Blog] Error: GEMINI_API_KEY missing");
+        return res.status(500).json({ error: "AI Writer is currently unavailable. GEMINI_API_KEY is not configured." });
       }
 
       const ai = new GoogleGenerativeAI(key);
       const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-      const prompt = `Write a professional blog post about "${topic}". 
+      const prompt = `Write a professional, high-quality blog post about "${topic}". 
+      ${keywords ? `Keywords to include: ${keywords}` : ''}
+      
       Return the response in JSON format with the following keys:
-      - title: A catchy title
-      - content: Full blog post content in Markdown format (use proper headers, lists, etc.)
-      - excerpt: A short 2-sentence summary
+      - title: A catchy and SEO-optimized title
+      - content: Full blog post content in Markdown format (at least 500 words, use proper headers, bold text, lists, etc.)
+      - excerpt: A short 2-sentence captivating summary for previews
       - seoTitle: SEO optimized title (max 60 chars)
       - seoDescription: SEO optimized description (max 160 chars)
       - seoKeywords: Array of 5-10 relevant keywords
       - tags: Array of 3-5 relevant tags
       
-      IMPORTANT: Respond ONLY with valid JSON. No markdown backticks.`;
+      IMPORTANT: Respond ONLY with valid JSON. Do not include markdown code block markers in your response if possible, or ensure it is clean JSON.`;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
       let text = response.text();
       
-      // Clean up potential markdown blocks if AI ignored instructions
+      // Clean up potential markdown blocks
       text = text.trim();
       if (text.startsWith('```')) {
         text = text.replace(/^```json\n?/, '').replace(/\n?```$/, '');
@@ -625,15 +696,21 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
 
       try {
         const data = JSON.parse(text);
+        console.log("[AI Blog] Generation successful:", data.title);
         res.json(data);
       } catch (parseError) {
-        console.error("Failed to parse AI blog response:", text);
-        res.status(500).json({ error: "Failed to parse AI response as JSON", raw: text });
+        console.error("[AI Blog] JSON Parse failed:", text);
+        res.status(500).json({ error: "Failed to parse AI response. Please try again.", raw: text });
       }
     } catch (error: any) {
-      console.error("AI Blog Writer failed:", error.message);
+      console.error("[AI Blog] Error:", error.message);
       res.status(500).json({ error: error.message });
     }
+  });
+
+  // Alias for backward compatibility
+  app.post("/api/ai/blog", (req, res) => {
+    res.redirect(307, "/api/ai-blog");
   });
 
   app.post("/api/track", async (req, res) => {
@@ -815,6 +892,49 @@ Sitemap: https://chipng.com/sitemap.xml`);
       res.send(xml);
     } catch (error) {
       res.status(500).send("Error generating sitemap");
+    }
+  });
+
+  // 4. Image Upload Proxy (Fallback for Client-side IAM issues)
+  app.post("/api/upload", upload.single('file'), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      if (!bucket) return res.status(500).json({ error: "Storage bucket not initialized" });
+
+      const { userId, pathType } = req.body;
+      const file = req.file;
+      
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 8);
+      const safeFileName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filename = `${timestamp}_${randomStr}_${safeFileName}`;
+      
+      const folderMap: any = {
+        profiles: 'profile-images',
+        covers: 'cover-images',
+        backgrounds: 'background-images',
+        products: 'shop-images',
+        blogs: 'blog-images',
+        'link-icons': 'link-icons'
+      };
+      
+      const folder = folderMap[pathType] || 'misc';
+      const destination = `${folder}/${userId || 'system'}/${filename}`;
+      
+      const fileRef = bucket.file(destination);
+      await fileRef.save(file.buffer, {
+        metadata: {
+          contentType: file.mimetype,
+        }
+      });
+      
+      const encodedPath = encodeURIComponent(destination);
+      const publicUrl = `https://firebasestorage.googleapis.com/v1/b/${bucket.name}/o/${encodedPath}?alt=media`;
+      
+      res.json({ url: publicUrl });
+    } catch (error: any) {
+      console.error("Backend upload failed:", error);
+      res.status(500).json({ error: error.message });
     }
   });
 

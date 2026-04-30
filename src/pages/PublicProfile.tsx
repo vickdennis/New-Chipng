@@ -92,6 +92,8 @@ const PublicProfile: React.FC = () => {
   const [links, setLinks] = useState<LinkType[]>([]);
   const [shouts, setShouts] = useState<Shout[]>([]);
   const [media, setMedia] = useState<Media[]>([]);
+  const [blogs, setBlogs] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'shouts' | 'media'>('shouts');
@@ -153,6 +155,8 @@ END:VCARD`;
     let unsubLinks: () => void = () => {};
     let unsubShouts: () => void = () => {};
     let unsubMedia: () => void = () => {};
+    let unsubBlogs: () => void = () => {};
+    let unsubProducts: () => void = () => {};
 
     const fetchProfile = async () => {
       try {
@@ -190,6 +194,7 @@ END:VCARD`;
         const qLinks = query(
           collection(db, 'links'), 
           where('userId', '==', userId),
+          where('active', '==', true),
           orderBy('position', 'asc')
         );
         unsubLinks = onSnapshot(qLinks, (snapshot) => {
@@ -233,6 +238,16 @@ END:VCARD`;
             .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
           setMedia(sortedMedia);
         }, (err) => console.error("Media error:", err));
+
+        const qBlogs = query(collection(db, 'blogs'), where('userId', '==', userId), where('published', '==', true));
+        unsubBlogs = onSnapshot(qBlogs, (snapshot) => {
+          setBlogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        });
+
+        const qProducts = query(collection(db, 'products'), where('userId', '==', userId), where('active', '==', true));
+        unsubProducts = onSnapshot(qProducts, (snapshot) => {
+          setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        });
       } catch (err) {
         console.error(err);
         setError('Something went wrong');
@@ -246,6 +261,8 @@ END:VCARD`;
       unsubLinks();
       unsubShouts();
       unsubMedia();
+      unsubBlogs();
+      unsubProducts();
     };
   }, [username]);
 
@@ -626,6 +643,79 @@ END:VCARD`;
                     <div className="absolute bottom-6 left-6 opacity-0 group-hover:opacity-100 transition-all translate-y-4 group-hover:translate-y-0">
                        <span className="text-[10px] font-black uppercase text-[#A3E635] tracking-widest">Snapshot • {format(new Date(item.createdAt), 'yyyy')}</span>
                     </div>
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Shop Section */}
+          {products.length > 0 && (
+            <section className="space-y-8">
+              <div className="flex items-center justify-between px-2">
+                <h2 className="text-2xl font-black tracking-tighter">Shop</h2>
+                <div className="flex-1 h-px bg-zinc-900 ml-6" />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {products.map((product) => (
+                  <motion.div
+                    key={product.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    className="bg-zinc-900 border border-white/5 rounded-[2.5rem] overflow-hidden group shadow-2xl"
+                  >
+                    <div className="aspect-square relative overflow-hidden">
+                      <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform group-hover:scale-105" />
+                      <div className="absolute top-4 right-4 bg-[#A3E635] text-black px-4 py-2 rounded-xl font-black text-sm shadow-xl">
+                        ₦{product.price.toLocaleString()}
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <h3 className="text-lg font-bold mb-2 group-hover:text-[#A3E635] transition-colors">{product.name}</h3>
+                      <p className="text-zinc-500 text-xs line-clamp-2 mb-6">{product.description}</p>
+                      <button className="w-full py-4 bg-zinc-800 hover:bg-white hover:text-black transition-all rounded-2xl font-black text-xs uppercase tracking-widest">
+                        Purchase Now
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Blog Section */}
+          {blogs.length > 0 && (
+            <section className="space-y-8">
+              <div className="flex items-center justify-between px-2">
+                <h2 className="text-2xl font-black tracking-tighter">Insights</h2>
+                <div className="flex-1 h-px bg-zinc-900 ml-6" />
+              </div>
+
+              <div className="space-y-6">
+                {blogs.slice(0, 3).map((blog) => (
+                  <motion.div
+                    key={blog.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                  >
+                    <RouterLink
+                      to={`/blog/${blog.slug}`}
+                      className="group flex gap-6 p-6 bg-zinc-900/40 backdrop-blur-md border border-white/5 rounded-[2.5rem] hover:border-[#A3E635]/30 transition-all"
+                    >
+                      <div className="w-24 h-24 rounded-2xl overflow-hidden shrink-0 border border-white/5">
+                        <img src={blog.coverImage} alt="" className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
+                      </div>
+                      <div className="flex flex-col justify-center min-w-0">
+                        <div className="text-[10px] font-black text-[#A3E635] uppercase tracking-widest mb-1">
+                          {format(new Date(blog.createdAt), 'MMM d, yyyy')}
+                        </div>
+                        <h3 className="font-bold text-lg group-hover:text-[#A3E635] transition-colors line-clamp-1">{blog.title}</h3>
+                        <p className="text-zinc-500 text-xs line-clamp-1 mt-1 font-medium">{blog.excerpt}</p>
+                      </div>
+                    </RouterLink>
                   </motion.div>
                 ))}
               </div>

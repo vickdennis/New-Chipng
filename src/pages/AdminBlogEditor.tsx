@@ -15,6 +15,7 @@ import ImageUpload from '../components/ImageUpload';
 import ReactMarkdown from 'react-markdown';
 import { clsx } from 'clsx';
 import ThemeToggle from '../components/ThemeToggle';
+import { GoogleGenAI, Type } from "@google/genai";
 
 const AdminBlogEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +31,7 @@ const AdminBlogEditor: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   
   const [formData, setFormData] = useState<Omit<BlogPost, 'id' | 'createdAt' | 'updatedAt'>>({
+    userId: user?.uid || '',
     title: '',
     slug: '',
     content: '',
@@ -54,9 +56,17 @@ const AdminBlogEditor: React.FC = () => {
       return;
     }
 
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) {
+      toast.error("AI Service is temporarily unavailable (Key missing)");
+      return;
+    }
+
     setIsGenerating(true);
+    const toastId = toast.loading('AI is writing your blog post...');
+    
     try {
-      const response = await axios.post('/api/ai/blog', {
+      const response = await axios.post('/api/ai-blog', {
         topic: aiPrompt
       });
 
@@ -72,11 +82,10 @@ const AdminBlogEditor: React.FC = () => {
         seoKeywords: data.seoKeywords || prev.seoKeywords,
         tags: data.tags || prev.tags
       }));
-      toast.success('Blog post generated successfully!');
+      toast.success('Blog post generated successfully!', { id: toastId });
     } catch (error: any) {
       console.error('AI Generation error:', error);
-      const errorMessage = error.response?.data?.error || error.message;
-      toast.error(`Failed to generate blog post: ${errorMessage}`);
+      toast.error(`Failed to generate blog post: ${error.message}`, { id: toastId });
     } finally {
       setIsGenerating(false);
     }
@@ -93,8 +102,8 @@ const AdminBlogEditor: React.FC = () => {
   }, [imageFile]);
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') {
-      navigate('/dashboard');
+    if (!user) {
+      navigate('/login');
       return;
     }
 
@@ -103,11 +112,17 @@ const AdminBlogEditor: React.FC = () => {
         try {
           const post = await blogService.getPostById(id);
           if (post) {
+            // Check ownership
+            if (post.userId !== user.uid && user.role !== 'admin') {
+              toast.error('You do not have permission to edit this post');
+              navigate('/dashboard');
+              return;
+            }
             const { id: _, createdAt: __, updatedAt: ___, ...rest } = post;
             setFormData(rest);
           } else {
             toast.error('Post not found');
-            navigate('/admin/blog');
+            navigate(user.role === 'admin' ? '/admin/blog' : '/dashboard');
           }
         } catch (error) {
           toast.error('Failed to load post');
@@ -116,6 +131,8 @@ const AdminBlogEditor: React.FC = () => {
         }
       };
       fetchPost();
+    } else {
+      setFormData(prev => ({ ...prev, userId: user.uid }));
     }
   }, [id, user, navigate]);
 
@@ -165,10 +182,10 @@ const AdminBlogEditor: React.FC = () => {
           await blogService.updateBlogPost(id, dataToSave);
           toast.success('Post updated successfully');
         } else {
-          await blogService.createBlogPost(dataToSave);
+          await blogService.createBlogPost({ ...dataToSave, userId: user?.uid });
           toast.success('Post created successfully');
         }
-        navigate('/admin/blog');
+        navigate(user?.role === 'admin' ? '/admin/blog' : '/dashboard');
       } catch (saveError: any) {
         console.error('Save error:', saveError);
         toast.error(`Failed to save post: ${saveError.message || 'Permission denied'}`);

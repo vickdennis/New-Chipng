@@ -1,6 +1,7 @@
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 import { toast } from 'sonner';
+import axios from 'axios';
 
 export type UploadPath = 'profiles' | 'covers' | 'backgrounds' | 'products' | 'blogs' | 'link-icons';
 
@@ -51,8 +52,35 @@ export const uploadImage = async (
     
     return url;
   } catch (error: any) {
-    console.error(`Upload failed to ${storagePath}:`, error);
-    throw new Error(error.message || 'Failed to upload image');
+    console.warn(`Client-side upload failed to ${storagePath}, trying backend proxy...`, error);
+    
+    // Fallback to backend proxy
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', userId);
+      formData.append('pathType', pathType);
+
+      const response = await axios.post('/api/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        onUploadProgress: (progressEvent) => {
+          if (onProgress && progressEvent.total) {
+            const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            onProgress(progress);
+          }
+        }
+      });
+
+      if (response.data && response.data.url) {
+        return response.data.url;
+      }
+      throw new Error('Backend proxy returned no URL');
+    } catch (proxyError: any) {
+      console.error(`Backend proxy upload failed:`, proxyError);
+      throw new Error(proxyError.response?.data?.error || proxyError.message || 'Failed to upload image');
+    }
   }
 };
 

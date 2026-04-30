@@ -8,6 +8,7 @@ export type FontType = 'sans' | 'serif' | 'mono' | 'display' | 'modern' | 'elega
 
 export interface Product {
   id: string;
+  userId: string;
   name: string;
   description: string;
   price: number;
@@ -140,6 +141,7 @@ export interface ThemeConfig {
 
 export interface BlogPost {
   id: string;
+  userId: string;
   title: string;
   slug: string;
   content: string;

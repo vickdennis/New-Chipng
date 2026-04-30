@@ -317,13 +317,12 @@ const AdminPanel: React.FC = () => {
 
       const newUser = {
         ...userForm,
-        createdAt: new Date().toISOString(),
         totalClicks: 0,
         socialLinks: userForm.socialLinks || {}
       };
 
-      await addDoc(collection(db, 'users'), newUser);
-      toast.success('User added successfully');
+      await safeWrite('users', null, newUser, 'create');
+      toast.success('User added successfully with backup');
       setIsAddingUser(false);
       setUserForm({
         email: '',
@@ -351,20 +350,49 @@ const AdminPanel: React.FC = () => {
 
   const handleSaveProduct = async () => {
     try {
+      // 1. Validation
+      if (!productForm.name) {
+        toast.error('Product name is required');
+        return;
+      }
+      if (typeof productForm.price !== 'number' || isNaN(productForm.price)) {
+        toast.error('Price must be a valid number');
+        return;
+      }
+      if (!productForm.image) {
+        toast.error('Product image is required');
+        return;
+      }
+
+      console.log('📦 Saving product...', {
+        ...productForm,
+        userId: user?.uid
+      });
+
       if (editingProduct) {
         const { id, ...updateData } = productForm as any;
         const success = await safeWrite('products', editingProduct.id, updateData, 'update');
-        if (success) toast.success('Product updated');
+        if (success) {
+          toast.success('Product updated');
+          console.log('✅ Product update successful');
+        }
       } else {
         const { id, ...newData } = productForm as any;
-        const success = await safeWrite('products', null as any, newData, 'create');
-        if (success) toast.success('Product added');
+        const success = await safeWrite('products', null as any, {
+          ...newData,
+          userId: user?.uid
+        }, 'create');
+        if (success) {
+          toast.success('Product added');
+          console.log('✅ New product creation successful');
+        }
       }
       setIsAddingProduct(false);
       setEditingProduct(null);
       setProductForm({ name: '', description: '', price: 0, image: '', category: '', stock: 0, active: true });
-    } catch (error) {
-      toast.error('Failed to save product');
+    } catch (error: any) {
+      console.error('❌ Failed to save product:', error);
+      toast.error(`Failed to save product: ${error.message || 'Check database permissions'}`);
     }
   };
 
