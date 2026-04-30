@@ -114,9 +114,10 @@ export const blogService = {
 
   async incrementViews(id: string): Promise<void> {
     try {
-      const docRef = doc(db, BLOGS_COLLECTION, id);
-      await updateDoc(docRef, {
-        views: increment(1)
+      await fetch('/api/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ collection: BLOGS_COLLECTION, id, field: 'views' })
       });
     } catch (error) {
       console.error('Error incrementing views:', error);

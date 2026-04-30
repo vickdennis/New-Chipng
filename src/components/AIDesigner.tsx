@@ -11,7 +11,6 @@ import { doc, updateDoc, addDoc, collection, deleteDoc } from 'firebase/firestor
 import { safeWrite } from '../services/backupService';
 import { User, Link as UserLink, THEMES } from '../types';
 import { toast } from 'sonner';
-import { GoogleGenAI, Type } from "@google/genai";
 
 interface Message {
   role: 'user' | 'assistant' | 'model';
@@ -59,15 +58,6 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  const aiRef = useRef<any>(null);
-
-  useEffect(() => {
-    const key = process.env.GEMINI_API_KEY;
-    if (key) {
-      aiRef.current = new GoogleGenAI({ apiKey: key });
-    }
-  }, []);
-  
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -198,11 +188,6 @@ export const AIDesigner: React.FC<AIDesignerProps> = ({ user, profile, links }) 
   const handleSend = async (overrideInput?: string) => {
     const userMessage = (overrideInput || input).trim();
     if (!userMessage || isLoading) return;
-
-    if (!aiRef.current) {
-      toast.error("AI Service is temporarily unavailable (Key missing)");
-      return;
-    }
 
     setInput('');
     const newMessages: Message[] = [...messages, { role: 'user', content: userMessage }];

@@ -3,7 +3,7 @@ import { useParams, Link as RouterLink } from 'react-router-dom';
 import { db, getUserByUsername, handleFirestoreError, OperationType } from '../firebase';
 import { 
   collection, query, where, orderBy, onSnapshot, 
-  doc, updateDoc, increment 
+  doc 
 } from 'firebase/firestore';
 import { motion, AnimatePresence, useScroll, useTransform } from 'motion/react';
 import { 
