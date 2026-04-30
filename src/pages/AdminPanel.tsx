@@ -13,6 +13,7 @@ import {
 import Logo from '../components/Logo';
 import { BrandIcons } from '../components/icons/BrandIcons';
 import ThemeToggle from '../components/ThemeToggle';
+import ImageUpload from '../components/ImageUpload';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, BarChart, Bar, Cell
@@ -717,37 +718,25 @@ const AdminPanel: React.FC = () => {
                   </div>
                   <div className="md:col-span-2 space-y-2">
                     <label className="text-sm font-medium text-zinc-500">Product Image</label>
-                    <div className="flex items-center gap-4">
-                      <div className="w-20 h-20 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
-                        {productForm.image ? (
-                          <img src={productForm.image} alt="Preview" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-zinc-400">
-                            <Package className="w-8 h-8" />
-                          </div>
-                        )}
-                      </div>
-                      <label className="flex-1 py-3 px-4 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-xl text-center font-bold cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all flex items-center justify-center gap-2">
-                        {isUploadingProductImage ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="w-4 h-4" />
-                            Upload Product Image
-                          </>
-                        )}
-                        <input type="file" className="hidden" onChange={handleProductImageUpload} accept="image/*" disabled={isUploadingProductImage} />
-                      </label>
+                    <ImageUpload 
+                      folder="products"
+                      userId={user?.uid || 'admin'}
+                      initialImage={productForm.image}
+                      onSuccess={(url) => setProductForm(prev => ({ ...prev, image: url }))}
+                      label="Product Photo"
+                      aspectRatio="square"
+                    />
+                    <div className="flex items-center gap-4 py-2">
+                      <div className="h-px flex-1 bg-zinc-200 dark:border-zinc-800" />
+                      <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-600 uppercase tracking-[0.2em]">OR URL</span>
+                      <div className="h-px flex-1 bg-zinc-200 dark:border-zinc-800" />
                     </div>
                     <input 
                       type="text" 
                       value={productForm.image}
                       onChange={(e) => setProductForm({ ...productForm, image: e.target.value })}
-                      className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white mt-2"
-                      placeholder="Or paste image URL..."
+                      className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-lime-400 dark:text-white"
+                      placeholder="Paste image URL..."
                     />
                   </div>
                   <div className="md:col-span-2 space-y-2">

@@ -384,17 +384,21 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
   });
 
   // AI Designer Proxy Endpoint
+  // AI Designer Endpoint (Fixing model/key usage)
   app.post("/api/ai/design", async (req, res) => {
     try {
       const { messages, userContext } = req.body;
       const key = process.env.GEMINI_API_KEY;
 
       if (!key) {
-        console.error("[AI Designer] GEMINI_API_KEY is missing from environment");
-        return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+        console.error("[AI Designer] Error: GEMINI_API_KEY is missing from environment");
+        return res.status(500).json({ error: "AI Designer is currently unavailable. Please configure the GEMINI_API_KEY." });
       }
 
-      console.log(`[AI Designer] Using key present (length: ${key.length})`);
+      // Check for potentially invalid key format (just length check)
+      if (key.length < 20) {
+         console.warn(`[AI Designer] Warning: GEMINI_API_KEY seems too short (${key.length}). Check configuration.`);
+      }
 
       const systemInstruction = `
         You are the Chip NG "AI Designer", a professional profile engineer. 
@@ -753,6 +757,67 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     }
   });
 
+  // 4. SEO Endpoints
+  app.get("/robots.txt", (req, res) => {
+    res.type("text/plain");
+    res.send(`User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Sitemap: https://chipng.com/sitemap.xml`);
+  });
+
+  app.get("/sitemap.xml", async (req, res) => {
+    try {
+      const blogPosts = await restFirestore('get', 'blogs');
+      const profiles = await restFirestore('get', 'users');
+      
+      let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://chipng.com/</loc>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://chipng.com/blog</loc>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://chipng.com/pricing</loc>
+    <priority>0.7</priority>
+  </url>`;
+
+      blogPosts.forEach((post: any) => {
+        const data = fromRest(post);
+        if (data.slug) {
+          xml += `
+  <url>
+    <loc>https://chipng.com/blog/${data.slug}</loc>
+    <lastmod>${new Date(data.updatedAt || data.createdAt).toISOString().split('T')[0]}</lastmod>
+    <priority>0.6</priority>
+  </url>`;
+        }
+      });
+
+      profiles.forEach((profile: any) => {
+        const data = fromRest(profile);
+        if (data.username && !data.isDeleted) {
+          xml += `
+  <url>
+    <loc>https://chipng.com/${data.username}</loc>
+    <priority>0.5</priority>
+  </url>`;
+        }
+      });
+
+      xml += `\n</urlset>`;
+      res.type("application/xml");
+      res.send(xml);
+    } catch (error) {
+      res.status(500).send("Error generating sitemap");
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -762,9 +827,82 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    const indexHtml = fs.readFileSync(path.join(distPath, 'index.html'), 'utf-8');
+
+    app.use(express.static(distPath, { index: false }));
+
+    app.get('*', async (req, res) => {
+      try {
+        let html = indexHtml;
+        const url = req.url;
+
+        // Custom SEO Injection
+        if (url.startsWith('/blog/')) {
+          const slug = url.split('/')[2];
+          const queryPayload = {
+            structuredQuery: {
+              from: [{ collectionId: 'blogs' }],
+              where: {
+                fieldFilter: {
+                  field: { fieldPath: 'slug' },
+                  op: 'EQUAL',
+                  value: { stringValue: slug }
+                }
+              }
+            }
+          };
+          const results = await restFirestore('post', 'blogs', undefined, undefined, queryPayload);
+          if (results.length > 0 && results[0].document) {
+            const post = fromRest(results[0].document);
+            const title = post.seoTitle || post.title;
+            const description = post.seoDescription || post.excerpt;
+            const image = post.coverImage || "https://chipng.com/og-image.png";
+
+            html = html
+              .replace(/<title>.*?<\/title>/, `<title>${title} | Chip NG</title>`)
+              .replace(/<meta name="description" content=".*?" \/>/, `<meta name="description" content="${description}" />`)
+              .replace(/<meta property="og:title" content=".*?" \/>/, `<meta property="og:title" content="${title} | Chip NG" />`)
+              .replace(/<meta property="og:description" content=".*?" \/>/, `<meta property="og:description" content="${description}" />`)
+              .replace(/<meta property="og:image" content=".*?" \/>/, `<meta property="og:image" content="${image}" />`)
+              .replace(/<meta property="twitter:title" content=".*?" \/>/, `<meta property="twitter:title" content="${title} | Chip NG" />`)
+              .replace(/<meta property="twitter:description" content=".*?" \/>/, `<meta property="twitter:description" content="${description}" />`)
+              .replace(/<meta property="twitter:image" content=".*?" \/>/, `<meta property="twitter:image" content="${image}" />`);
+          }
+        } else if (!url.includes('.') && url.length > 2) {
+          // Assume it's a profile
+          const username = url.slice(1).split('/')[0];
+          const queryPayload = {
+            structuredQuery: {
+              from: [{ collectionId: 'users' }],
+              where: {
+                fieldFilter: {
+                  field: { fieldPath: 'username' },
+                  op: 'EQUAL',
+                  value: { stringValue: username }
+                }
+              }
+            }
+          };
+          const results = await restFirestore('post', 'users', undefined, undefined, queryPayload);
+          if (results.length > 0 && results[0].document) {
+            const profile = fromRest(results[0].document);
+            const title = `${profile.displayName || profile.username}'s Chip NG Profile`;
+            const description = profile.bio || `Connect with ${profile.displayName} on Chip NG. The only link you'll ever need.`;
+            const image = profile.photoURL || "https://chipng.com/og-image.png";
+
+            html = html
+              .replace(/<title>.*?<\/title>/, `<title>${title}</title>`)
+              .replace(/<meta name="description" content=".*?" \/>/, `<meta name="description" content="${description}" />`)
+              .replace(/<meta property="og:title" content=".*?" \/>/, `<meta property="og:title" content="${title}" />`)
+              .replace(/<meta property="og:description" content=".*?" \/>/, `<meta property="og:description" content="${description}" />`)
+              .replace(/<meta property="og:image" content=".*?" \/>/, `<meta property="og:image" content="${image}" />`);
+          }
+        }
+
+        res.send(html);
+      } catch (err) {
+        res.send(indexHtml);
+      }
     });
   }
 

@@ -25,11 +25,11 @@ export const uploadImage = async (
 
   // Map path types to storage paths
   const pathMap: Record<UploadPath, string> = {
-    profiles: `profiles/${userId}/${filename}`,
-    covers: `covers/${userId}/${filename}`,
-    backgrounds: `backgrounds/${userId}/${filename}`,
-    products: `products/${userId}/${filename}`,
-    blogs: `blogs/${userId}/${filename}`,
+    profiles: `profile-images/${userId}/${filename}`,
+    covers: `cover-images/${userId}/${filename}`,
+    backgrounds: `background-images/${userId}/${filename}`,
+    products: `shop-images/${userId}/${filename}`,
+    blogs: `blog-images/${userId}/${filename}`,
     'link-icons': `link-icons/${userId}/${filename}`
   };
 

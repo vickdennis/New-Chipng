@@ -11,6 +11,7 @@ import { blogService } from '../services/blogService';
 import { BlogPost } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
+import ImageUpload from '../components/ImageUpload';
 import ReactMarkdown from 'react-markdown';
 import { clsx } from 'clsx';
 import ThemeToggle from '../components/ThemeToggle';
@@ -384,81 +385,17 @@ const AdminBlogEditor: React.FC = () => {
               <div className="space-y-4">
                 <label className="text-sm font-bold text-zinc-500 uppercase tracking-widest">Cover Image</label>
                 
-                {/* Image Preview & Actions */}
-                {(formData.coverImage || previewUrl) ? (
-                  <div className="relative group aspect-video rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-950">
-                    <img 
-                      src={previewUrl || formData.coverImage} 
-                      alt="Cover Preview" 
-                      className="w-full h-full object-cover"
-                      referrerPolicy="no-referrer"
-                    />
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                      <button 
-                        onClick={() => {
-                          setImageFile(null);
-                          setFormData(prev => ({ ...prev, coverImage: '' }));
-                        }}
-                        className="p-3 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-                        title="Remove Image"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div 
-                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setIsDragging(false);
-                      const file = e.dataTransfer.files[0];
-                      if (file && file.type.startsWith('image/')) {
-                        setImageFile(file);
-                      }
-                    }}
-                    className={clsx(
-                      "aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center gap-4 transition-all cursor-pointer",
-                      isDragging ? "border-lime-500 dark:border-lime-400 bg-lime-500/5 dark:bg-lime-400/5" : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-zinc-100 dark:bg-zinc-900/30"
-                    )}
-                    onClick={() => document.getElementById('file-upload')?.click()}
-                  >
-                    <div className="w-12 h-12 bg-zinc-200 dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-zinc-400 dark:text-zinc-500">
-                      <Upload className="w-6 h-6" />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-sm font-bold text-zinc-700 dark:text-zinc-300">Click or drag to upload</p>
-                      <p className="text-xs text-zinc-500 mt-1">PNG, JPG, WEBP up to 5MB</p>
-                    </div>
-                    <input 
-                      id="file-upload"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) setImageFile(file);
-                      }}
-                    />
-                  </div>
-                )}
-
-                {/* Progress Bar */}
-                {uploadProgress !== null && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs font-bold text-zinc-500 uppercase tracking-widest">
-                      <span>Uploading...</span>
-                      <span>{Math.round(uploadProgress)}%</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-lime-500 dark:bg-lime-400 transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
+                <ImageUpload 
+                  folder="blogs"
+                  userId={user?.uid || 'admin'}
+                  initialImage={formData.coverImage}
+                  onSuccess={(url) => {
+                    setFormData(prev => ({ ...prev, coverImage: url }));
+                    setImageFile(null);
+                  }}
+                  label="Blog Thumbnail"
+                  aspectRatio="video"
+                />
 
                 <div className="flex items-center gap-4 py-2">
                   <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />

@@ -37,6 +37,7 @@ import { auth } from '../firebase';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { DISPLAY_DOMAIN } from '../constants';
 import UpgradeModal from '../components/UpgradeModal';
+import ImageUpload from '../components/ImageUpload';
 import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2 } from 'lucide-react';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { usePaystackPayment } from 'react-paystack';
@@ -1002,30 +1003,19 @@ const Dashboard: React.FC = () => {
                 className="px-6 flex flex-col items-center"
               >
                 {/* Cover Image Section */}
-                <div className="w-full mt-8 mb-6 group">
-                  <div className="relative w-full h-[180px] rounded-[2rem] bg-[#F3F4F6] dark:bg-zinc-900 flex items-center justify-center border-2 border-white dark:border-zinc-800 shadow-sm overflow-hidden group">
-                    {profile?.coverImage ? (
-                      <img 
-                        src={profile.coverImage} 
-                        referrerPolicy="no-referrer" 
-                        alt="Cover" 
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center gap-2">
-                        <ImageIcon className="w-8 h-8 text-[#6B7280]" />
-                        <span className="text-[12px] font-bold text-[#6B7280]">Add Cover Image</span>
-                        <p className="text-[10px] text-zinc-400 font-medium tracking-tight">Max 5MB • 1920x1080 recommended</p>
-                      </div>
-                    )}
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 cursor-pointer transition-all duration-300 backdrop-blur-[2px]">
-                      <div className="flex flex-col items-center gap-2 text-white">
-                        <Camera className="w-8 h-8" />
-                        <span className="text-[14px] font-black uppercase tracking-widest">Change Cover</span>
-                      </div>
-                      <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'cover')} accept="image/*" />
-                    </label>
+                <div className="w-full mt-8 mb-6 space-y-4">
+                  <div className="flex items-center justify-between px-2">
+                     <h3 className="text-[20px] font-black">Profile Header</h3>
+                     <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-3 py-1 rounded-full font-black uppercase tracking-widest border border-zinc-200 dark:border-zinc-700">Cover Image</span>
                   </div>
+                  <ImageUpload 
+                    folder="covers"
+                    userId={user?.uid || ''}
+                    initialImage={profile?.coverImage}
+                    onSuccess={(url) => handleUpdateProfile({ coverImage: url })}
+                    label="Your Banner Image"
+                    aspectRatio="video"
+                  />
                   
                   {/* Presets Gallery */}
                   <div className="mt-4 flex gap-3 overflow-x-auto no-scrollbar pb-2">
@@ -1047,6 +1037,36 @@ const Dashboard: React.FC = () => {
                         <img src={url} alt={`Preset ${idx + 1}`} className="w-full h-full object-cover" />
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                <div className="w-full mb-8 space-y-4 pt-8 border-t border-zinc-50 dark:border-zinc-800">
+                  <div className="flex items-center justify-between px-2">
+                     <h3 className="text-[20px] font-black">Profile Identity</h3>
+                     <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-3 py-1 rounded-full font-black uppercase tracking-widest border border-zinc-200 dark:border-zinc-700">Avatar</span>
+                  </div>
+                  <div className="flex items-center gap-6 p-6 bg-zinc-50 dark:bg-zinc-800/50 rounded-[2rem] border border-zinc-100 dark:border-zinc-700 w-full">
+                    <div className="w-24 h-24 rounded-3xl overflow-hidden border-4 border-white dark:border-zinc-900 shadow-xl relative group shrink-0">
+                      {profile?.photoURL ? (
+                        <img src={profile.photoURL} alt="Avatar" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center">
+                          <User className="w-10 h-10 text-zinc-400" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      <p className="text-xs text-zinc-500 font-medium leading-relaxed">
+                        Customize your display picture. Upload a clear, high-quality square image.
+                      </p>
+                      <ImageUpload 
+                        folder="profiles"
+                        userId={user?.uid || ''}
+                        onSuccess={(url) => handleUpdateProfile({ photoURL: url })}
+                        label="Change Photo"
+                        aspectRatio="square"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1845,10 +1865,13 @@ const Dashboard: React.FC = () => {
                    </div>
                    {profile?.backgroundType === 'image' && (
                      <div className="mt-4">
-                        <label className="block w-full py-4 border-2 border-dashed border-[#D1D5DB] rounded-2xl text-center cursor-pointer hover:border-[#A3E635]">
-                          <span className="font-bold text-[14px] text-[#6B7280]">Upload Custom Background</span>
-                          <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'background')} accept="image/*" />
-                        </label>
+                        <ImageUpload 
+                          folder="backgrounds"
+                          userId={user?.uid || ''}
+                          initialImage={profile?.backgroundImage}
+                          onSuccess={(url) => handleUpdateProfile({ backgroundImage: url })}
+                          label="Custom Background Image"
+                        />
                      </div>
                    )}
                 </div>
