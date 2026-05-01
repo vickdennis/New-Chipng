@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { motion, useScroll, useTransform, useSpring, AnimatePresence } from 'motion/react';
 import { Mail, Github, Globe, Linkedin, Smartphone, Zap } from 'lucide-react';
+import Logo from './Logo';
 
 const NFCBusinessCard: React.FC = () => {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -80,8 +81,8 @@ const NFCBusinessCard: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-lime-400 rounded-2xl flex items-center justify-center p-3 rotate-3 shadow-lg shadow-lime-400/20">
-               <Zap className="w-full h-full text-zinc-950 fill-zinc-950" />
+            <div className="rotate-3 drop-shadow-2xl">
+               <Logo size="md" variant="app-icon" color="neon" />
             </div>
             <div>
               <h3 className="text-2xl font-bold tracking-tight text-white">Chip NG</h3>

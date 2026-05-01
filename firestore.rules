@@ -39,7 +39,8 @@ service cloud.firestore {
              data.userId is string && data.userId.size() <= 128 &&
              data.title is string && data.title.size() <= 100 &&
              data.url is string && data.url.size() <= 2000 &&
-             data.isDeleted is bool;
+             data.isDeleted is bool &&
+             data.get('thumbnail', '') is string;
     }
 
     function isValidBlog(data) {
@@ -107,7 +108,7 @@ service cloud.firestore {
       allow list: if resource.data.active == true || (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
       allow create: if isSignedIn() && isValidId(linkId) && isValidLink(incoming()) && incoming().userId == request.auth.uid;
       allow update: if (isOwner(existing().userId) || isAdmin()) && (
-        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'url', 'icon', 'active', 'position', 'isDeleted', 'deletedAt', 'updatedAt', 'type', 'scheduledStart', 'scheduledEnd', 'styles'])
+        incoming().diff(existing()).affectedKeys().hasOnly(['title', 'url', 'icon', 'active', 'position', 'isDeleted', 'deletedAt', 'updatedAt', 'type', 'scheduledStart', 'scheduledEnd', 'styles', 'thumbnail'])
       );
       allow delete: if (isOwner(existing().userId) || isAdmin());
     }

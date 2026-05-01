@@ -112,6 +112,7 @@ export interface Link {
   scheduledStart?: string;
   scheduledEnd?: string;
   type?: 'standard' | 'youtube' | 'tiktok';
+  thumbnail?: string;
 }
 
 export interface Shout {

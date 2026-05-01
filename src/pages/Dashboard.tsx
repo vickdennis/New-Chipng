@@ -44,7 +44,6 @@ import { VerificationBadge } from '../components/VerificationBadge';
 import { usePaystackPayment } from 'react-paystack';
 import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
 import { safeWrite, getBackupHistory, rollbackDocument, rollbackToVersion, BackupData } from '../services/backupService';
-import { AIDesigner } from '../components/AIDesigner';
 import { BrandIcons } from '../components/icons/BrandIcons';
 import { Sparkles, Wand2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -303,7 +302,7 @@ const Dashboard: React.FC = () => {
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup' | 'ai' | 'posts' | 'blogs' | 'shop'>('links');
+  const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup' | 'posts' | 'blogs' | 'shop'>('links');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isAddPlatformModalOpen, setIsAddPlatformModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<keyof typeof PLATFORMS>('socials');
@@ -854,7 +853,11 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] dark:bg-zinc-950 flex font-sans selection:bg-lime-400 selection:text-zinc-950 transition-colors duration-500 overflow-hidden relative">
+    <div className={cn(
+      "min-h-screen flex font-sans selection:bg-lime-400 selection:text-zinc-950 transition-colors duration-500 overflow-hidden relative",
+      profile && THEMES[profile.theme]?.background ? THEMES[profile.theme].background : "bg-[#F8F9FA] dark:bg-zinc-950",
+      profile && THEMES[profile.theme]?.text ? THEMES[profile.theme].text : "text-zinc-900 dark:text-white"
+    )}>
       {/* Animated Background Details */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-lime-400/5 blur-[120px] rounded-full animate-pulse" />
@@ -876,7 +879,6 @@ const Dashboard: React.FC = () => {
                 { id: 'posts', icon: ImageIcon, label: 'Posts & Feed' },
                 { id: 'blogs', icon: FileText, label: 'Blog Studio' },
                 { id: 'shop', icon: ShoppingCart, label: 'Shop Manager' },
-                { id: 'ai', icon: Sparkles, label: 'AI Designer', badge: 'New' },
               ].map((item) => (
                 <button
                   key={item.id}
@@ -995,7 +997,7 @@ const Dashboard: React.FC = () => {
                 <span className="text-[12px] font-black uppercase tracking-[0.2em] text-zinc-400">{activeTab}</span>
               </div>
               <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-zinc-900 dark:text-white leading-none">
-                {activeTab === 'links' ? 'Profile Editor' : activeTab === 'posts' ? 'Content Feed' : activeTab === 'ai' ? 'AI Designer' : activeTab === 'backup' ? 'Revision History' : activeTab === 'business' ? 'Business Hub' : activeTab}
+                {activeTab === 'links' ? 'Profile Editor' : activeTab === 'posts' ? 'Content Feed' : activeTab === 'backup' ? 'Revision History' : activeTab === 'business' ? 'Business Hub' : activeTab}
               </h1>
             </div>
 
@@ -1067,35 +1069,7 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="w-full mb-8 space-y-4 pt-8 border-t border-zinc-50 dark:border-zinc-800">
-                  <div className="flex items-center justify-between px-2">
-                     <h3 className="text-[20px] font-black">Profile Identity</h3>
-                     <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-3 py-1 rounded-full font-black uppercase tracking-widest border border-zinc-200 dark:border-zinc-700">Avatar</span>
-                  </div>
-                  <div className="flex items-center gap-6 p-6 bg-zinc-50 dark:bg-zinc-800/50 rounded-[2rem] border border-zinc-100 dark:border-zinc-700 w-full">
-                    <div className="w-24 h-24 rounded-3xl overflow-hidden border-4 border-white dark:border-zinc-900 shadow-xl relative group shrink-0">
-                      {profile?.photoURL ? (
-                        <img src={profile.photoURL} alt="Avatar" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center">
-                          <User className="w-10 h-10 text-zinc-400" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 space-y-3">
-                      <p className="text-xs text-zinc-500 font-medium leading-relaxed">
-                        Customize your display picture. Upload a clear, high-quality square image.
-                      </p>
-                      <ImageUpload 
-                        folder="profiles"
-                        userId={user?.uid || ''}
-                        onSuccess={(url) => handleUpdateProfile({ photoURL: url })}
-                        label="Change Photo"
-                        aspectRatio="square"
-                      />
-                    </div>
-                  </div>
-                </div>
+
 
                 {/* Profile Strength */}
                 <div className="w-full mb-8">
@@ -1244,13 +1218,13 @@ const Dashboard: React.FC = () => {
                     ) : (
                       <div className="space-y-6">
                         {links.map((link, idx) => {
-                          const isBig = idx === 0 || (idx === 1 && links.length > 3);
+                          const isBig = idx === 0 || link.type === 'youtube' || link.type === 'tiktok';
                           
                           if (isBig) {
                             return (
                               <div key={link.id} className="relative aspect-[16/10] bg-zinc-900 rounded-[2.8rem] overflow-hidden border border-zinc-800 shadow-2xl group">
-                                {link.icon ? (
-                                  <img src={link.icon} className="w-full h-full object-cover opacity-60 transition-transform duration-700 group-hover:scale-110" alt="" />
+                                {link.thumbnail || link.icon ? (
+                                  <img src={link.thumbnail || link.icon} className="w-full h-full object-cover opacity-60 transition-transform duration-700 group-hover:scale-110" alt="" />
                                 ) : (
                                   <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
                                     <LinkIcon className="w-12 h-12 text-zinc-700" />
@@ -1273,7 +1247,17 @@ const Dashboard: React.FC = () => {
                                 <div className="absolute top-6 right-6 flex gap-2">
                                   <label className="p-3 bg-white/10 backdrop-blur-md rounded-2xl cursor-pointer hover:bg-white/20 transition-all">
                                     <Camera className="w-4 h-4 text-white" />
-                                    <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', link.id)} accept="image/*" />
+                                    <input type="file" className="hidden" onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file || !user) return;
+                                      try {
+                                        const url = await uploadImage(file, user.uid, 'link-icons');
+                                        await handleUpdateLink(link.id, { thumbnail: url });
+                                        toast.success('Thumbnail updated');
+                                      } catch (err) {
+                                        toast.error('Upload failed');
+                                      }
+                                    }} accept="image/*" />
                                   </label>
                                   <button onClick={() => handleUpdateLink(link.id, { active: !link.active })} className={`p-3 backdrop-blur-md rounded-2xl transition-all ${link.active ? 'bg-lime-400 text-zinc-950' : 'bg-white/10 text-white'}`}>
                                     {link.active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
@@ -1570,25 +1554,7 @@ const Dashboard: React.FC = () => {
               </motion.div>
             )}
 
-            {activeTab === 'ai' && (
-              <motion.div 
-                key="ai"
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                className="px-6 py-6"
-              >
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-[28px] font-black tracking-tighter dark:text-white">AI Designer</h2>
-                      <p className="text-[#6B7280] text-[14px] font-medium leading-tight">Your personal assistant for profile optimization.</p>
-                    </div>
-                  </div>
-                  <AIDesigner user={user} profile={profile} links={links} />
-                </div>
-              </motion.div>
-            )}
+
 
             {activeTab === 'blogs' && (
               <motion.div 
@@ -2368,21 +2334,27 @@ const Dashboard: React.FC = () => {
               </div>
 
               {/* Preview Content Inside Phone */}
-              <div className="flex-1 overflow-y-auto no-scrollbar relative bg-zinc-950 rounded-[2.8rem]">
+              <div className={cn(
+                "flex-1 overflow-y-auto no-scrollbar relative rounded-[2.8rem] transition-colors duration-500",
+                profile && THEMES[profile.theme]?.background ? THEMES[profile.theme].background : "bg-zinc-950",
+                profile && THEMES[profile.theme]?.text ? THEMES[profile.theme].text : "text-white"
+              )}>
                  {/* Mock Banner */}
                  <div className="relative h-28 w-full overflow-hidden">
                     {profile?.coverImage ? (
-                      <img src={profile.coverImage} className="w-full h-full object-cover" />
+                      <img src={profile.coverImage} className="w-full h-full object-cover" alt="" />
                     ) : (
                       <div className="w-full h-full bg-zinc-900 shadow-inner" />
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent" />
                  </div>
 
-                     {/* Hide Avatar as per user request */}
-                  <div className="p-6 space-y-6 flex flex-col items-center pt-4">
+                     <div className="p-6 space-y-6 flex flex-col items-center pt-4">
                      <div className="text-center space-y-1 relative z-10 font-sans">
-                        <h3 className="font-black text-lg flex items-center justify-center gap-1 text-white">
+                        <h3 className={cn(
+                          "font-black text-lg flex items-center justify-center gap-1",
+                          profile && THEMES[profile.theme]?.text ? "text-inherit" : "text-white"
+                        )}>
                           {profile?.displayName || '@username'}
                           {profile?.isVerified && <BadgeCheck className="w-4 h-4 text-[#1D9BF0] fill-[#1D9BF0] stroke-white stroke-[1.5px]" />}
                         </h3>
@@ -2400,7 +2372,7 @@ const Dashboard: React.FC = () => {
                             return (
                               <div 
                                 key={platform} 
-                                className="w-8 h-8 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center shrink-0 shadow-lg"
+                                className="w-8 h-8 rounded-xl bg-white/10 dark:bg-black/20 backdrop-blur-sm border border-white/5 flex items-center justify-center shrink-0 shadow-lg"
                                 style={{ color: color }}
                               >
                                 <div className="w-4 h-4">
@@ -2417,14 +2389,25 @@ const Dashboard: React.FC = () => {
                      </div>
                     </div>
 
-                    <p className="text-[10px] text-zinc-500 text-center font-medium leading-relaxed px-4 relative z-10">
+                    <p className={cn(
+                      "text-[10px] text-center font-medium leading-relaxed px-4 relative z-10 opacity-70",
+                      profile && THEMES[profile.theme]?.text ? "text-inherit" : "text-zinc-500"
+                    )}>
                       {profile?.bio || 'Bio preview will appear here...'}
                     </p>
 
                     {/* Links Mock */}
-                    <div className="w-full space-y-3 px-1 relative z-10">
+                    <div className="w-full space-y-3 px-1 relative z-10 mt-4">
                        {links.length > 0 ? links.slice(0, 3).map(link => (
-                         <div key={link.id} className="w-full p-3.5 bg-zinc-900 border border-white/5 rounded-2xl shadow-sm flex items-center justify-center font-black text-[10px] uppercase tracking-wider text-zinc-300">
+                         <div 
+                           key={link.id} 
+                           className={cn(
+                             "w-full p-3.5 border rounded-2xl shadow-sm flex items-center justify-center font-black text-[10px] uppercase tracking-wider transition-all",
+                             profile && THEMES[profile.theme]?.buttonStyle === 'brutalist' 
+                               ? "bg-white border-black border-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-black"
+                               : "bg-white/10 dark:bg-black/20 backdrop-blur-md border-white/10 text-inherit hover:bg-white/20"
+                           )}
+                         >
                             {link.title}
                          </div>
                        )) : [1, 2].map(i => (
@@ -2432,7 +2415,7 @@ const Dashboard: React.FC = () => {
                        ))}
                     </div>
 
-                  <div className="pt-8 opacity-20 relative z-10 pb-12">
+                  <div className="pt-8 opacity-40 relative z-10 pb-12 text-center flex justify-center">
                      <Logo size="sm" color="neon" />
                   </div>
                </div>
@@ -2457,7 +2440,6 @@ const Dashboard: React.FC = () => {
       <nav className="fixed lg:hidden bottom-8 left-1/2 -translate-x-1/2 bg-black text-white px-2 py-2 rounded-full flex items-center gap-1 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[110] ring-1 ring-white/10">
         {[
           { id: 'links', icon: LayoutGrid, label: 'Edit' },
-          { id: 'ai', icon: Sparkles, label: 'AI' },
           { id: 'analytics', icon: TrendingUp, label: 'Stats' },
           { id: 'appearance', icon: Palette, label: 'Style' },
         ].map((item) => (
