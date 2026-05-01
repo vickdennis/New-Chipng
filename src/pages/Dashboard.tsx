@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { db, storage, getUserByUsername, handleFirestoreError, OperationType } from '../firebase';
+import { cn } from '../lib/utils';
 import { 
   collection, query, where, orderBy, onSnapshot, 
   addDoc, updateDoc, deleteDoc, doc, writeBatch, getDoc
@@ -47,13 +48,8 @@ import { safeWrite, getBackupHistory, rollbackDocument, rollbackToVersion, Backu
 import { BrandIcons } from '../components/icons/BrandIcons';
 import { Sparkles, Wand2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
 import { uploadImage, validateImage, UploadPath } from '../services/imageService';
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
 
 const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, isUploading, isAdmin, onViewHistory }: { 
   link: Link; 
@@ -874,12 +870,12 @@ const Dashboard: React.FC = () => {
           <div>
             <p className="px-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-6">Create</p>
             <div className="space-y-1">
-              {[
+              {( [
                 { id: 'links', icon: LayoutGrid, label: 'Profile Links' },
                 { id: 'posts', icon: ImageIcon, label: 'Posts & Feed' },
                 { id: 'blogs', icon: FileText, label: 'Blog Studio' },
                 { id: 'shop', icon: ShoppingCart, label: 'Shop Manager' },
-              ].map((item) => (
+              ] as any[] ).map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id as any)}
@@ -1005,7 +1001,7 @@ const Dashboard: React.FC = () => {
                <div className="flex bg-zinc-100 dark:bg-zinc-900 rounded-[2rem] p-1.5 border border-zinc-200 dark:border-zinc-800">
                   <div className="flex items-center gap-3 px-4 py-2 flex-1">
                      <LinkIcon className="w-4 h-4 text-zinc-400" />
-                     <span className="text-[14px] font-bold text-zinc-600 dark:text-zinc-400 truncate max-w-[150px]">chip.ng/{profile?.username}</span>
+                     <span className="text-[14px] font-bold text-zinc-600 dark:text-zinc-400 truncate max-w-[150px]">chipng.com/{profile?.username}</span>
                   </div>
                   <button 
                     onClick={copyLink}
@@ -1939,6 +1935,54 @@ const Dashboard: React.FC = () => {
                 exit={{ opacity: 0, x: -20 }}
                 className="px-6 py-6 space-y-10"
               >
+                <div className="space-y-6">
+                    <h2 className="text-[22px] font-black">Social Presence</h2>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {Object.entries(profile?.socialLinks || {}).map(([platform, url]) => {
+                        const brand = PLATFORMS.socials.find(p => p.id === platform) || 
+                                       PLATFORMS.music.find(p => p.id === platform) ||
+                                       PLATFORMS.business.find(p => p.id === platform) ||
+                                       PLATFORMS.lifestyle.find(p => p.id === platform);
+                        
+                        return (
+                          <div key={platform} className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-5 rounded-[2.5rem] group relative hover:border-lime-200 dark:hover:border-lime-900/30 transition-all flex flex-col items-center text-center gap-3">
+                            <div 
+                              className="w-14 h-14 rounded-3xl flex items-center justify-center shadow-inner"
+                              style={{ backgroundColor: brand?.color ? brand.color + '15' : '#A3E63515' }}
+                            >
+                              {brand ? React.createElement(brand.icon, { className: "w-7 h-7", style: { color: brand.color } }) : <Globe className="w-7 h-7" />}
+                            </div>
+                            <div className="min-w-0 w-full">
+                              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">{platform}</p>
+                              <p className="text-[11px] font-bold text-zinc-500 truncate mt-0.5">@{String(url).split('/').pop()?.replace('@', '')}</p>
+                            </div>
+                            <button 
+                              onClick={async () => {
+                                const newSocials = { ...(profile?.socialLinks || {}) };
+                                delete newSocials[platform as keyof typeof newSocials];
+                                await handleUpdateProfile({ socialLinks: newSocials });
+                                toast.success(`${platform} removed`);
+                              }}
+                              className="absolute top-2 right-2 p-2 bg-red-50 text-red-500 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                      
+                      <button 
+                        onClick={() => setIsAddPlatformModalOpen(true)}
+                        className="border-2 border-dashed border-zinc-200 dark:border-zinc-800 p-5 rounded-[2.5rem] flex flex-col items-center justify-center gap-2 hover:border-lime-400 hover:bg-lime-400/5 transition-all text-zinc-400 hover:text-lime-500 min-h-[140px]"
+                      >
+                        <div className="w-12 h-12 rounded-full bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-lime-400 group-hover:text-black transition-colors">
+                          <Plus className="w-6 h-6" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em]">Add Platform</span>
+                      </button>
+                    </div>
+                </div>
+
                 <div className="space-y-4">
                    <h3 className="text-[22px] font-bold">Brand Color</h3>
                    <div className="flex flex-wrap gap-3">
@@ -2403,7 +2447,7 @@ const Dashboard: React.FC = () => {
                            key={link.id} 
                            className={cn(
                              "w-full p-3.5 border rounded-2xl shadow-sm flex items-center justify-center font-black text-[10px] uppercase tracking-wider transition-all",
-                             profile && THEMES[profile.theme]?.buttonStyle === 'brutalist' 
+                             profile?.buttonStyle === 'square' 
                                ? "bg-white border-black border-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-black"
                                : "bg-white/10 dark:bg-black/20 backdrop-blur-md border-white/10 text-inherit hover:bg-white/20"
                            )}

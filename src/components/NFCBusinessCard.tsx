@@ -93,11 +93,11 @@ const NFCBusinessCard: React.FC = () => {
           <div className="space-y-4">
              <div className="flex items-center gap-3 text-zinc-400">
                <Mail className="w-4 h-4 text-lime-500" />
-               <span className="text-sm font-medium">hello@chip.ng</span>
+               <span className="text-sm font-medium">hello@chipng.com</span>
              </div>
              <div className="flex items-center gap-3 text-zinc-400">
                <Globe className="w-4 h-4 text-lime-500" />
-               <span className="text-sm font-medium">www.chip.ng/alex</span>
+               <span className="text-sm font-medium">www.chipng.com/alex</span>
              </div>
           </div>
 
@@ -133,7 +133,7 @@ const NFCBusinessCard: React.FC = () => {
                 <motion.div 
                   animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
                   transition={{ repeat: Infinity, duration: 1 }}
-                  className="w-20 h-20 bg-lime-400 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(163,230,53,0.5)]"
+                  className="w-20 h-20 bg-lime-400 rounded-full flex items-center justify-center shadow-[0_0_50_rgba(163,230,53,0.5)]"
                 >
                   <Smartphone className="w-10 h-10 text-zinc-950" />
                 </motion.div>
@@ -144,10 +144,10 @@ const NFCBusinessCard: React.FC = () => {
         </div>
 
         {/* Back of the Card (Simplified) */}
-        <div className="absolute inset-0 w-full h-full backface-hidden [transform:rotateY(180deg)] bg-zinc-900 rounded-3xl p-8 border border-zinc-800 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center justify-center">
+        <div className="absolute inset-0 w-full h-full backface-hidden [transform:rotateY(180deg)] bg-zinc-900 rounded-3xl p-8 border border-zinc-800 shadow-[0_20px_50_rgba(0,0,0,0.5)] flex items-center justify-center">
            <div className="text-center">
               <div className="w-24 h-24 bg-white p-2 rounded-2xl mx-auto mb-4">
-                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://chip.ng" alt="QR" className="w-full h-full" />
+                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://chipng.com" alt="QR" className="w-full h-full" />
               </div>
               <p className="text-zinc-400 text-sm font-medium">Scan to visit profile</p>
               <div className="mt-6 flex items-center justify-center gap-2 text-lime-400 font-bold text-xs">
