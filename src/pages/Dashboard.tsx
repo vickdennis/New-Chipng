@@ -61,7 +61,8 @@ const SortableLinkItem = ({
   onUploadIcon, 
   isUploading, 
   isAdmin, 
-  onViewHistory 
+  onViewHistory,
+  iconStyle
 }: { 
   link: Link; 
   onUpdate: (id: string, data: Partial<Link>) => void;
@@ -72,6 +73,7 @@ const SortableLinkItem = ({
   isUploading: boolean;
   isAdmin: boolean;
   onViewHistory: (collection: string, id: string) => void;
+  iconStyle: 'colored' | 'mono' | 'glass';
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: link.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
@@ -87,13 +89,14 @@ const SortableLinkItem = ({
         <div className="flex-1 space-y-3">
           <div className="flex items-center gap-4">
             <div className="relative group/icon shrink-0">
-              <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 flex items-center justify-center p-1">
+              <div className="w-12 h-12 flex items-center justify-center">
                 {link.type && link.type !== 'standard' && !link.icon ? (
                   <SocialIcon 
                     platform={link.type} 
                     username={link.url.split('/').pop() || ''} 
                     asLink={false}
                     className="w-full h-full"
+                    style={iconStyle || 'colored'}
                   />
                 ) : link.icon ? (
                   <img src={link.icon} alt="" className="w-full h-full object-cover" />
@@ -1311,6 +1314,7 @@ const Dashboard: React.FC = () => {
                                 isUploading={isUploading}
                                 isAdmin={isAdmin}
                                 onViewHistory={fetchHistory}
+                                iconStyle={profile?.iconStyle || 'colored'}
                               />
                             ))}
                           </div>
@@ -1985,38 +1989,45 @@ const Dashboard: React.FC = () => {
 
                 <div className="space-y-4">
                   <h3 className="text-[22px] font-black">Icon Style</h3>
-                  <div className="flex gap-4 p-2 bg-zinc-50 dark:bg-zinc-900 rounded-[2rem] border border-zinc-100 dark:border-zinc-800">
+                  <div className="flex gap-2 p-2 bg-zinc-50 dark:bg-zinc-900 rounded-[2rem] border border-zinc-100 dark:border-zinc-800">
                     <button 
                       onClick={() => handleUpdateProfile({ iconStyle: 'colored' })}
                       className={cn(
-                        "flex-1 flex items-center justify-center gap-3 py-4 rounded-[1.5rem] text-xs font-black uppercase tracking-widest transition-all",
+                        "flex-1 flex items-center justify-center gap-2 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all",
                         (profile?.iconStyle || 'colored') === 'colored' 
                           ? "bg-white dark:bg-zinc-800 shadow-xl border border-zinc-100 dark:border-zinc-700 text-black dark:text-white"
                           : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
                       )}
                     >
-                      <div className="flex -space-x-2">
-                        <div className="w-5 h-5 rounded-full bg-red-400" />
-                        <div className="w-5 h-5 rounded-full bg-blue-400" />
-                        <div className="w-5 h-5 rounded-full bg-green-400" />
+                      <div className="flex -space-x-1.5">
+                        <div className="w-4 h-4 rounded-full bg-red-400" />
+                        <div className="w-4 h-4 rounded-full bg-blue-400" />
                       </div>
-                      Colored
+                      Col
+                    </button>
+                    <button 
+                      onClick={() => handleUpdateProfile({ iconStyle: 'glass' })}
+                      className={cn(
+                        "flex-1 flex items-center justify-center gap-2 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all",
+                        profile?.iconStyle === 'glass' 
+                          ? "bg-white dark:bg-zinc-800 shadow-xl border border-zinc-100 dark:border-zinc-700 text-black dark:text-white"
+                          : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                      )}
+                    >
+                      <div className="w-4 h-4 rounded-lg bg-zinc-200/50 backdrop-blur-sm border border-white/20" />
+                      Glass
                     </button>
                     <button 
                       onClick={() => handleUpdateProfile({ iconStyle: 'mono' })}
                       className={cn(
-                        "flex-1 flex items-center justify-center gap-3 py-4 rounded-[1.5rem] text-xs font-black uppercase tracking-widest transition-all",
+                        "flex-1 flex items-center justify-center gap-2 py-4 rounded-[1.5rem] text-[10px] font-black uppercase tracking-widest transition-all",
                         profile?.iconStyle === 'mono' 
                           ? "bg-white dark:bg-zinc-800 shadow-xl border border-zinc-100 dark:border-zinc-700 text-black dark:text-white"
                           : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
                       )}
                     >
-                      <div className="flex -space-x-2 grayscale">
-                        <div className="w-5 h-5 rounded-full bg-zinc-400" />
-                        <div className="w-5 h-5 rounded-full bg-zinc-600" />
-                        <div className="w-5 h-5 rounded-full bg-zinc-200" />
-                      </div>
-                      Monochrome
+                      <div className="w-4 h-4 rounded-full bg-zinc-400 grayscale" />
+                      Mono
                     </button>
                   </div>
                 </div>
@@ -2620,14 +2631,14 @@ const Dashboard: React.FC = () => {
                           )}
                         >
                           <div 
-                            className="w-16 h-16 rounded-[1.8rem] bg-white dark:bg-zinc-900 flex items-center justify-center transition-all group-hover:rotate-12 shadow-sm border border-zinc-100 dark:border-zinc-800"
+                            className="w-16 h-16 flex items-center justify-center transition-all group-hover:rotate-12"
                           >
                             <SocialIcon 
                               platform={platform.id} 
                               username="" 
                               style={profile?.iconStyle || 'colored'} 
                               asLink={false}
-                              className="w-full h-full p-3"
+                              className="w-full h-full"
                             />
                           </div>
                           <span className="font-black text-[10px] uppercase tracking-widest text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">{platform.label}</span>

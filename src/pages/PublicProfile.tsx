@@ -349,7 +349,14 @@ END:VCARD`;
                  <div className="absolute inset-0 bg-lime-400/5 blur-3xl rounded-full translate-y-1/2" />
               </div>
             )}
-            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/20 to-transparent" />
+            <div className={cn(
+              "absolute inset-x-0 bottom-0 h-[80%] z-10",
+              theme.background === 'bg-white' 
+                ? "bg-gradient-to-t from-white via-white/80 to-transparent" 
+                : theme.background === 'bg-black' || theme.background.includes('zinc-950')
+                  ? "bg-gradient-to-t from-black via-black/80 to-transparent"
+                  : "bg-gradient-to-t from-zinc-900/40 via-zinc-900/10 to-transparent"
+            )} />
           </motion.div>
         </div>
 
@@ -370,14 +377,14 @@ END:VCARD`;
 
           {/* Social Icons Row */}
           {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
-            <div className="flex flex-row items-center justify-center gap-4 mb-12 px-6 w-full max-w-full overflow-x-auto no-scrollbar">
-              {Object.entries(profile.socialLinks).slice(0, 8).map(([platform, username]) => (
+            <div className="flex flex-row items-center justify-center gap-4 mb-12 px-6 w-full max-w-full overflow-x-auto no-scrollbar py-2">
+              {Object.entries(profile.socialLinks).slice(0, 10).map(([platform, username]) => (
                 <SocialIconComponent 
                   key={platform} 
                   platform={platform} 
                   username={username as string} 
                   style={profile.iconStyle || 'colored'}
-                  className="w-12 h-12 p-1 shrink-0" 
+                  className="shrink-0 transition-transform hover:translate-y-[-4px]" 
                 />
               ))}
             </div>

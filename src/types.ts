@@ -58,7 +58,7 @@ export interface User {
   profileFont?: FontType;
   textColor?: string;
   brandColor?: string;
-  iconStyle?: 'colored' | 'mono';
+  iconStyle?: 'colored' | 'mono' | 'glass';
   location?: {
     lat: number;
     lng: number;
