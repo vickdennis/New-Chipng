@@ -16,6 +16,7 @@ import {
   Instagram, Twitter, Facebook, Youtube, Github, Linkedin, Globe
 } from 'lucide-react';
 import Logo from '../components/Logo';
+import SocialIconComponent from '../components/SocialIcon';
 import { BrandIcons } from '../components/icons/BrandIcons';
 import { toast } from 'sonner';
 import { User, Link as LinkType, Shout, Media } from '../types';
@@ -25,68 +26,7 @@ import { BASE_URL } from '../constants';
 import { THEMES } from '../types';
 import { cn } from '../lib/utils';
 
-const SocialIcon = ({ platform, username, className }: { platform: string; username: string; className?: string }) => {
-  const brandKey = platform.toLowerCase() as keyof typeof BrandIcons;
-  const brandIcon = BrandIcons[brandKey];
-  
-  const getBrandInfo = () => {
-    if (brandIcon) {
-       // Define colors for common brands
-       const brandColors: Record<string, string> = {
-         instagram: '#E1306C',
-         twitter: '#1DA1F2',
-         facebook: '#4267B2',
-         youtube: '#FF0000',
-         linkedin: '#0077B5',
-         github: '#181717',
-         tiktok: '#000000',
-         whatsapp: '#25D366',
-         spotify: '#1DB954',
-         twitch: '#9146FF',
-         discord: '#5865F2',
-         snapchat: '#FFFC00',
-         reddit: '#FF4500'
-       };
-       return { 
-         icon: React.createElement(brandIcon, { className: "w-full h-full" }), 
-         color: brandColors[platform.toLowerCase()] || '#A3E635' 
-       };
-    }
-    return { icon: <Globe className="w-full h-full" />, color: '#6366f1' };
-  };
 
-  const { icon, color } = getBrandInfo();
-
-  const getUrl = () => {
-    switch (platform.toLowerCase()) {
-      case 'instagram': return `https://instagram.com/${username}`;
-      case 'twitter': 
-      case 'x': return `https://twitter.com/${username}`;
-      case 'facebook': return `https://facebook.com/${username}`;
-      case 'youtube': return `https://youtube.com/@${username}`;
-      case 'github': return `https://github.com/${username}`;
-      case 'linkedin': return `https://linkedin.com/in/${username}`;
-      case 'whatsapp': return `https://wa.me/${username}`;
-      default: return `https://${username}`;
-    }
-  };
-
-  return (
-    <a 
-      href={getUrl()} 
-      target="_blank" 
-      rel="noopener noreferrer"
-      className={`${className} group/icon relative overflow-hidden`}
-      onClick={(e) => e.stopPropagation()}
-      style={{ '--brand-color': color } as React.CSSProperties}
-    >
-      <div className="absolute inset-0 bg-[var(--brand-color)] opacity-0 group-hover/icon:opacity-10 transition-opacity" />
-      <div className="relative z-10 w-full h-full transition-transform group-hover/icon:scale-110 active:scale-95" style={{ color: color }}>
-        {icon}
-      </div>
-    </a>
-  );
-};
 
 const PublicProfile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
@@ -430,16 +370,14 @@ END:VCARD`;
 
           {/* Social Icons Row */}
           {profile.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
-            <div className="flex flex-row items-center justify-center gap-3 mb-12 px-6 w-full max-w-full overflow-x-auto no-scrollbar">
+            <div className="flex flex-row items-center justify-center gap-4 mb-12 px-6 w-full max-w-full overflow-x-auto no-scrollbar">
               {Object.entries(profile.socialLinks).slice(0, 8).map(([platform, username]) => (
-                <SocialIcon 
+                <SocialIconComponent 
                   key={platform} 
                   platform={platform} 
                   username={username as string} 
-                  className={cn(
-                    "w-11 h-11 p-2.5 rounded-2xl transition-all shadow-xl shrink-0 border",
-                    theme.background === 'bg-white' ? 'bg-white border-zinc-100' : 'bg-zinc-950 border-white/5'
-                  )} 
+                  style={profile.iconStyle || 'colored'}
+                  className="w-12 h-12 p-1 shrink-0" 
                 />
               ))}
             </div>
@@ -507,7 +445,17 @@ END:VCARD`;
                       )}
                     >
                       <div className="aspect-[16/10] relative overflow-hidden">
-                        {(link.thumbnail || link.icon) ? (
+                        {link.type && link.type !== 'standard' && !link.thumbnail ? (
+                          <div className="w-full h-full p-12 bg-zinc-950 flex items-center justify-center">
+                            <SocialIconComponent 
+                              platform={link.type} 
+                              username={link.url.split('/').pop() || ''} 
+                              style={profile.iconStyle || 'colored'}
+                              asLink={false}
+                              className="w-32 h-32"
+                            />
+                          </div>
+                        ) : (link.thumbnail || link.icon) ? (
                           <img 
                             src={link.thumbnail || link.icon} 
                             alt={link.title} 
@@ -551,8 +499,16 @@ END:VCARD`;
                       "hover:scale-[1.02]"
                     )}
                   >
-                    <div className="w-16 h-16 rounded-[1.2rem] bg-white/10 flex items-center justify-center overflow-hidden border border-white/5 shadow-inner">
-                       {(link.thumbnail || link.icon) ? (
+                    <div className="w-16 h-16 rounded-[1.2rem] bg-white/10 flex items-center justify-center overflow-hidden border border-white/5 shadow-inner p-1">
+                       {link.type && link.type !== 'standard' && !link.thumbnail ? (
+                         <SocialIconComponent 
+                           platform={link.type} 
+                           username={link.url.split('/').pop() || ''} 
+                           style={profile.iconStyle || 'colored'}
+                           asLink={false}
+                           className="w-full h-full"
+                         />
+                       ) : (link.thumbnail || link.icon) ? (
                          <img src={link.thumbnail || link.icon} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" referrerPolicy="no-referrer" />
                        ) : (
                          <LinkIcon className="w-6 h-6" />

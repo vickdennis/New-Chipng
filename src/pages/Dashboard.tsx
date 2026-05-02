@@ -46,6 +46,7 @@ import { usePaystackPayment } from 'react-paystack';
 import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
 import { safeWrite, getBackupHistory, rollbackDocument, rollbackToVersion, BackupData } from '../services/backupService';
 import { BrandIcons } from '../components/icons/BrandIcons';
+import SocialIcon from '../components/SocialIcon';
 import { Sparkles, Wand2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { uploadImage, validateImage, UploadPath } from '../services/imageService';
@@ -148,11 +149,16 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
           {/* Link Type */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Link Type</label>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {[
                 { id: 'standard', icon: LinkIcon },
                 { id: 'youtube', icon: Youtube },
-                { id: 'tiktok', icon: Music2 }
+                { id: 'tiktok', icon: Music2 },
+                { id: 'instagram', icon: Instagram },
+                { id: 'twitter', icon: Twitter },
+                { id: 'whatsapp', icon: MessageCircle },
+                { id: 'spotify', icon: Music },
+                { id: 'linkedin', icon: Linkedin },
               ].map((t) => (
                 <button
                   key={t.id}
@@ -1946,12 +1952,13 @@ const Dashboard: React.FC = () => {
                         
                         return (
                           <div key={platform} className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-5 rounded-[2.5rem] group relative hover:border-lime-200 dark:hover:border-lime-900/30 transition-all flex flex-col items-center text-center gap-3">
-                            <div 
-                              className="w-14 h-14 rounded-3xl flex items-center justify-center shadow-inner"
-                              style={{ backgroundColor: brand?.color ? brand.color + '15' : '#A3E63515' }}
-                            >
-                              {brand ? React.createElement(brand.icon, { className: "w-7 h-7", style: { color: brand.color } }) : <Globe className="w-7 h-7" />}
-                            </div>
+                            <SocialIcon 
+                              platform={platform} 
+                              username={String(url).split('/').pop()?.replace('@', '') || ''} 
+                              style={profile?.iconStyle || 'colored'}
+                              asLink={false}
+                              className="w-14 h-14"
+                            />
                             <div className="min-w-0 w-full">
                               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">{platform}</p>
                               <p className="text-[11px] font-bold text-zinc-500 truncate mt-0.5">@{String(url).split('/').pop()?.replace('@', '')}</p>
@@ -1981,6 +1988,44 @@ const Dashboard: React.FC = () => {
                         <span className="text-[10px] font-black uppercase tracking-[0.2em]">Add Platform</span>
                       </button>
                     </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-[22px] font-black">Icon Style</h3>
+                  <div className="flex gap-4 p-2 bg-zinc-50 dark:bg-zinc-900 rounded-[2rem] border border-zinc-100 dark:border-zinc-800">
+                    <button 
+                      onClick={() => handleUpdateProfile({ iconStyle: 'colored' })}
+                      className={cn(
+                        "flex-1 flex items-center justify-center gap-3 py-4 rounded-[1.5rem] text-xs font-black uppercase tracking-widest transition-all",
+                        (profile?.iconStyle || 'colored') === 'colored' 
+                          ? "bg-white dark:bg-zinc-800 shadow-xl border border-zinc-100 dark:border-zinc-700 text-black dark:text-white"
+                          : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                      )}
+                    >
+                      <div className="flex -space-x-2">
+                        <div className="w-5 h-5 rounded-full bg-red-400" />
+                        <div className="w-5 h-5 rounded-full bg-blue-400" />
+                        <div className="w-5 h-5 rounded-full bg-green-400" />
+                      </div>
+                      Colored
+                    </button>
+                    <button 
+                      onClick={() => handleUpdateProfile({ iconStyle: 'mono' })}
+                      className={cn(
+                        "flex-1 flex items-center justify-center gap-3 py-4 rounded-[1.5rem] text-xs font-black uppercase tracking-widest transition-all",
+                        profile?.iconStyle === 'mono' 
+                          ? "bg-white dark:bg-zinc-800 shadow-xl border border-zinc-100 dark:border-zinc-700 text-black dark:text-white"
+                          : "text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+                      )}
+                    >
+                      <div className="flex -space-x-2 grayscale">
+                        <div className="w-5 h-5 rounded-full bg-zinc-400" />
+                        <div className="w-5 h-5 rounded-full bg-zinc-600" />
+                        <div className="w-5 h-5 rounded-full bg-zinc-200" />
+                      </div>
+                      Monochrome
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-4">

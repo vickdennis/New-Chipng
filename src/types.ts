@@ -58,6 +58,7 @@ export interface User {
   profileFont?: FontType;
   textColor?: string;
   brandColor?: string;
+  iconStyle?: 'colored' | 'mono';
   location?: {
     lat: number;
     lng: number;
@@ -111,7 +112,7 @@ export interface Link {
   clicks?: number;
   scheduledStart?: string;
   scheduledEnd?: string;
-  type?: 'standard' | 'youtube' | 'tiktok';
+  type?: 'standard' | 'youtube' | 'tiktok' | 'instagram' | 'twitter' | 'facebook' | 'linkedin' | 'whatsapp' | 'spotify' | 'apple-music' | 'snapchat' | 'telegram' | 'discord' | 'reddit' | 'pinterest' | 'github' | 'twitch';
   thumbnail?: string;
 }
 
