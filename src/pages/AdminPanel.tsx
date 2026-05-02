@@ -90,7 +90,9 @@ const AdminPanel: React.FC = () => {
   ];
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') {
+    if (!user) return;
+    
+    if (user.role !== 'admin') {
       setLoading(false);
       return;
     }
@@ -98,20 +100,26 @@ const AdminPanel: React.FC = () => {
     const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setUsers(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User)));
+      setLoading(false); // Set loading false after users are fetched
     }, (error) => {
       console.error('Admin users listener error:', error);
       toast.error('Failed to load users');
+      setLoading(false);
     });
 
     const productsUnsub = onSnapshot(collection(db, 'products'), (snapshot) => {
       setProducts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
-      setLoading(false);
+    }, (error) => {
+      console.error('Admin products listener error:', error);
     });
 
     const backupsUnsub = onSnapshot(
       query(collection(db, `${backupCollection}_backup`), orderBy('timestamp', 'desc'), limit(50)), 
       (snapshot) => {
         setBackups(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BackupData)));
+      },
+      (error) => {
+        console.error('Admin backups listener error:', error);
       }
     );
 

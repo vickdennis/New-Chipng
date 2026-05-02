@@ -52,10 +52,21 @@ import { motion, AnimatePresence } from 'motion/react';
 import { uploadImage, validateImage, UploadPath } from '../services/imageService';
 
 
-const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, isUploading, isAdmin, onViewHistory }: { 
+const SortableLinkItem = ({ 
+  link, 
+  onUpdate, 
+  onDelete, 
+  onDuplicate,
+  isPremium, 
+  onUploadIcon, 
+  isUploading, 
+  isAdmin, 
+  onViewHistory 
+}: { 
   link: Link; 
   onUpdate: (id: string, data: Partial<Link>) => void;
   onDelete: (id: string) => void;
+  onDuplicate: (id: string) => void;
   isPremium: boolean;
   onUploadIcon: (e: React.ChangeEvent<HTMLInputElement>, linkId: string) => void;
   isUploading: boolean;
@@ -67,7 +78,7 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
   const [showSettings, setShowSettings] = useState(false);
 
   return (
-    <div ref={setNodeRef} style={style} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl flex flex-col gap-4 group">
+    <div ref={setNodeRef} style={style} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl flex flex-col gap-4 group shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center gap-4">
         <button {...attributes} {...listeners} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 cursor-grab active:cursor-grabbing">
           <GripVertical className="w-5 h-5" />
@@ -75,9 +86,16 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
         
         <div className="flex-1 space-y-3">
           <div className="flex items-center gap-4">
-            <div className="relative group/icon">
-              <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 flex items-center justify-center">
-                {link.icon ? (
+            <div className="relative group/icon shrink-0">
+              <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 flex items-center justify-center p-1">
+                {link.type && link.type !== 'standard' && !link.icon ? (
+                  <SocialIcon 
+                    platform={link.type} 
+                    username={link.url.split('/').pop() || ''} 
+                    asLink={false}
+                    className="w-full h-full"
+                  />
+                ) : link.icon ? (
                   <img src={link.icon} alt="" className="w-full h-full object-cover" />
                 ) : getFavicon(link.url) ? (
                   <img src={getFavicon(link.url)!} alt="" className="w-6 h-6" referrerPolicy="no-referrer" />
@@ -85,7 +103,7 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
                   <ImageIcon className="w-5 h-5 text-zinc-400" />
                 )}
               </div>
-              <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-lg opacity-0 group-hover/icon:opacity-100 cursor-pointer transition-opacity">
+              <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-xl opacity-0 group-hover/icon:opacity-100 cursor-pointer transition-opacity">
                 <Plus className="w-4 h-4" />
                 <input 
                   type="file" 
@@ -96,24 +114,44 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
                 />
               </label>
             </div>
-            <input 
-              type="text" 
-              value={link.title}
-              onChange={(e) => onUpdate(link.id, { title: e.target.value })}
-              className="flex-1 bg-transparent font-bold text-zinc-900 dark:text-white outline-none"
-              placeholder="Link Title"
-            />
-            <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <input 
+                type="text" 
+                value={link.title}
+                onChange={(e) => onUpdate(link.id, { title: e.target.value })}
+                className="w-full bg-transparent font-bold text-zinc-900 dark:text-white outline-none text-base truncate"
+                placeholder="Link Title"
+              />
+              <input 
+                type="text" 
+                value={link.url}
+                onChange={(e) => onUpdate(link.id, { url: e.target.value })}
+                className="w-full bg-transparent text-[11px] text-zinc-400 font-bold uppercase tracking-widest outline-none truncate mt-0.5"
+                placeholder="https://example.com"
+              />
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button 
+                onClick={() => onDuplicate(link.id)}
+                className="p-2 rounded-xl text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all active:scale-95"
+                title="Duplicate Link"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
               <button 
                 onClick={() => setShowSettings(!showSettings)}
-                className={`p-2 rounded-lg transition-colors ${showSettings ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white' : 'text-zinc-400 hover:text-zinc-600'}`}
+                className={cn(
+                  "p-2 rounded-xl transition-all active:scale-95",
+                  showSettings ? "bg-lime-400 text-black shadow-lg shadow-lime-100" : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                )}
+                title="Edit Settings"
               >
                 <Settings className="w-4 h-4" />
               </button>
               {isAdmin && (
                 <button 
                   onClick={() => onViewHistory('links', link.id)}
-                  className="p-2 rounded-lg text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                  className="p-2 rounded-xl text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all active:scale-95"
                   title="View History"
                 >
                   <HistoryIcon className="w-4 h-4" />
@@ -121,93 +159,97 @@ const SortableLinkItem = ({ link, onUpdate, onDelete, isPremium, onUploadIcon, i
               )}
               <button 
                 onClick={() => onUpdate(link.id, { active: !link.active })}
-                className={`transition-colors ${link.active ? 'text-lime-500' : 'text-zinc-400'}`}
+                className={cn(
+                  "p-2 rounded-xl transition-all active:scale-95",
+                  link.active ? "text-lime-500 hover:bg-lime-50" : "text-zinc-300 hover:text-zinc-400 hover:bg-zinc-50"
+                )}
+                title={link.active ? "Visible" : "Hidden"}
               >
                 {link.active ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
               </button>
+              <button 
+                onClick={() => onDelete(link.id)}
+                className="p-2 rounded-xl text-zinc-300 hover:text-red-500 hover:bg-red-50 transition-all active:scale-95"
+                title="Delete Link"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
             </div>
           </div>
-          <input 
-            type="text" 
-            value={link.url}
-            onChange={(e) => onUpdate(link.id, { url: e.target.value })}
-            className="w-full bg-transparent text-sm text-zinc-500 outline-none"
-            placeholder="https://example.com"
-          />
         </div>
-
-        <button 
-          onClick={() => onDelete(link.id)}
-          className="text-zinc-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-        >
-          <Trash2 className="w-5 h-5" />
-        </button>
       </div>
 
       {showSettings && (
-        <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <motion.div 
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="pt-4 border-t border-zinc-100 dark:border-zinc-800 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-hidden"
+        >
           {/* Link Type */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Link Type</label>
+          <div className="space-y-3">
+            <label className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Appearance Mode</label>
             <div className="flex flex-wrap gap-2">
               {[
-                { id: 'standard', icon: LinkIcon },
-                { id: 'youtube', icon: Youtube },
-                { id: 'tiktok', icon: Music2 },
-                { id: 'instagram', icon: Instagram },
-                { id: 'twitter', icon: Twitter },
-                { id: 'whatsapp', icon: MessageCircle },
-                { id: 'spotify', icon: Music },
-                { id: 'linkedin', icon: Linkedin },
+                { id: 'standard', icon: LinkIcon, label: 'Standard' },
+                { id: 'youtube', icon: Youtube, label: 'Video' },
+                { id: 'tiktok', icon: Music2, label: 'Social' },
+                { id: 'instagram', icon: Instagram, label: 'Visual' },
+                { id: 'whatsapp', icon: MessageCircle, label: 'Chat' },
+                { id: 'spotify', icon: Music, label: 'Audio' },
               ].map((t) => (
                 <button
                   key={t.id}
                   onClick={() => onUpdate(link.id, { type: t.id as any })}
-                  className={`flex-1 flex items-center justify-center gap-2 p-2 rounded-xl border transition-all ${
-                    link.type === t.id || (!link.type && t.id === 'standard')
-                      ? 'border-lime-400 bg-lime-400/5 text-lime-600'
-                      : 'border-zinc-200 dark:border-zinc-800 text-zinc-500'
-                  }`}
+                  className={cn(
+                    "flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 transition-all",
+                    (link.type === t.id || (!link.type && t.id === 'standard'))
+                      ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white"
+                      : "bg-white border-zinc-50 text-zinc-400 hover:border-zinc-100 dark:bg-zinc-900 dark:border-zinc-800"
+                  )}
                 >
-                  <t.icon className="w-4 h-4" />
-                  <span className="text-xs font-bold capitalize">{t.id}</span>
+                  <t.icon className="w-3.5 h-3.5" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">{t.label}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Scheduling */}
-          <div className="space-y-2">
+          {/* Date Scheduling */}
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Scheduling</label>
+              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Launch Schedule</label>
               {!isPremium && (
-                <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
+                <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-black flex items-center gap-1">
                   <Crown className="w-2.5 h-2.5" /> PRO
                 </span>
               )}
             </div>
-            <div className={`grid grid-cols-2 gap-2 ${!isPremium ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div className={cn(
+              "grid grid-cols-2 gap-3",
+              !isPremium && "opacity-40 pointer-events-none grayscale"
+            )}>
               <div className="space-y-1">
-                <span className="text-[10px] text-zinc-400">Start</span>
+                <span className="text-[9px] font-bold text-zinc-400 px-1">START DATE</span>
                 <input 
                   type="datetime-local" 
                   value={link.scheduledStart || ''}
                   onChange={(e) => onUpdate(link.id, { scheduledStart: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 text-[10px] p-2 rounded-lg outline-none"
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 text-[10px] p-3 rounded-xl outline-none border border-transparent focus:border-lime-400 transition-all font-bold"
                 />
               </div>
               <div className="space-y-1">
-                <span className="text-[10px] text-zinc-400">End</span>
+                <span className="text-[9px] font-bold text-zinc-400 px-1">EXPIRY DATE</span>
                 <input 
                   type="datetime-local" 
                   value={link.scheduledEnd || ''}
                   onChange={(e) => onUpdate(link.id, { scheduledEnd: e.target.value })}
-                  className="w-full bg-zinc-50 dark:bg-zinc-800 text-[10px] p-2 rounded-lg outline-none"
+                  className="w-full bg-zinc-50 dark:bg-zinc-800 text-[10px] p-3 rounded-xl outline-none border border-transparent focus:border-red-400 transition-all font-bold"
                 />
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );
@@ -487,6 +529,24 @@ const Dashboard: React.FC = () => {
       toast.success('Link soft deleted');
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `links/${id}`);
+    }
+  };
+
+  const handleDuplicateLink = async (id: string) => {
+    const linkToDuplicate = links.find(l => l.id === id);
+    if (!linkToDuplicate || !user) return;
+    try {
+      const { id: _, ...linkData } = linkToDuplicate;
+      await safeWrite('links', null, {
+        ...linkData,
+        title: `${linkData.title} (Copy)`,
+        position: links.length,
+        clicks: 0,
+        createdAt: new Date().toISOString()
+      }, 'create');
+      toast.success('Link duplicated');
+    } catch (error) {
+      toast.error('Failed to duplicate link');
     }
   };
 
@@ -1199,150 +1259,83 @@ const Dashboard: React.FC = () => {
                       {profile?.contactEmail || 'Add email for your profile'}
                     </p>
                   </div>
-                </div>
-
-                {/* Featured Links Grid */}
+                </div>                {/* Featured Links Grid */}
                 <div className="w-full text-left">
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="font-bold text-[18px]">Featured Links</h3>
-                    <Plus className="w-6 h-6 text-[#A3E635] cursor-pointer" onClick={handleAddLink} />
+                    <div>
+                      <h3 className="font-black text-[22px]">Manage Links</h3>
+                      <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Organize and edit your featured content</p>
+                    </div>
+                    <button 
+                      onClick={handleAddLink}
+                      className="p-3 bg-lime-400 text-zinc-950 rounded-2xl shadow-lg shadow-lime-100 hover:scale-105 active:scale-95 transition-all"
+                    >
+                      <Plus className="w-6 h-6" />
+                    </button>
                   </div>
                   
                   <div className="space-y-6">
                     {links.length === 0 ? (
                       <button 
                         onClick={handleAddLink}
-                        className="w-full p-6 border-2 border-dashed border-zinc-200 rounded-[2rem] flex flex-col items-center gap-2 group hover:border-lime-400 transition-all"
+                        className="w-full p-12 border-4 border-dashed border-zinc-100 dark:border-zinc-800 rounded-[3rem] flex flex-col items-center gap-4 group hover:border-[#A3E635] hover:bg-lime-50 transition-all text-center"
                       >
-                        <Plus className="w-8 h-8 text-lime-500" />
-                        <span className="text-sm font-bold text-zinc-900">Add Spotlight Link</span>
+                        <div className="w-16 h-16 bg-lime-50 dark:bg-lime-900/10 rounded-3xl flex items-center justify-center">
+                          <Plus className="w-8 h-8 text-[#A3E635]" />
+                        </div>
+                        <div>
+                          <span className="block text-lg font-black text-zinc-900 dark:text-white">Start Building Your Profile</span>
+                          <span className="text-sm font-bold text-zinc-400">Add your first spotlight link to get noticed</span>
+                        </div>
                       </button>
                     ) : (
-                      <div className="space-y-6">
-                        {links.map((link, idx) => {
-                          const isBig = idx === 0 || link.type === 'youtube' || link.type === 'tiktok';
-                          
-                          if (isBig) {
-                            return (
-                              <div key={link.id} className="relative aspect-[16/10] bg-zinc-900 rounded-[2.8rem] overflow-hidden border border-zinc-800 shadow-2xl group">
-                                {link.thumbnail || link.icon ? (
-                                  <img src={link.thumbnail || link.icon} className="w-full h-full object-cover opacity-60 transition-transform duration-700 group-hover:scale-110" alt="" />
-                                ) : (
-                                  <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                                    <LinkIcon className="w-12 h-12 text-zinc-700" />
-                                  </div>
-                                )}
-                                <div className="absolute inset-0 p-8 flex flex-col justify-end bg-gradient-to-t from-black via-black/40 to-transparent">
-                                  <div className="flex flex-col gap-2">
-                                     <input 
-                                       className="w-full bg-transparent border-none p-0 text-2xl font-black text-white outline-none" 
-                                       value={link.title}
-                                       onChange={(e) => handleUpdateLink(link.id, { title: e.target.value })}
-                                     />
-                                     <input 
-                                       className="w-full bg-transparent border-none p-0 text-xs text-zinc-400 font-bold outline-none truncate" 
-                                       value={link.url}
-                                       onChange={(e) => handleUpdateLink(link.id, { url: e.target.value })}
-                                     />
-                                  </div>
-                                </div>
-                                <div className="absolute top-6 right-6 flex gap-2">
-                                  <label className="p-3 bg-white/10 backdrop-blur-md rounded-2xl cursor-pointer hover:bg-white/20 transition-all">
-                                    <Camera className="w-4 h-4 text-white" />
-                                    <input type="file" className="hidden" onChange={async (e) => {
-                                      const file = e.target.files?.[0];
-                                      if (!file || !user) return;
-                                      try {
-                                        const url = await uploadImage(file, user.uid, 'link-icons');
-                                        await handleUpdateLink(link.id, { thumbnail: url });
-                                        toast.success('Thumbnail updated');
-                                      } catch (err) {
-                                        toast.error('Upload failed');
-                                      }
-                                    }} accept="image/*" />
-                                  </label>
-                                  <button onClick={() => handleUpdateLink(link.id, { active: !link.active })} className={`p-3 backdrop-blur-md rounded-2xl transition-all ${link.active ? 'bg-lime-400 text-zinc-950' : 'bg-white/10 text-white'}`}>
-                                    {link.active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                                  </button>
-                                  <button onClick={() => handleDeleteLink(link.id)} className="p-3 bg-red-500/80 backdrop-blur-md rounded-2xl hover:bg-red-500 transition-all">
-                                    <Trash2 className="w-4 h-4 text-white" />
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          }
-
-                          return (
-                            <div key={link.id} className="flex items-center gap-4 p-4 bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-[2rem] group hover:scale-[1.01] transition-all">
-                                 <div className="w-10 h-10 bg-zinc-100 dark:bg-zinc-800 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-700 flex items-center justify-center relative">
-                                    {link.icon ? (
-                                      <img src={link.icon} alt="" className="w-full h-full object-cover" />
-                                    ) : (
-                                       (() => {
-                                          const url = link.url.toLowerCase();
-                                          const brands: Record<string, { icon: any, color: string }> = {
-                                            instagram: { icon: BrandIcons.instagram, color: '#E1306C' },
-                                            twitter: { icon: BrandIcons.x, color: '#1DA1F2' },
-                                            x: { icon: BrandIcons.x, color: '#1DA1F2' },
-                                            facebook: { icon: BrandIcons.facebook, color: '#4267B2' },
-                                            youtube: { icon: BrandIcons.youtube, color: '#FF0000' },
-                                            linkedin: { icon: BrandIcons.linkedin, color: '#0077B5' },
-                                            github: { icon: BrandIcons.github, color: '#181717' },
-                                            tiktok: { icon: BrandIcons.tiktok, color: '#000000' },
-                                            whatsapp: { icon: BrandIcons.whatsapp, color: '#25D366' },
-                                            spotify: { icon: BrandIcons.spotify, color: '#1DB954' }
-                                          };
-                                          const brandKey = Object.keys(brands).find(key => {
-                                            try {
-                                              const host = new URL(url.startsWith('http') ? url : `https://${url}`).hostname;
-                                              return host.includes(key);
-                                            } catch (e) {
-                                              return url.includes(`${key}.com`) || url.includes(`${key}.me`) || url.includes(`${key}.be`);
-                                            }
-                                          });
-                                          if (brandKey) {
-                                            const brand = brands[brandKey];
-                                            return <brand.icon className="w-6 h-6" style={{ color: brand.color }} />;
-                                          }
-                                          return <LinkIcon className="w-6 h-6 text-zinc-300" />;
-                                       })()
-                                    )}
-                                    <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
-                                       <Plus className="w-4 h-4 text-white" />
-                                       <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, 'link-icon', link.id)} accept="image/*" />
-                                    </label>
-                                 </div>
-                              <div className="flex-1 min-w-0">
-                                 <input 
-                                   className="w-full bg-transparent border-none p-0 font-bold text-base dark:text-white outline-none" 
-                                   value={link.title}
-                                   onChange={(e) => handleUpdateLink(link.id, { title: e.target.value })}
-                                 />
-                                 <input 
-                                   className="w-full bg-transparent border-none p-0 text-[10px] text-zinc-400 font-bold uppercase tracking-widest outline-none truncate" 
-                                   value={link.url}
-                                   onChange={(e) => handleUpdateLink(link.id, { url: e.target.value })}
-                                 />
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <button onClick={() => handleUpdateLink(link.id, { active: !link.active })} className={`p-2 rounded-xl transition-all ${link.active ? 'text-lime-500' : 'text-zinc-300'}`}>
-                                  {link.active ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
-                                </button>
-                                <button onClick={() => handleDeleteLink(link.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
-                                  <Trash2 className="w-5 h-5" />
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        <button 
-                          onClick={handleAddLink}
-                          className="w-full py-4 border-2 border-dashed border-zinc-100 dark:border-zinc-800 rounded-[2rem] flex items-center justify-center gap-2 text-zinc-400 hover:border-lime-400 hover:text-lime-500 transition-all font-black text-xs uppercase tracking-widest"
+                      <DndContext 
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext 
+                          items={links.map(l => l.id)}
+                          strategy={verticalListSortingStrategy}
                         >
-                          <Plus className="w-5 h-5" /> Add Standard Link
-                        </button>
-                      </div>
+                          <div className="space-y-4">
+                            {links.map((link) => (
+                              <SortableLinkItem 
+                                key={link.id}
+                                link={link}
+                                onUpdate={handleUpdateLink}
+                                onDelete={handleDeleteLink}
+                                onDuplicate={handleDuplicateLink}
+                                isPremium={hasAccess('pro')}
+                                onUploadIcon={(e, id) => handleFileUpload(e, 'link-icon', id)}
+                                isUploading={isUploading}
+                                isAdmin={isAdmin}
+                                onViewHistory={fetchHistory}
+                              />
+                            ))}
+                          </div>
+                        </SortableContext>
+                      </DndContext>
                     )}
+
+                    <div className="flex gap-4">
+                      <button 
+                        onClick={handleAddLink}
+                        className="flex-1 py-5 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-[2.5rem] flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all font-black text-xs uppercase tracking-widest shadow-xl shadow-zinc-950/20 dark:shadow-white/5"
+                      >
+                        <Plus className="w-5 h-5" /> Add Standard Link
+                      </button>
+                      <button 
+                        onClick={() => setIsAddPlatformModalOpen(true)}
+                        className={cn(
+                          "flex-1 py-5 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all font-black text-xs uppercase tracking-widest shadow-lg",
+                          profile?.brandColor ? "text-white" : "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white"
+                        )}
+                        style={profile?.brandColor ? { backgroundColor: profile.brandColor, borderColor: profile.brandColor } : {}}
+                      >
+                        <Send className="w-5 h-5" /> Add Social Icon
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -2046,7 +2039,7 @@ const Dashboard: React.FC = () => {
                         <button 
                           key={color}
                           onClick={() => handleUpdateProfile({ brandColor: color })}
-                          className={`w-10 h-10 rounded-full border-4 transition-all ${profile?.brandColor === color ? 'border-black scale-110 shadow-lg' : 'border-white'}`}
+                          className={`w-10 h-10 rounded-full border-4 transition-all ${profile?.brandColor?.toLowerCase() === color.toLowerCase() ? 'border-zinc-950 dark:border-white scale-110 shadow-lg' : 'border-white dark:border-zinc-800'}`}
                           style={{ backgroundColor: color }}
                         />
                       ))}
@@ -2548,7 +2541,6 @@ const Dashboard: React.FC = () => {
         ))}
       </nav>
 
-      {/* Add Platform Modal */}
       <AnimatePresence>
         {isAddPlatformModalOpen && (
           <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -2557,52 +2549,53 @@ const Dashboard: React.FC = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsAddPlatformModalOpen(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-black/80 backdrop-blur-md"
             />
             <motion.div 
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              className="relative w-full max-w-lg bg-white rounded-t-[2.5rem] sm:rounded-b-[2.5rem] p-6 pb-12 shadow-2xl flex flex-col h-[80vh] sm:h-auto sm:max-h-[85vh]"
+              initial={{ y: '100%', scale: 0.95 }}
+              animate={{ y: 0, scale: 1 }}
+              exit={{ y: '100%', scale: 0.95 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-xl bg-white dark:bg-zinc-900 rounded-t-[3.5rem] sm:rounded-[3.5rem] p-8 pb-12 shadow-[0_40px_100px_rgba(0,0,0,0.4)] flex flex-col h-[90vh] sm:h-auto sm:max-h-[85vh] overflow-hidden"
             >
-              <div className="w-12 h-1.5 bg-zinc-100 rounded-full mx-auto mb-6 sm:hidden" />
+              <div className="w-16 h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full mx-auto mb-8 sm:hidden" />
               
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-8">
                 <div>
-                  <h2 className="text-2xl font-black">Add Platform</h2>
-                  <p className="text-[#6B7280] text-sm font-medium">Add social icons to your profile.</p>
+                  <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">Add Platform</h2>
+                  <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest mt-1">Enhance Your Digital Footprint</p>
                 </div>
                 <button 
                   onClick={() => setIsAddPlatformModalOpen(false)}
-                  className="p-2 bg-zinc-50 rounded-full hover:bg-zinc-100 transition-colors"
+                  className="w-12 h-12 flex items-center justify-center bg-zinc-50 dark:bg-zinc-800 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors group"
                 >
-                  <X className="w-5 h-5 text-zinc-400" />
+                  <X className="w-6 h-6 text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors" />
                 </button>
               </div>
 
               {/* Search Bar */}
-              <div className="relative mb-6">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <div className="relative mb-8">
+                <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
                 <input 
                   type="text" 
-                  placeholder="Search platforms..."
+                  placeholder="Search over 30+ platforms..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-12 bg-zinc-50 border-none rounded-2xl pl-11 pr-4 focus:ring-2 focus:ring-[#A3E635] transition-all font-medium"
+                  className="w-full h-16 bg-zinc-50 dark:bg-zinc-800 focus:bg-white dark:focus:bg-zinc-800 border-2 border-transparent focus:border-[#A3E635] rounded-[2rem] pl-14 pr-6 transition-all font-bold text-zinc-900 dark:text-white shadow-inner"
                 />
               </div>
 
               {/* Categories Scroll */}
-              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-6 mb-2 -mx-2 px-2">
+              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-8 mb-2 -mx-2 px-2">
                 {CATEGORIES.map(cat => (
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.id as any)}
                     className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-2xl whitespace-nowrap font-bold text-sm transition-all border-2",
+                      "flex items-center gap-3 px-6 py-3 rounded-2xl whitespace-nowrap font-black text-xs uppercase tracking-widest transition-all border-2",
                       selectedCategory === cat.id 
-                        ? "bg-[#A3E635] text-white border-[#A3E635] shadow-lg shadow-lime-100" 
-                        : "bg-white text-[#6B7280] border-[#F3F4F6] hover:border-zinc-200"
+                        ? "bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 border-zinc-950 dark:border-white shadow-xl" 
+                        : "bg-white dark:bg-zinc-900 text-zinc-400 border-zinc-50 dark:border-zinc-800 hover:border-zinc-200 dark:hover:border-zinc-700 hover:text-zinc-900 dark:hover:text-white"
                     )}
                   >
                     <cat.icon className="w-4 h-4" />
@@ -2611,7 +2604,7 @@ const Dashboard: React.FC = () => {
                 ))}
               </div>
 
-              <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-2 gap-3 pr-1 pb-4">
+              <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-2 xs:grid-cols-3 gap-4 pr-1 pb-4">
                 {filteredPlatforms.length > 0 ? (
                   filteredPlatforms.map(platform => {
                     const isAdded = profile?.socialLinks && !!profile.socialLinks[platform.id as keyof typeof profile.socialLinks];
@@ -2620,23 +2613,28 @@ const Dashboard: React.FC = () => {
                         <button
                           onClick={() => handleSelectPlatform(platform.id, platform.urlPrefix)}
                           className={cn(
-                            "w-full flex flex-col items-center justify-center gap-3 p-6 rounded-[2.5rem] border transition-all hover:scale-[1.02] active:scale-[0.98] relative",
+                            "w-full flex flex-col items-center justify-center gap-4 p-8 rounded-[3rem] border-2 transition-all hover:scale-[1.05] active:scale-[0.95] relative overflow-hidden group",
                             isAdded 
-                              ? "bg-lime-50 border-lime-200" 
-                              : "bg-white border-zinc-100 hover:border-lime-200 hover:shadow-xl"
+                              ? "bg-lime-50 dark:bg-lime-900/10 border-lime-200 dark:border-lime-900/30" 
+                              : "bg-zinc-50/50 dark:bg-zinc-800/50 border-transparent hover:border-lime-400/30 hover:bg-white dark:hover:bg-zinc-800 hover:shadow-[0_20px_50px_rgba(163,230,53,0.1)]"
                           )}
                         >
                           <div 
-                            className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-zinc-950/5 group-hover:rotate-6 transition-transform"
-                            style={{ backgroundColor: platform.color }}
+                            className="w-16 h-16 rounded-[1.8rem] bg-white dark:bg-zinc-900 flex items-center justify-center transition-all group-hover:rotate-12 shadow-sm border border-zinc-100 dark:border-zinc-800"
                           >
-                            <platform.icon className="w-8 h-8" />
+                            <SocialIcon 
+                              platform={platform.id} 
+                              username="" 
+                              style={profile?.iconStyle || 'colored'} 
+                              asLink={false}
+                              className="w-full h-full p-3"
+                            />
                           </div>
-                          <span className="font-black text-[11px] uppercase tracking-tighter text-zinc-900">{platform.label}</span>
+                          <span className="font-black text-[10px] uppercase tracking-widest text-zinc-500 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">{platform.label}</span>
                           
                           {isAdded && (
-                            <div className="absolute top-4 right-4 w-6 h-6 bg-lime-400 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
-                              <Check className="w-3 h-3 text-zinc-950 font-black" />
+                            <div className="absolute top-4 right-4 w-6 h-6 bg-lime-400 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-900 shadow-sm z-20">
+                              <Check className="w-3.5 h-3.5 text-zinc-950 stroke-[3px]" />
                             </div>
                           )}
                         </button>
@@ -2651,7 +2649,7 @@ const Dashboard: React.FC = () => {
                                 await handleUpdateProfile({ socialLinks: newLinks });
                               }
                             }}
-                            className="absolute -top-1 -right-1 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity border-2 border-white shadow-lg z-10 hover:bg-red-600"
+                            className="absolute -top-1 -right-1 w-8 h-8 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all border-2 border-white dark:border-zinc-900 shadow-xl z-30 hover:bg-red-600 hover:scale-110 active:scale-90"
                           >
                             <X className="w-4 h-4 font-black" />
                           </button>
@@ -2660,20 +2658,31 @@ const Dashboard: React.FC = () => {
                     );
                   })
                 ) : (
-                  <div className="col-span-2 py-12 text-center">
-                    <p className="text-zinc-400 font-medium italic">No platforms found for "{searchQuery}"</p>
+                  <div className="col-span-full py-20 text-center space-y-4">
+                    <div className="w-20 h-20 bg-zinc-50 dark:bg-zinc-800 rounded-full flex items-center justify-center mx-auto">
+                       <Search className="w-10 h-10 text-zinc-300" />
+                    </div>
+                    <p className="text-zinc-400 font-bold uppercase tracking-widest text-xs">No matching platforms found</p>
                   </div>
                 )}
               </div>
 
-              {/* Added Platforms Section (Optional) */}
+              {/* Added Platforms Section */}
               {profile?.socialLinks && Object.keys(profile.socialLinks).length > 0 && searchQuery === '' && (
-                <div className="mt-6 pt-6 border-t border-[#F3F4F6]">
-                  <h4 className="text-[12px] font-bold text-zinc-400 uppercase tracking-widest mb-3 ml-1">Added Platforms ({Object.keys(profile.socialLinks).length})</h4>
+                <div className="mt-8 pt-8 border-t border-zinc-100 dark:border-zinc-800">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Live Social Stack ({Object.keys(profile.socialLinks).length})</h4>
+                    <button 
+                      onClick={() => handleUpdateProfile({ socialLinks: {} })}
+                      className="text-[10px] font-black text-red-500 uppercase tracking-widest hover:underline"
+                    >
+                      Clear All
+                    </button>
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(profile.socialLinks).map(([id, url]) => (
-                      <div key={id} className="flex items-center gap-2 bg-zinc-50 border border-[#F3F4F6] px-3 py-1.5 rounded-full">
-                        <span className="text-xs font-bold capitalize">{id}</span>
+                      <div key={id} className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800 px-4 py-2 rounded-xl border border-zinc-100 dark:border-zinc-700 group hover:border-[#A3E635] transition-all">
+                        <span className="text-xs font-black capitalize text-zinc-700 dark:text-zinc-300">{id}</span>
                         <button 
                           onClick={async () => {
                             const newSocials = { ...profile.socialLinks };
@@ -2683,7 +2692,7 @@ const Dashboard: React.FC = () => {
                           }}
                           className="text-zinc-400 hover:text-red-500 transition-colors"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     ))}

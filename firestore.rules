@@ -93,7 +93,7 @@ service cloud.firestore {
         !incoming().keys().hasAny(['role', 'isPremium', 'plan', 'isVerified', 'status'])
       );
       allow update: if (isOwner(userId) || isAdmin()) && (
-        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'bio', 'photoURL', 'coverImage', 'socialLinks', 'theme', 'backgroundType', 'backgroundColor', 'backgroundImage', 'textColor', 'buttonStyle', 'updatedAt', 'isDeleted', 'phone', 'address', 'contactEmail'])) ||
+        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'bio', 'photoURL', 'coverImage', 'socialLinks', 'theme', 'brandColor', 'iconStyle', 'backgroundType', 'backgroundColor', 'backgroundImage', 'textColor', 'buttonStyle', 'updatedAt', 'isDeleted', 'phone', 'address', 'contactEmail'])) ||
         (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['role', 'isPremium', 'plan', 'isVerified', 'status', 'updatedAt', 'isDeleted', 'displayName', 'bio', 'photoURL', 'coverImage', 'socialLinks', 'phone', 'address', 'contactEmail', 'premiumUntil', 'onboardingCompleted']))
       );
     }
