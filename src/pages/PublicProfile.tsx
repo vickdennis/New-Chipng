@@ -356,20 +356,50 @@ END:VCARD`;
               </div>
             )}
             <div className={cn(
-              "absolute inset-x-0 bottom-0 h-[80%] z-10",
+              "absolute inset-x-0 bottom-0 h-full z-10",
               theme.background === 'bg-white' 
-                ? "bg-gradient-to-t from-white via-white/80 to-transparent" 
+                ? "bg-gradient-to-t from-white via-white/95 via-white/20 to-transparent" 
                 : theme.background === 'bg-black' || theme.background.includes('zinc-950')
-                  ? "bg-gradient-to-t from-black via-black/80 to-transparent"
-                  : "bg-gradient-to-t from-zinc-900/40 via-zinc-900/10 to-transparent"
-            )} />
+                  ? "bg-gradient-to-t from-black via-black/95 via-black/20 to-transparent"
+                  : "bg-gradient-to-t from-zinc-900 via-zinc-900/95 via-zinc-900/20 to-transparent"
+            )} 
+            style={{
+              background: profile.backgroundType === 'solid' 
+                ? `linear-gradient(to top, ${profile.backgroundColor} 0%, ${profile.backgroundColor}F2 20%, ${profile.backgroundColor}33 60%, transparent 100%)`
+                : undefined
+            }}
+            />
           </motion.div>
         </div>
 
         {/* Profile Info Section */}
-        <div className="relative z-10 px-6 -mt-16 flex flex-col items-center">
+        <div className="relative z-10 px-6 -mt-20 flex flex-col items-center">
+          {/* Avatar */}
+          <motion.div 
+            style={{ scale: avatarScale, y: avatarY }}
+            className="relative group mb-6"
+          >
+            <div className={cn(
+              "w-32 h-32 rounded-[2.8rem] bg-zinc-900 border-[6px] shadow-2xl overflow-hidden relative z-10",
+              theme.background === 'bg-white' ? 'border-white' : 'border-black'
+            )}
+            style={{ 
+              borderColor: profile.backgroundType === 'solid' ? profile.backgroundColor : undefined 
+            }}>
+              {profile.photoURL ? (
+                <img src={profile.photoURL} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-zinc-700 bg-zinc-900">
+                  <UserIcon className="w-12 h-12" />
+                </div>
+              )}
+            </div>
+            {/* Glow effect behind avatar */}
+            <div className="absolute inset-0 bg-[var(--accent-color)] blur-3xl opacity-20 group-hover:opacity-40 transition-opacity rounded-full scale-125" />
+          </motion.div>
+
           {/* Identity */}
-          <div className="text-center space-y-2 mb-8 pt-8">
+          <div className="text-center space-y-2 mb-8">
             <h1 className="text-4xl font-black tracking-tight leading-none flex items-center justify-center gap-2">
               {profile.displayName || profile.username}
               {profile.isVerified && (
