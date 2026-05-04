@@ -251,12 +251,18 @@ END:VCARD`;
   return (
     <div className={cn(
       "min-h-screen font-sans overflow-x-hidden transition-colors duration-700",
-      theme.background,
-      theme.text
+      (profile.backgroundType === 'solid' || profile.backgroundType === 'image') ? '' : theme.background,
+      !profile.textColor && theme.text
     )}
     style={{ 
       ['--selection-bg' as any]: brandColor,
-      ['--accent-color' as any]: brandColor
+      ['--accent-color' as any]: brandColor,
+      color: profile.textColor || undefined,
+      backgroundColor: profile.backgroundType === 'solid' ? profile.backgroundColor : undefined,
+      backgroundImage: profile.backgroundType === 'image' && profile.backgroundImage ? `url(${profile.backgroundImage})` : undefined,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundAttachment: 'fixed'
     }}>
       <style>{`
         ::selection {

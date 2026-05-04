@@ -1,5 +1,5 @@
 export type UserRole = 'user' | 'admin';
-export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'coffee' | 'midnight' | 'lavender' | 'emerald' | 'cyberpunk' | 'retro' | 'nordic' | 'sakura' | 'gold' | 'brutalist' | 'clay' | 'matrix' | 'vibrant' | 'pastel' | 'monochrome' | 'deepsea' | 'minimalist-dark' | 'desert' | 'galaxy' | 'candy' | 'industrial' | 'vintage' | 'aqua' | 'midnight-purple' | 'ocean-deep' | 'sunset-vibe' | 'minimalist-light' | 'cyber-pink' | 'nature-green' | 'royal-gold' | 'stealth-black';
+export type ThemeType = 'minimal' | 'neon' | 'glassmorphism' | 'dark' | 'sunset' | 'ocean' | 'forest' | 'royal' | 'coffee' | 'midnight' | 'lavender' | 'emerald' | 'cyberpunk' | 'retro' | 'nordic' | 'sakura' | 'gold' | 'brutalist' | 'clay' | 'matrix' | 'vibrant' | 'pastel' | 'monochrome' | 'deepsea' | 'minimalist-dark' | 'desert' | 'galaxy' | 'candy' | 'industrial' | 'vintage' | 'aqua' | 'midnight-purple' | 'ocean-deep' | 'sunset-vibe' | 'minimalist-light' | 'cyber-pink' | 'nature-green' | 'royal-gold' | 'stealth-black' | 'gradient';
 export type ButtonStyle = 'rounded' | 'pill' | 'square';
 export type BackgroundType = 'solid' | 'gradient' | 'image';
 export type PlanType = 'basic' | 'pro' | 'business';
@@ -472,5 +472,13 @@ export const THEMES: Record<ThemeType, ThemeConfig> = {
     button: 'bg-zinc-900 border border-zinc-800 hover:bg-zinc-800',
     buttonText: 'text-zinc-400',
     accent: 'bg-white',
+  },
+  gradient: {
+    name: 'gradient',
+    background: 'bg-gradient-to-br from-purple-500 via-fuchsia-500 to-pink-500',
+    text: 'text-white',
+    button: 'bg-white/20 backdrop-blur-md border border-white/30 hover:bg-white/30',
+    buttonText: 'text-white font-bold',
+    accent: 'bg-purple-200',
   },
 };

@@ -2067,6 +2067,32 @@ const Dashboard: React.FC = () => {
                    </div>
                 </div>
 
+                <div className="space-y-4">
+                   <h3 className="text-[22px] font-bold">Text Color</h3>
+                   <div className="flex flex-wrap gap-3">
+                      {[
+                        '#000000', '#FFFFFF', '#6B7280', '#E5E7EB'
+                      ].map(color => (
+                        <button 
+                          key={color}
+                          onClick={() => handleUpdateProfile({ textColor: color })}
+                          className={`w-10 h-10 rounded-full border-4 transition-all ${profile?.textColor?.toLowerCase() === color.toLowerCase() ? 'border-zinc-950 dark:border-white scale-110 shadow-lg' : 'border-white dark:border-zinc-800 shadow-sm'}`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                      <div className="flex items-center gap-2 ml-auto">
+                        <span className="text-xs font-bold text-zinc-400">Hex</span>
+                        <input 
+                          type="text" 
+                          value={profile?.textColor || ''}
+                          onChange={(e) => handleUpdateProfile({ textColor: e.target.value })}
+                          className="w-24 h-10 px-3 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-xs font-black uppercase tracking-widest outline-none transition-colors"
+                          placeholder="#000000"
+                        />
+                      </div>
+                   </div>
+                </div>
+
                 <div className="space-y-6">
                    <div className="flex items-center justify-between px-2">
                      <h3 className="text-[22px] font-black">Verification</h3>
@@ -2146,6 +2172,48 @@ const Dashboard: React.FC = () => {
                         </button>
                       ))}
                    </div>
+                   {profile?.backgroundType === 'solid' && (
+                     <div className="mt-4 space-y-4">
+                        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 px-1">Background Color</h4>
+                        <div className="flex flex-wrap gap-3">
+                           {[
+                             '#FFFFFF', '#000000', '#F3F4F6', '#E5E7EB', '#D1D5DB', '#9CA3AF',
+                             '#FCD34D', '#F87171', '#60A5FA', '#34D399', '#A78BFA', '#F472B6',
+                             '#FB923C', '#2DD4BF', '#6366F1'
+                           ].map(color => (
+                             <button 
+                               key={color}
+                               onClick={() => handleUpdateProfile({ backgroundColor: color })}
+                               className={`w-10 h-10 rounded-full border-4 transition-all ${profile?.backgroundColor?.toLowerCase() === color.toLowerCase() ? 'border-zinc-950 dark:border-white scale-110 shadow-lg' : 'border-white dark:border-zinc-800 shadow-sm'}`}
+                               style={{ backgroundColor: color }}
+                             />
+                           ))}
+                           <div className="flex items-center gap-2 ml-auto">
+                             <div className="relative group/picker">
+                               <div 
+                                 className="w-10 h-10 rounded-full border-4 border-white dark:border-zinc-800 shadow-sm overflow-hidden"
+                                 style={{ backgroundColor: profile?.backgroundColor || '#FFFFFF' }}
+                               >
+                                 <input 
+                                   type="color" 
+                                   value={profile?.backgroundColor || '#FFFFFF'}
+                                   onChange={(e) => handleUpdateProfile({ backgroundColor: e.target.value })}
+                                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                 />
+                               </div>
+                             </div>
+                             <input 
+                               type="text" 
+                               value={profile?.backgroundColor || ''}
+                               onChange={(e) => handleUpdateProfile({ backgroundColor: e.target.value })}
+                               className="w-24 h-10 px-3 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[10px] font-black uppercase tracking-widest outline-none focus:ring-1 ring-zinc-200"
+                               placeholder="#FFFFFF"
+                             />
+                           </div>
+                        </div>
+                     </div>
+                   )}
+
                    {profile?.backgroundType === 'image' && (
                      <div className="mt-4">
                         <ImageUpload 
