@@ -11,6 +11,29 @@ interface SocialIconProps {
   asLink?: boolean;
 }
 
+const BRAND_COLORS: Record<string, string> = {
+  facebook: '#1877F2',
+  instagram: '#E4405F',
+  twitter: '#000000',
+  x: '#000000',
+  youtube: '#FF0000',
+  linkedin: '#0A66C2',
+  tiktok: '#000000',
+  whatsapp: '#25D366',
+  github: '#181717',
+  spotify: '#1DB954',
+  snapchat: '#FFFC00',
+  reddit: '#FF4500',
+  discord: '#5865F2',
+  telegram: '#26A5E4',
+  twitch: '#9146FF',
+  medium: '#000000',
+  behance: '#1769FF',
+  dribbble: '#EA4C89',
+  threads: '#000000',
+  pinterest: '#BD081C'
+};
+
 const SocialIcon: React.FC<SocialIconProps> = ({ 
   platform, 
   username, 
@@ -18,67 +41,59 @@ const SocialIcon: React.FC<SocialIconProps> = ({
   style = 'colored',
   asLink = true
 }) => {
-  const [imageError, setImageError] = React.useState(false);
   const platformKey = platform.toLowerCase();
-  
-  // Mapping for the extracted icons
-  const iconPath = style === 'colored' 
-    ? `/icons/colored/${platformKey}.png` 
-    : style === 'mono' 
-      ? `/icons/mono/${platformKey}.png`
-      : `/icons/colored/${platformKey}.png`; // Glass uses colored PNG but with custom container style
+  const BrandIcon = BrandIcons[platformKey as keyof typeof BrandIcons];
+  const brandColor = BRAND_COLORS[platformKey] || '#6366f1';
+
+  const cleanUsername = (username || '').split('/').pop()?.replace('@', '') || '';
 
   const getUrl = () => {
+    // If it's already a full URL, return it
+    if (username && (username.startsWith('http') || username.includes('.com') || username.includes('.net'))) {
+      return username;
+    }
+
     switch (platformKey) {
-      case 'instagram': return `https://instagram.com/${username}`;
+      case 'instagram': return `https://instagram.com/${cleanUsername}`;
       case 'twitter': 
-      case 'x': return `https://twitter.com/${username}`;
-      case 'facebook': return `https://facebook.com/${username}`;
-      case 'youtube': return `https://youtube.com/@${username}`;
-      case 'github': return `https://github.com/${username}`;
-      case 'linkedin': return `https://linkedin.com/in/${username}`;
-      case 'whatsapp': return `https://wa.me/${username}`;
-      case 'tiktok': return `https://tiktok.com/@${username}`;
-      case 'spotify': return `https://open.spotify.com/user/${username}`;
-      case 'snapchat': return `https://snapchat.com/add/${username}`;
-      case 'telegram': return `https://t.me/${username}`;
-      default: return `https://${username}`;
+      case 'x': return `https://twitter.com/${cleanUsername}`;
+      case 'facebook': return `https://facebook.com/${cleanUsername}`;
+      case 'youtube': return `https://youtube.com/@${cleanUsername}`;
+      case 'github': return `https://github.com/${cleanUsername}`;
+      case 'linkedin': return `https://linkedin.com/in/${cleanUsername}`;
+      case 'whatsapp': return `https://wa.me/${cleanUsername}`;
+      case 'tiktok': return `https://tiktok.com/@${cleanUsername}`;
+      case 'spotify': return `https://open.spotify.com/user/${cleanUsername}`;
+      case 'snapchat': return `https://snapchat.com/add/${cleanUsername}`;
+      case 'telegram': return `https://t.me/${cleanUsername}`;
+      default: return cleanUsername.startsWith('http') ? cleanUsername : `https://${cleanUsername}`;
     }
   };
 
-  const BrandIcon = BrandIcons[platformKey as keyof typeof BrandIcons];
-
   const content = (
     <div className={cn(
-      "relative transition-all duration-300 hover:scale-110 active:scale-95 group flex items-center justify-center p-2.5 rounded-2xl overflow-hidden",
-      style === 'glass' && "bg-white/10 backdrop-blur-md border border-white/10 shadow-xl",
-      style === 'colored' && "bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-md",
-      style === 'mono' && "bg-zinc-900 dark:bg-zinc-100 border border-white/5 shadow-inner grayscale",
+      "relative transition-all duration-300 hover:scale-110 active:scale-95 group flex items-center justify-center p-2.5 rounded-2xl overflow-hidden shadow-sm border",
+      style === 'glass' && "bg-white/10 backdrop-blur-md border-white/20 shadow-xl",
+      style === 'colored' && "bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800",
+      style === 'mono' && "bg-zinc-900 dark:bg-zinc-100 border-white/5 grayscale saturate-0 shadow-inner",
       className
     )}>
-      {!imageError ? (
-        <img 
-          src={iconPath} 
-          alt={platform}
-          className={cn(
-            "w-full h-full object-contain transition-all duration-500",
-            style === 'mono' ? "opacity-90 contrast-125" : "group-hover:scale-110"
-          )}
-          onError={() => setImageError(true)}
-        />
-      ) : (
-        <div className={cn(
-          "w-full h-full flex items-center justify-center",
-        )}>
-          {BrandIcon ? (
-            React.createElement(BrandIcon, { 
-              className: "w-full h-full", 
-              style: style === 'colored' || style === 'glass' ? { color: '#6366f1' } : { color: 'white' } 
-            })
-          ) : (
-            <Globe className="w-1/2 h-1/2 text-zinc-400" />
-          )}
-        </div>
+      <div className="w-full h-full flex items-center justify-center">
+        {BrandIcon ? (
+          React.createElement(BrandIcon, { 
+            className: "w-full h-full transition-all duration-300", 
+            style: style === 'colored' || style === 'glass' 
+              ? { color: brandColor } 
+              : { color: style === 'mono' ? (platformKey === 'snapchat' ? '#000000' : '#ffffff') : '#ffffff' } 
+          })
+        ) : (
+          <Globe className="w-1/2 h-1/2 text-zinc-400" />
+        )}
+      </div>
+      
+      {/* Premium overlay for glass effect */}
+      {style === 'glass' && (
+        <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none" />
       )}
     </div>
   );
