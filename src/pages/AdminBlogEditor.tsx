@@ -15,7 +15,7 @@ import ImageUpload from '../components/ImageUpload';
 import ReactMarkdown from 'react-markdown';
 import { clsx } from 'clsx';
 import ThemeToggle from '../components/ThemeToggle';
-import { GoogleGenAI, Type } from "@google/genai";
+import { aiWriter } from '../services/geminiService';
 
 const AdminBlogEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -66,11 +66,7 @@ const AdminBlogEditor: React.FC = () => {
     const toastId = toast.loading('AI is writing your blog post...');
     
     try {
-      const response = await axios.post('/api/ai-blog', {
-        topic: aiPrompt
-      });
-
-      const data = response.data;
+      const data = await aiWriter(aiPrompt);
       
       setFormData(prev => ({
         ...prev,

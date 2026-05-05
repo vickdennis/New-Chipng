@@ -88,12 +88,12 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get: if isValidId(userId);
-      allow list: if true; // Public list allowed for discovery
-      allow create: if isOwner(userId) && isValidUser(incoming()) && (
+      allow list: if true; 
+      allow create: if isOwner(userId) && isEmailVerified() && isValidUser(incoming()) && (
         !incoming().keys().hasAny(['role', 'isPremium', 'plan', 'isVerified', 'status'])
       );
       allow update: if (isOwner(userId) || isAdmin()) && (
-        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'bio', 'photoURL', 'coverImage', 'socialLinks', 'theme', 'brandColor', 'iconStyle', 'backgroundType', 'backgroundColor', 'backgroundImage', 'textColor', 'buttonStyle', 'updatedAt', 'isDeleted', 'phone', 'address', 'contactEmail'])) ||
+        (isOwner(userId) && isEmailVerified() && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'bio', 'photoURL', 'coverImage', 'socialLinks', 'theme', 'brandColor', 'iconStyle', 'backgroundType', 'backgroundColor', 'backgroundImage', 'textColor', 'buttonStyle', 'font', 'updatedAt', 'isDeleted', 'phone', 'address', 'contactEmail'])) ||
         (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['role', 'isPremium', 'plan', 'isVerified', 'status', 'updatedAt', 'isDeleted', 'displayName', 'bio', 'photoURL', 'coverImage', 'socialLinks', 'phone', 'address', 'contactEmail', 'premiumUntil', 'onboardingCompleted']))
       );
     }
@@ -105,12 +105,12 @@ service cloud.firestore {
 
     match /links/{linkId} {
       allow get: if isValidId(linkId);
-      allow list: if resource.data.active == true || (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-      allow create: if isSignedIn() && isValidId(linkId) && isValidLink(incoming()) && incoming().userId == request.auth.uid;
-      allow update: if (isOwner(existing().userId) || isAdmin()) && (
+      allow list: if (resource.data.active == true && resource.data.isDeleted == false) || (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() && isEmailVerified() && isValidId(linkId) && isValidLink(incoming()) && incoming().userId == request.auth.uid;
+      allow update: if (isOwner(existing().userId) || isAdmin()) && (isAdmin() || isEmailVerified()) && (
         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'url', 'icon', 'active', 'position', 'isDeleted', 'deletedAt', 'updatedAt', 'type', 'scheduledStart', 'scheduledEnd', 'styles', 'thumbnail'])
       );
-      allow delete: if (isOwner(existing().userId) || isAdmin());
+      allow delete: if (isOwner(existing().userId) || isAdmin()) && (isAdmin() || isEmailVerified());
     }
 
     match /links_backup/{id} {
@@ -146,12 +146,12 @@ service cloud.firestore {
 
     match /blogs/{blogId} {
       allow get: if isValidId(blogId);
-      allow list: if resource.data.published == true || (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
-      allow create: if isSignedIn() && isValidId(blogId) && isValidBlog(incoming()) && incoming().userId == request.auth.uid;
-      allow update: if (isOwner(existing().userId) || isAdmin()) && (
+      allow list: if (resource.data.published == true && resource.data.isDeleted == false) || (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn() && isEmailVerified() && isValidId(blogId) && isValidBlog(incoming()) && incoming().userId == request.auth.uid;
+      allow update: if (isOwner(existing().userId) || isAdmin()) && (isAdmin() || isEmailVerified()) && (
         incoming().diff(existing()).affectedKeys().hasOnly(['title', 'slug', 'content', 'excerpt', 'coverImage', 'published', 'tags', 'updatedAt', 'isDeleted', 'seoTitle', 'seoDescription', 'seoKeywords'])
       );
-      allow delete: if (isOwner(existing().userId) || isAdmin());
+      allow delete: if (isOwner(existing().userId) || isAdmin()) && (isAdmin() || isEmailVerified());
     }
 
     match /blogs_backup/{id} {

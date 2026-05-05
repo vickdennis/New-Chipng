@@ -24,7 +24,9 @@ import {
   CreditCard, Calendar, LayoutGrid, Star, Square, AlertCircle, Lightbulb, Camera,
   Briefcase, Play, Heart, Coffee, BookOpen, Globe, Search, ChevronRight, X,
   History as HistoryIcon, RotateCcw, Megaphone, Clock, BadgeCheck, ArrowUpRight,
-  FileText, ShoppingCart, Tag, Filter, Edit, Package, DollarSign
+  FileText, ShoppingCart, Tag, Filter, Edit, Package, DollarSign,
+  Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2,
+  Sparkles, Wand2, Bot
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -40,16 +42,15 @@ import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import { DISPLAY_DOMAIN } from '../constants';
 import UpgradeModal from '../components/UpgradeModal';
 import ImageUpload from '../components/ImageUpload';
-import { Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2 } from 'lucide-react';
 import { VerificationBadge } from '../components/VerificationBadge';
 import { usePaystackPayment } from 'react-paystack';
 import { preparePaystackConfig, getPaystackPublicKey } from '../utils/paystack';
 import { safeWrite, getBackupHistory, rollbackDocument, rollbackToVersion, BackupData } from '../services/backupService';
 import { BrandIcons } from '../components/icons/BrandIcons';
 import SocialIcon from '../components/SocialIcon';
-import { Sparkles, Wand2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { uploadImage, validateImage, UploadPath } from '../services/imageService';
+import { aiDesign } from '../services/geminiService';
 
 
 const SortableLinkItem = ({ 
@@ -365,6 +366,10 @@ const Dashboard: React.FC = () => {
     featureName: ''
   });
   const [historyModal, setHistoryModal] = useState<{ collection: string; id: string } | null>(null);
+  const [isAIDesignerOpen, setIsAIDesignerOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiResponse, setAiResponse] = useState<string | null>(null);
+  const [isAiTyping, setIsAiTyping] = useState(false);
   const navigate = useNavigate();
 
   const fetchHistory = async (collection: string, id: string) => {
@@ -394,6 +399,65 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleAIDesign = async () => {
+    if (!aiPrompt.trim() || !profile) return;
+    
+    setIsAiTyping(true);
+    setAiResponse(null);
+    const userMessage = aiPrompt;
+    setAiPrompt('');
+    
+    try {
+      const context = {
+        profile,
+        links: links.map(l => ({ id: l.id, title: l.title, url: l.url, active: l.active }))
+      };
+      
+      const result = await aiDesign(userMessage, context);
+      
+      setAiResponse(result.text);
+      
+      // Execute function calls
+      if (result.functionCalls.length > 0) {
+        for (const call of result.functionCalls) {
+          console.log(`[AI Designer] Executing: ${call.name}`, call.args);
+          
+          if (call.name === 'updateProfile') {
+            await handleUpdateProfile(call.args);
+          } else if (call.name === 'addLink') {
+            await handleAddLinkWithData(call.args);
+          } else if (call.name === 'updateLink') {
+            await handleUpdateLink(call.args.id, call.args);
+          } else if (call.name === 'deleteLink') {
+            await handleDeleteLink(call.args.id);
+          } else if (call.name === 'applyTheme') {
+            await handleUpdateProfile({ theme: call.args.theme });
+          }
+        }
+        toast.success(`AI Designer applied ${result.functionCalls.length} changes!`);
+      }
+    } catch (error: any) {
+      console.error('AI Designer error:', error);
+      toast.error('AI Designer failed to process your request');
+    } finally {
+      setIsAiTyping(false);
+    }
+  };
+
+  const handleAddLinkWithData = async (data: { title: string; url: string }) => {
+    if (!user) return;
+    try {
+      await safeWrite('links', null, {
+        userId: user.uid,
+        ...data,
+        active: true,
+        position: links.length,
+        clicks: 0
+      }, 'create');
+    } catch (error) {
+           console.error('Error adding AI link:', error);
+    }
+  };
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -2133,8 +2197,69 @@ const Dashboard: React.FC = () => {
                    </div>
                 </div>
 
-                <div className="space-y-6">
-                   <h3 className="text-[22px] font-black">Themes & Identity</h3>
+                 <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                       <h3 className="text-[22px] font-black tracking-tight">AI Profile Designer</h3>
+                       <div className="px-3 py-1 bg-lime-400/10 text-lime-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-lime-400/20">βeta</div>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-lime-400/10 to-blue-500/10 border border-lime-400/20 rounded-[2.5rem] p-8 space-y-6 relative overflow-hidden group">
+                       <div className="absolute top-0 right-0 w-32 h-32 bg-lime-400/10 blur-[50px] rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700" />
+                       
+                       <div className="relative z-10 space-y-4">
+                          <div className="flex items-center gap-4">
+                             <div className="w-14 h-14 bg-white dark:bg-zinc-900 rounded-2xl flex items-center justify-center shadow-2xl border border-lime-400/30">
+                                <Sparkles className="w-8 h-8 text-lime-500 animate-pulse" />
+                             </div>
+                             <div>
+                                <h4 className="text-xl font-black">Design with AI</h4>
+                                <p className="text-zinc-500 text-xs font-medium">Tell the AI what you want (e.g. "make my profile minimalist with blue accents")</p>
+                             </div>
+                          </div>
+                          
+                          <div className="flex flex-col gap-3">
+                             <div className="relative">
+                                <input 
+                                  type="text"
+                                  value={aiPrompt}
+                                  onChange={(e) => setAiPrompt(e.target.value)}
+                                  onKeyDown={(e) => e.key === 'Enter' && handleAIDesign()}
+                                  placeholder="Describe your dream profile..."
+                                  className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-6 py-5 outline-none focus:ring-2 focus:ring-lime-400 transition-all font-medium pr-16 shadow-inner"
+                                />
+                                <button 
+                                  disabled={isAiTyping || !aiPrompt.trim()}
+                                  onClick={handleAIDesign}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-zinc-950 text-white rounded-xl hover:bg-lime-400 hover:text-black transition-all disabled:opacity-50"
+                                >
+                                  {isAiTyping ? <RotateCcw className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                                </button>
+                             </div>
+                             
+                             <AnimatePresence mode="wait">
+                               {aiResponse && (
+                                 <motion.div 
+                                   initial={{ opacity: 0, y: 10 }}
+                                   animate={{ opacity: 1, y: 0 }}
+                                   exit={{ opacity: 0, scale: 0.95 }}
+                                   className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-sm border border-lime-200 dark:border-lime-900/30 p-5 rounded-2xl"
+                                 >
+                                    <div className="flex items-start gap-3">
+                                      <div className="w-8 h-8 bg-zinc-100 dark:bg-zinc-800 rounded-lg flex items-center justify-center flex-shrink-0">
+                                        <Bot className="w-4 h-4 text-zinc-500" />
+                                      </div>
+                                      <p className="text-sm text-zinc-600 dark:text-zinc-400 font-medium leading-relaxed">{aiResponse}</p>
+                                    </div>
+                                 </motion.div>
+                               )}
+                             </AnimatePresence>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="space-y-6">
+                    <h3 className="text-[22px] font-black">Themes & Identity</h3>
                    <div className="grid grid-cols-2 gap-4">
                       {[
                         { id: 'minimal', name: 'Cloud Minimal', color: 'bg-white' },
