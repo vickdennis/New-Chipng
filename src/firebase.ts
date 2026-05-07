@@ -72,13 +72,17 @@ export const getUserByUsername = async (username: string) => {
   const q = query(
     collection(db, 'users'),
     where('username', '==', cleanUsername),
-    where('isDeleted', '==', false),
     limit(1)
   );
   
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) return null;
   
-  const docData = querySnapshot.docs[0];
-  return { uid: docData.id, ...docData.data() };
+  const docSnap = querySnapshot.docs[0];
+  const data = docSnap.data();
+  
+  // Support legacy users where isDeleted is missing
+  if (data.isDeleted === true) return null;
+  
+  return { uid: docSnap.id, ...data };
 };

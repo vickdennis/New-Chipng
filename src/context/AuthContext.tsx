@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { User } from '../types';
 
@@ -22,9 +22,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setFirebaseUser(fUser);
       if (fUser) {
         const userDoc = doc(db, 'users', fUser.uid);
+        const privateDoc = doc(db, `users/${fUser.uid}/private`, 'info');
+        
         const unsubUser = onSnapshot(userDoc, (doc) => {
           if (doc.exists()) {
-            setUser({ uid: doc.id, ...doc.data() } as User);
+            const data = doc.data();
+            setUser(prev => ({ 
+              uid: doc.id, 
+              ...prev, 
+              ...data,
+              email: fUser.email // Always use firebase email as fallback
+            } as User));
+            
+            // Try to get private data too
+            getDoc(privateDoc).then(pDoc => {
+              if (pDoc.exists()) {
+                const pData = pDoc.data();
+                setUser(prev => ({ ...prev, ...pData } as User));
+              }
+            });
           } else {
             setUser(null);
           }

@@ -621,6 +621,11 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         if (!data.role) updates.role = 'user';
         if (!data.status) updates.status = 'active';
         if (data.onboardingCompleted === undefined) updates.onboardingCompleted = true;
+        
+        // Ensure username is lowercased for searchability
+        if (data.username && data.username !== data.username.toLowerCase()) {
+          updates.username = data.username.toLowerCase();
+        }
 
         if (data.email === 'vickthorden@gmail.com' && data.role !== 'admin') {
           updates.role = 'admin';

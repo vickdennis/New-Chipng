@@ -92,7 +92,7 @@ const AdminPanel: React.FC = () => {
   useEffect(() => {
     if (!user) return;
     
-    if (user.role !== 'admin') {
+    if (user.role !== 'admin' && user.email !== 'vickthorden@gmail.com') {
       setLoading(false);
       return;
     }
