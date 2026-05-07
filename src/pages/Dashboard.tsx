@@ -466,22 +466,37 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     if (!user) return;
 
-    const unsubProfile = onSnapshot(doc(db, 'users', user.uid), (doc) => {
-      if (doc.exists()) {
-        const data = doc.data() as UserType;
-        setProfile(data);
-        setProfileForm({
-          username: data.username || '',
-          displayName: data.displayName || '',
-          bio: data.bio || '',
-          phone: data.phone || '',
-          address: data.address || '',
-          contactEmail: data.contactEmail || '',
-          textColor: data.textColor || ''
+    const unsubPublic = onSnapshot(doc(db, 'users', user.uid), (userDoc) => {
+      if (userDoc.exists()) {
+        const publicData = userDoc.data() as UserType;
+        setProfile(prev => {
+          const merged = { ...publicData, ...(prev || {}) };
+          // Keep private fields if they already exist in state
+          return merged;
         });
+        setProfileForm(prev => ({
+          ...prev,
+          username: publicData.username || '',
+          displayName: publicData.displayName || '',
+          bio: publicData.bio || '',
+          textColor: publicData.textColor || ''
+        }));
       }
     }, (error) => {
       handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+    });
+
+    const unsubPrivate = onSnapshot(doc(db, 'users', user.uid, 'private', 'info'), (privateDoc) => {
+      if (privateDoc.exists()) {
+        const privateData = privateDoc.data();
+        setProfile(prev => ({ ...prev, ...(privateData as any) } as UserType));
+        setProfileForm(prev => ({
+          ...prev,
+          phone: privateData.phone || '',
+          address: privateData.address || '',
+          contactEmail: privateData.contactEmail || ''
+        }));
+      }
     });
 
     const q = query(collection(db, 'links'), where('userId', '==', user.uid));
@@ -547,7 +562,8 @@ const Dashboard: React.FC = () => {
       .catch(err => console.error('Expiry check failed:', err));
 
     return () => {
-      unsubProfile();
+      unsubPublic();
+      unsubPrivate();
       unsubLinks();
       unsubTx();
       unsubShouts();
@@ -669,12 +685,33 @@ const Dashboard: React.FC = () => {
       if (!currentData.theme) updatePayload.theme = 'minimal';
       if (!currentData.buttonStyle) updatePayload.buttonStyle = 'rounded';
       
-      // Sync form values if they are being updated
-      if (data.phone !== undefined) updatePayload.phone = data.phone;
-      if (data.contactEmail !== undefined) updatePayload.contactEmail = data.contactEmail;
+      // Split public and private data for security
+      const publicPayload = { ...updatePayload };
+      const privatePayload: any = {
+        email: user.email,
+        updatedAt: new Date().toISOString()
+      };
 
-      const success = await safeWrite('users', user.uid, updatePayload, 'update');
+      // Move PII fields to private payload if present
+      const piiFields = ['phone', 'address', 'contactEmail'];
+      piiFields.forEach(field => {
+        if (publicPayload[field] !== undefined) {
+          privatePayload[field] = publicPayload[field];
+          delete publicPayload[field];
+        } else if (currentData[field] !== undefined) {
+          // If already in main doc, move to private but keep for this update
+          privatePayload[field] = currentData[field];
+          // We will also remove it from the main doc by not including it in the update if we wanted to migrate
+          // but for now let's just delete from publicPayload to ensure it's not stored there again
+          delete publicPayload[field];
+        }
+      });
+
+      const success = await safeWrite('users', user.uid, publicPayload, 'update');
+      
       if (success) {
+        // Update private info subcollection
+        await safeWrite(`users/${user.uid}/private`, 'info', privatePayload, 'update');
         toast.success('Profile updated');
       }
     } catch (error) {

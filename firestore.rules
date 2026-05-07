@@ -27,11 +27,17 @@ service cloud.firestore {
     // ---------------------------------------------------------
 
     function isValidUser(data) {
-      return data.keys().hasAll(['username', 'email', 'createdAt', 'updatedAt', 'isDeleted']) &&
+      return data.keys().hasAll(['username', 'displayName', 'createdAt', 'updatedAt', 'isDeleted']) &&
              data.username is string && data.username.size() >= 3 && data.username.size() <= 30 &&
-             data.email is string && data.email.size() <= 100 &&
-             data.get('displayName', '') is string && data.get('displayName', '').size() <= 100 &&
+             data.displayName is string && data.displayName.size() <= 100 &&
              data.isDeleted is bool;
+    }
+
+    function isValidPrivateInfo(data) {
+      return data.keys().hasAll(['email', 'updatedAt']) &&
+             data.email is string && data.email.size() <= 100 &&
+             data.get('phone', '') is string && data.get('phone', '').size() <= 50 &&
+             data.get('address', '') is string && data.get('address', '').size() <= 500;
     }
 
     function isValidLink(data) {
@@ -46,16 +52,16 @@ service cloud.firestore {
     function isValidBlog(data) {
       return data.keys().hasAll(['userId', 'title', 'slug', 'content', 'createdAt', 'updatedAt', 'isDeleted']) &&
              data.userId is string && data.userId.size() <= 128 &&
-             data.title is string && data.title.size() <= 200 &&
-             data.slug is string && data.slug.size() <= 200 &&
-             data.content is string && data.content.size() <= 50000 &&
+             data.title is string && data.title.size() <= 300 &&
+             data.slug is string && data.slug.size() <= 300 &&
+             data.content is string && data.content.size() <= 100000 &&
              data.isDeleted is bool;
     }
 
     function isValidProduct(data) {
       return data.keys().hasAll(['userId', 'name', 'price', 'createdAt', 'updatedAt', 'isDeleted']) &&
              data.userId is string && data.userId.size() <= 128 &&
-             data.name is string && data.name.size() <= 100 &&
+             data.name is string && data.name.size() <= 200 &&
              data.price is number && data.price >= 0 &&
              data.isDeleted is bool;
     }
@@ -63,7 +69,7 @@ service cloud.firestore {
     function isValidShout(data) {
       return data.keys().hasAll(['userId', 'content', 'createdAt', 'updatedAt', 'isDeleted']) &&
              data.userId is string && data.userId.size() <= 128 &&
-             data.content is string && data.content.size() <= 500 &&
+             data.content is string && data.content.size() <= 1000 &&
              data.isDeleted is bool;
     }
 
@@ -87,15 +93,24 @@ service cloud.firestore {
     // ---------------------------------------------------------
 
     match /users/{userId} {
+      // Public profile data
       allow get: if isValidId(userId);
-      allow list: if true; 
+      allow list: if (request.query.limit <= 10); // Allow searching but prevent dumping
+      
       allow create: if isOwner(userId) && isEmailVerified() && isValidUser(incoming()) && (
-        !incoming().keys().hasAny(['role', 'isPremium', 'plan', 'isVerified', 'status'])
+        !incoming().keys().hasAny(['role', 'isPremium', 'plan', 'isVerified', 'status', 'earnings', 'email', 'phone', 'address', 'contactEmail'])
       );
+      
       allow update: if (isOwner(userId) || isAdmin()) && (
-        (isOwner(userId) && isEmailVerified() && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'bio', 'photoURL', 'coverImage', 'socialLinks', 'theme', 'brandColor', 'iconStyle', 'backgroundType', 'backgroundColor', 'backgroundImage', 'textColor', 'buttonStyle', 'font', 'updatedAt', 'isDeleted', 'phone', 'address', 'contactEmail'])) ||
-        (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['role', 'isPremium', 'plan', 'isVerified', 'status', 'updatedAt', 'isDeleted', 'displayName', 'bio', 'photoURL', 'coverImage', 'socialLinks', 'phone', 'address', 'contactEmail', 'premiumUntil', 'onboardingCompleted']))
+        (isOwner(userId) && isEmailVerified() && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'bio', 'photoURL', 'coverImage', 'socialLinks', 'theme', 'brandColor', 'iconStyle', 'backgroundType', 'backgroundColor', 'backgroundImage', 'textColor', 'buttonStyle', 'font', 'updatedAt', 'isDeleted', 'onboardingCompleted'])) ||
+        (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['role', 'isPremium', 'plan', 'isVerified', 'status', 'updatedAt', 'isDeleted', 'displayName', 'bio', 'photoURL', 'coverImage', 'socialLinks', 'premiumUntil', 'onboardingCompleted']))
       );
+
+      // Private settings/PII
+      match /private/info {
+        allow get: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) || isAdmin()) && isValidPrivateInfo(incoming());
+      }
     }
 
     match /users_backup/{id} {
@@ -120,10 +135,9 @@ service cloud.firestore {
 
     match /shouts/{shoutId} {
       allow get: if isValidId(shoutId);
-      allow list: if true;
-      allow create: if isSignedIn() && isValidId(shoutId) && isValidShout(incoming()) && incoming().userId == request.auth.uid;
-      allow update: if (isOwner(existing().userId) || isAdmin());
-      allow delete: if (isOwner(existing().userId) || isAdmin());
+      allow list: if resource.data.isDeleted == false;
+      allow create: if isSignedIn() && isEmailVerified() && isValidId(shoutId) && isValidShout(incoming()) && incoming().userId == request.auth.uid;
+      allow update, delete: if (isOwner(existing().userId) || isAdmin()) && (isAdmin() || isEmailVerified());
     }
 
     match /shouts_backup/{id} {
@@ -133,10 +147,9 @@ service cloud.firestore {
 
     match /media/{mediaId} {
       allow get: if isValidId(mediaId);
-      allow list: if true;
-      allow create: if isSignedIn() && isValidId(mediaId) && isValidMedia(incoming()) && incoming().userId == request.auth.uid;
-      allow update: if (isOwner(existing().userId) || isAdmin());
-      allow delete: if (isOwner(existing().userId) || isAdmin());
+      allow list: if resource.data.isDeleted == false;
+      allow create: if isSignedIn() && isEmailVerified() && isValidId(mediaId) && isValidMedia(incoming()) && incoming().userId == request.auth.uid;
+      allow update, delete: if (isOwner(existing().userId) || isAdmin()) && (isAdmin() || isEmailVerified());
     }
 
     match /media_backup/{id} {

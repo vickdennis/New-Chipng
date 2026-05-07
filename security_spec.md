@@ -1,25 +1,30 @@
-# Security Spec: Chip NG
+# Firestore Security Specification - Chip NG
 
-## 1. Data Invariants
-- A `User` must have a unique `username`.
-- A `Link` must belong to a valid `User` and `userId` must match the authenticated user for creation.
-- Only users with the `admin` role (in the `admins` collection) can modify `blogs` or access `backups`.
-- `backups` are read-only for regular users and only appendable by the system (or authenticated users during mutation).
+## Data Invariants
+1. A user profile MUST NOT leak PII (email, phone, address) to the public.
+2. Every mutation MUST be backed up to a dedicated backup collection.
+3. Every document ID MUST be a valid slug-like string.
+4. Timestamps MUST be server-validated where possible.
+5. Users MUST be email-verified to perform most write operations.
 
-## 2. The Dirty Dozen Payloads (Hardened Rule Tests)
+## The Dirty Dozen Payloads (Attack Vectors)
 
-1. **Identity Spoofing (User)**: Attempt to create a user profile with a different UID than the authenticated user.
-2. **Identity Spoofing (Link)**: Attempt to create a link for another user's profile.
-3. **Ghost Field Injection**: Attempt to update a user profile with an unauthorized field like `role: "admin"`.
-4. **Privilege Escalation**: Attempt to update another user's profile as a non-admin.
-5. **PII Leak**: Attempt to list all users to harvest emails.
-6. **Orphaned Link**: Attempt to create a link without a matching user document (if enforcement is active).
-7. **Bypassing Terminal Logic**: Attempt to modify a transaction once it's marked as `completed`.
-8. **Malicious ID**: Attempt to create a document with a 1MB string as the ID.
-9. **Fake Backup**: Attempt to manually overwrite a backup entry to hide malicious changes.
-10. **Plan Bypass**: Attempt to set `isPremium: true` in the user profile directly from the client.
-11. **Soft-Delete Bypass**: Attempt to hard-delete a document that should only be soft-deleted.
-12. **Timestamp Fraud**: Attempt to set `updatedAt` to a future date instead of `request.time`.
+1. **PII Scraping**: Attempt to `get` user document to read `email` and `phone`.
+2. **Identity Spoofing**: Attempt to `create` link with `userId` of another user.
+3. **Privilege Escalation**: Attempt to `update` own user document with `role: 'admin'`.
+4. **Subscription Bypass**: Attempt to `update` own user document with `plan: 'pro'` or `isPremium: true`.
+5. **Shadow Fields**: Attempt to `update` a link with a ghost field `isVerifiedByStaff: true`.
+6. **Large Payload Attack**: Attempt to `create` a shout with 1MB of junk text.
+7. **Resource Poisoning**: Attempt to use `.../../` or junk chars in document IDs.
+8. **Soft-Delete Bypass**: Attempt to `list` documents that are marked `isDeleted: true`.
+9. **Unverified Write**: Attempt to `create` a blog post without a verified email.
+10. **Orphaned Writes**: Attempt to `create` a link for a user that doesn't exist.
+11. **Update Gap**: Attempt to update a link and change its `userId` to a new owner.
+12. **Recursive Cost Attack**: Attempt a list query with no limits to force O(n) scan.
 
-## 3. Test Runner Concept
-The tests will be executed against the `firestore.rules` using the emulator or production-ready security rules logic.
+## Security Rules Implementation Strategy
+
+1. **Split Collection**: Move PII to `users/{userId}/private/settings`.
+2. **Global Deny**: match /{document=**} { allow read, write: if false; }
+3. **Strict Validation Helpers**: `isValidUser`, `isValidLink`, etc.
+4. **Affected Keys**: High-precision `hasOnly` on all updates.

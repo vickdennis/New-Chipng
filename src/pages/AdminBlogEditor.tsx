@@ -56,12 +56,6 @@ const AdminBlogEditor: React.FC = () => {
       return;
     }
 
-    const key = process.env.GEMINI_API_KEY;
-    if (!key) {
-      toast.error("AI Service is temporarily unavailable (Key missing)");
-      return;
-    }
-
     setIsGenerating(true);
     const toastId = toast.loading('AI is writing your blog post...');
     
