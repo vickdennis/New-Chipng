@@ -606,6 +606,43 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     }
   });
 
+  // Admin Migration Endpoint
+  app.post("/api/admin/migrate-users", async (req, res) => {
+    try {
+      const usersSnap = await db.collection('users').get();
+      const batch = db.batch();
+      let count = 0;
+
+      usersSnap.forEach((doc: any) => {
+        const data = doc.data();
+        const updates: any = {};
+        
+        if (data.isDeleted === undefined) updates.isDeleted = false;
+        if (!data.role) updates.role = 'user';
+        if (!data.status) updates.status = 'active';
+        if (data.onboardingCompleted === undefined) updates.onboardingCompleted = true;
+
+        if (data.email === 'vickthorden@gmail.com' && data.role !== 'admin') {
+          updates.role = 'admin';
+        }
+
+        if (Object.keys(updates).length > 0) {
+          batch.update(doc.ref, updates);
+          count++;
+        }
+      });
+
+      if (count > 0) {
+        await batch.commit();
+      }
+
+      res.json({ status: 'success', migratedCount: count });
+    } catch (error: any) {
+      console.error('Migration error:', error);
+      res.status(500).json({ status: 'error', message: error.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

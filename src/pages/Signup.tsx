@@ -63,7 +63,7 @@ const Signup: React.FC = () => {
           displayName: finalUsername,
           bio: 'Welcome to my Chip NG profile!',
           photoURL: null,
-          role: 'user',
+          role: (email === 'vickthorden@gmail.com') ? 'admin' : 'user',
           status: 'active',
           theme: 'minimal',
           buttonStyle: 'rounded',
@@ -83,6 +83,10 @@ const Signup: React.FC = () => {
 
         await safeWrite('users', uid, publicData, 'create');
         await safeWrite(`users/${uid}/private`, 'info', privateData, 'create');
+        
+        if (publicData.role === 'admin') {
+          await setDoc(doc(db, 'admins', uid), { email, createdAt: serverTimestamp() });
+        }
       } catch (error) {
         handleFirestoreError(error, OperationType.CREATE, `users/${uid}`);
       }
@@ -132,7 +136,7 @@ const Signup: React.FC = () => {
             displayName: user.displayName || finalUsername,
             photoURL: user.photoURL || null,
             bio: 'Welcome to my Chip NG profile!',
-            role: 'user',
+            role: (user.email === 'vickthorden@gmail.com') ? 'admin' : 'user',
             status: 'active',
             theme: 'minimal',
             buttonStyle: 'rounded',
@@ -152,6 +156,10 @@ const Signup: React.FC = () => {
 
           await safeWrite('users', user.uid, publicData, 'create');
           await safeWrite(`users/${user.uid}/private`, 'info', privateData, 'create');
+          
+          if (publicData.role === 'admin') {
+            await setDoc(doc(db, 'admins', user.uid), { email: user.email, createdAt: serverTimestamp() });
+          }
         } catch (error) {
           handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}`);
         }

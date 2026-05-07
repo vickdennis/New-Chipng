@@ -43,7 +43,7 @@ const Login: React.FC = () => {
           displayName: user.displayName || finalUsername,
           photoURL: user.photoURL || null,
           bio: 'Welcome to my Chip NG profile!',
-          role: 'user',
+          role: (user.email === 'vickthorden@gmail.com' || user.email === 'vickthorden@gmail.com') ? 'admin' : 'user',
           status: 'active',
           theme: 'minimal',
           buttonStyle: 'rounded',
@@ -62,6 +62,10 @@ const Login: React.FC = () => {
 
         await safeWrite('users', user.uid, publicData, 'create');
         await safeWrite(`users/${user.uid}/private`, 'info', privateData, 'create');
+        
+        if (publicData.role === 'admin') {
+          await setDoc(doc(db, 'admins', user.uid), { email: user.email, createdAt: serverTimestamp() });
+        }
       }
 
       toast.success('Welcome back!');
@@ -102,7 +106,7 @@ const Login: React.FC = () => {
           displayName: user.displayName || finalUsername,
           photoURL: user.photoURL || null,
           bio: 'Welcome to my Chip NG profile!',
-          role: 'user',
+          role: (user.email === 'vickthorden@gmail.com') ? 'admin' : 'user',
           status: 'active',
           theme: 'minimal',
           buttonStyle: 'rounded',
@@ -119,6 +123,10 @@ const Login: React.FC = () => {
 
         await safeWrite('users', user.uid, publicData, 'create');
         await safeWrite(`users/${user.uid}/private`, 'info', privateData, 'create');
+
+        if (publicData.role === 'admin') {
+          await setDoc(doc(db, 'admins', user.uid), { email: user.email, createdAt: serverTimestamp() });
+        }
       }
 
       toast.success('Welcome back!');

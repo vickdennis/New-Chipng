@@ -13,7 +13,10 @@ service cloud.firestore {
     function isEmailVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
     }
     
     function incoming() { return request.resource.data; }
@@ -95,7 +98,7 @@ service cloud.firestore {
     match /users/{userId} {
       // Public profile data
       allow get: if isValidId(userId);
-      allow list: if (request.query.limit <= 10); // Allow searching but prevent dumping
+      allow list: if (request.query.limit <= 10 && resource.data.isDeleted == false) || isAdmin();
       
       allow create: if isOwner(userId) && isEmailVerified() && isValidUser(incoming()) && (
         !incoming().keys().hasAny(['role', 'isPremium', 'plan', 'isVerified', 'status', 'earnings', 'email', 'phone', 'address', 'contactEmail'])
@@ -135,7 +138,7 @@ service cloud.firestore {
 
     match /shouts/{shoutId} {
       allow get: if isValidId(shoutId);
-      allow list: if resource.data.isDeleted == false;
+      allow list: if (resource.data.isDeleted == false) || isAdmin();
       allow create: if isSignedIn() && isEmailVerified() && isValidId(shoutId) && isValidShout(incoming()) && incoming().userId == request.auth.uid;
       allow update, delete: if (isOwner(existing().userId) || isAdmin()) && (isAdmin() || isEmailVerified());
     }
@@ -147,7 +150,7 @@ service cloud.firestore {
 
     match /media/{mediaId} {
       allow get: if isValidId(mediaId);
-      allow list: if resource.data.isDeleted == false;
+      allow list: if (resource.data.isDeleted == false) || isAdmin();
       allow create: if isSignedIn() && isEmailVerified() && isValidId(mediaId) && isValidMedia(incoming()) && incoming().userId == request.auth.uid;
       allow update, delete: if (isOwner(existing().userId) || isAdmin()) && (isAdmin() || isEmailVerified());
     }

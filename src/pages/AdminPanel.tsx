@@ -7,7 +7,7 @@ import {
 import { 
   Users, Shield, Trash2, Ban, CheckCircle, 
   Search, ArrowLeft, BarChart2, TrendingUp, ExternalLink, Eye, X,
-  DollarSign, Crown, BadgeCheck, FileText, ShoppingBag, Plus, Edit, Package, History, RotateCcw, Share2,
+  DollarSign, Crown, BadgeCheck, FileText, ShoppingBag, Plus, Edit, Package, History, RotateCcw, Share2, RefreshCw,
   Link as LinkIcon, Instagram, Twitter, Linkedin, Youtube, Facebook, MessageCircle, Music2, MessageSquare, Disc, Send, Pin, Music, Apple, Cloud, AtSign, Hash, Github, Twitch, Ghost, Mail
 } from 'lucide-react';
 import Logo from '../components/Logo';
@@ -450,6 +450,24 @@ const AdminPanel: React.FC = () => {
     }
   };
 
+  const handleRepairData = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/migrate-users', { method: 'POST' });
+      const data = await res.json();
+      if (data.status === 'success') {
+        toast.success(`Data repair complete! Migrated ${data.migratedCount} users.`);
+      } else {
+        toast.error('Data repair failed: ' + data.message);
+      }
+    } catch (error) {
+      console.error('Repair error:', error);
+      toast.error('Failed to call repair endpoint');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredUsers = users.filter(u => 
     u.email.toLowerCase().includes(search.toLowerCase()) || 
     u.username?.toLowerCase().includes(search.toLowerCase()) ||
@@ -558,6 +576,15 @@ const AdminPanel: React.FC = () => {
             {/* Users Table Header */}
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-2xl font-bold dark:text-white">User Management</h3>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={handleRepairData}
+                disabled={loading}
+                className="flex items-center gap-2 px-6 py-3 bg-zinc-800 text-white rounded-2xl font-bold hover:bg-zinc-700 transition-all disabled:opacity-50"
+              >
+                <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                Repair Data
+              </button>
               <button 
                 onClick={() => setIsAddingUser(true)}
                 className="flex items-center gap-2 px-6 py-3 bg-lime-400 text-zinc-950 rounded-2xl font-bold hover:bg-lime-300 transition-all"
@@ -565,6 +592,7 @@ const AdminPanel: React.FC = () => {
                 <Plus className="w-5 h-5" />
                 Add User
               </button>
+            </div>
             </div>
 
             {/* Users Table */}
