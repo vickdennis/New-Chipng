@@ -365,10 +365,12 @@ async function startServer() {
     res.json({ received: true });
   });
 
-  // SEO Routes
+  // Consolidated robots.txt and sitemap.xml logic
   app.get("/robots.txt", (req, res) => {
     const robots = `User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /dashboard
 Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     res.type('text/plain');
     res.send(robots);
@@ -381,7 +383,7 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       const queryPayloadBlogs = { structuredQuery: { from: [{ collectionId: 'blogs' }], where: { fieldFilter: { field: { fieldPath: 'published' }, op: 'EQUAL', value: { booleanValue: true } } } } };
       const blogsRes = await restFirestore('post', 'blogs', undefined, undefined, queryPayloadBlogs);
       
-      const queryPayloadUsers = { structuredQuery: { from: [{ collectionId: 'users' }] } };
+      const queryPayloadUsers = { structuredQuery: { from: [{ collectionId: 'users' }], where: { fieldFilter: { field: { fieldPath: 'isDeleted' }, op: 'EQUAL', value: { booleanValue: false } } } } };
       const usersRes = await restFirestore('post', 'users', undefined, undefined, queryPayloadUsers);
 
       let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
@@ -408,7 +410,7 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
           sitemap += `
   <url>
     <loc>${host}/blog/${blog.slug}</loc>
-    <lastmod>${blog.updatedAt || blog.createdAt}</lastmod>
+    <lastmod>${new Date(blog.updatedAt || blog.createdAt).toISOString().split('T')[0]}</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>`;
@@ -438,51 +440,46 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
     }
   });
 
-  // ==========================================
-  // API ROUTES (Must be before Vite/Static)
-  // ==========================================
-
-  app.get("/api/health", async (req, res) => {
+  // Consolidated /api/upload with better folder mapping
+  app.post("/api/upload", upload.single('file'), async (req, res) => {
     try {
-      const usersRes = await restFirestore('get', 'users');
-      const count = usersRes.documents?.length || 0;
-      res.json({ status: "ok", usersFound: count });
-    } catch (error: any) {
-      res.json({ status: "error", message: error.message });
-    }
-  });
+      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+      if (!bucket) return res.status(500).json({ error: "Storage bucket not initialized" });
 
-  // AI features moved to frontend service (src/services/geminiService.ts) following best practices.
-  app.use("/api/ai*", (req, res) => {
-    res.status(410).json({ error: "Endpoint moved to client-side." });
-  });
-
-  // Upload Proxy Endpoint
-  app.post("/api/upload", upload.single('file'), async (req: any, res) => {
-    try {
+      const { userId, pathType } = req.body;
       const file = req.file;
-      const pathValue = req.body.path;
-
-      console.log(`[Upload] Processing: ${pathValue}, Size: ${file?.size || 0}`);
-
-      if (!file || !pathValue) {
-        return res.status(400).json({ error: "Missing file or path" });
-      }
-
-      const fileRef = bucket.file(pathValue);
+      
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 8);
+      const safeFileName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const filename = `${timestamp}_${randomStr}_${safeFileName}`;
+      
+      const folderMap: any = {
+        profiles: 'profile-images',
+        covers: 'cover-images',
+        backgrounds: 'background-images',
+        products: 'shop-images',
+        blogs: 'blog-images',
+        'link-icons': 'link-icons'
+      };
+      
+      const folder = folderMap[pathType] || 'misc';
+      const destination = `${folder}/${userId || 'system'}/${filename}`;
+      
+      const fileRef = bucket.file(destination);
       await fileRef.save(file.buffer, {
-        metadata: { contentType: file.mimetype }
+        metadata: {
+          contentType: file.mimetype,
+        }
       });
       
-      // Make public or get signed URL
-      // In this environment, we'll use a public URL if bucket is configured, 
-      // or a signed URL. Simpler for chip-ng: 
-      const url = `https://firebasestorage.googleapis.com/v1/b/${bucket.name}/o/${encodeURIComponent(pathValue)}?alt=media`;
+      const encodedPath = encodeURIComponent(destination);
+      const publicUrl = `https://firebasestorage.googleapis.com/v1/b/${bucket.name}/o/${encodedPath}?alt=media`;
       
-      console.log(`[Upload] Success: ${url}`);
-      res.json({ url });
+      console.log(`[Upload Proxy] Success: ${publicUrl}`);
+      res.json({ url: publicUrl });
     } catch (error: any) {
-      console.error('[Upload] Error:', error);
+      console.error("Backend upload failed:", error);
       res.status(500).json({ error: error.message });
     }
   });
@@ -605,110 +602,6 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       res.json({ status: 'success', count: expiredCount });
     } catch (error: any) {
       console.error('❌ REST Subscription expiry check failed:', error.message);
-      res.status(500).json({ error: error.message });
-    }
-  });
-
-  // 4. SEO Endpoints
-  app.get("/robots.txt", (req, res) => {
-    res.type("text/plain");
-    res.send(`User-agent: *
-Allow: /
-Disallow: /admin
-Disallow: /dashboard
-Sitemap: https://chipng.com/sitemap.xml`);
-  });
-
-  app.get("/sitemap.xml", async (req, res) => {
-    try {
-      const blogPosts = await restFirestore('get', 'blogs');
-      const profiles = await restFirestore('get', 'users');
-      
-      let xml = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://chipng.com/</loc>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://chipng.com/blog</loc>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://chipng.com/pricing</loc>
-    <priority>0.7</priority>
-  </url>`;
-
-      blogPosts.forEach((post: any) => {
-        const data = fromRest(post);
-        if (data.slug) {
-          xml += `
-  <url>
-    <loc>https://chipng.com/blog/${data.slug}</loc>
-    <lastmod>${new Date(data.updatedAt || data.createdAt).toISOString().split('T')[0]}</lastmod>
-    <priority>0.6</priority>
-  </url>`;
-        }
-      });
-
-      profiles.forEach((profile: any) => {
-        const data = fromRest(profile);
-        if (data.username && !data.isDeleted) {
-          xml += `
-  <url>
-    <loc>https://chipng.com/${data.username}</loc>
-    <priority>0.5</priority>
-  </url>`;
-        }
-      });
-
-      xml += `\n</urlset>`;
-      res.type("application/xml");
-      res.send(xml);
-    } catch (error) {
-      res.status(500).send("Error generating sitemap");
-    }
-  });
-
-  // 4. Image Upload Proxy (Fallback for Client-side IAM issues)
-  app.post("/api/upload", upload.single('file'), async (req, res) => {
-    try {
-      if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-      if (!bucket) return res.status(500).json({ error: "Storage bucket not initialized" });
-
-      const { userId, pathType } = req.body;
-      const file = req.file;
-      
-      const timestamp = Date.now();
-      const randomStr = Math.random().toString(36).substring(2, 8);
-      const safeFileName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const filename = `${timestamp}_${randomStr}_${safeFileName}`;
-      
-      const folderMap: any = {
-        profiles: 'profile-images',
-        covers: 'cover-images',
-        backgrounds: 'background-images',
-        products: 'shop-images',
-        blogs: 'blog-images',
-        'link-icons': 'link-icons'
-      };
-      
-      const folder = folderMap[pathType] || 'misc';
-      const destination = `${folder}/${userId || 'system'}/${filename}`;
-      
-      const fileRef = bucket.file(destination);
-      await fileRef.save(file.buffer, {
-        metadata: {
-          contentType: file.mimetype,
-        }
-      });
-      
-      const encodedPath = encodeURIComponent(destination);
-      const publicUrl = `https://firebasestorage.googleapis.com/v1/b/${bucket.name}/o/${encodedPath}?alt=media`;
-      
-      res.json({ url: publicUrl });
-    } catch (error: any) {
-      console.error("Backend upload failed:", error);
       res.status(500).json({ error: error.message });
     }
   });

@@ -271,7 +271,22 @@ const AdminPanel: React.FC = () => {
         updateData.socialLinks = {};
       }
 
-      const userSuccess = await safeWrite('users', userId, updateData, 'update');
+      // Split into public and private data
+      const publicUpdate: any = { ...updateData };
+      const privateUpdate: any = { updatedAt: new Date().toISOString() };
+      
+      const piiFields = ['email', 'phone', 'address', 'contactEmail'];
+      piiFields.forEach(field => {
+        if (publicUpdate[field] !== undefined) {
+          privateUpdate[field] = publicUpdate[field];
+          delete publicUpdate[field];
+        }
+      });
+
+      const userSuccess = await safeWrite('users', userId, publicUpdate, 'update');
+      if (userSuccess) {
+        await safeWrite(`users/${userId}/private`, 'info', privateUpdate, 'update');
+      }
       if (!userSuccess) throw new Error('Failed to update user profile safely');
       
       // Handle links with backups for each modification
@@ -323,13 +338,36 @@ const AdminPanel: React.FC = () => {
         return;
       }
 
-      const newUser = {
-        ...userForm,
+      const publicData = {
+        username: userForm.username,
+        email: userForm.email,
+        displayName: userForm.displayName,
+        role: userForm.role,
+        status: userForm.status,
+        plan: userForm.plan,
+        subscriptionStatus: userForm.subscriptionStatus,
+        isPremium: userForm.isPremium,
+        isVerified: userForm.isVerified,
+        theme: userForm.theme,
+        buttonStyle: userForm.buttonStyle,
+        backgroundType: userForm.backgroundType,
+        socialLinks: userForm.socialLinks || {},
         totalClicks: 0,
-        socialLinks: userForm.socialLinks || {}
+        isDeleted: false
       };
 
-      await safeWrite('users', null, newUser, 'create');
+      const privateData = {
+        email: userForm.email,
+        phone: userForm.phone,
+        address: userForm.address,
+        contactEmail: userForm.contactEmail,
+        updatedAt: new Date().toISOString()
+      };
+
+      const newUserId = await safeWrite('users', null, publicData, 'create');
+      if (newUserId) {
+        await safeWrite(`users/${newUserId}/private`, 'info', privateData, 'create');
+      }
       toast.success('User added successfully with backup');
       setIsAddingUser(false);
       setUserForm({

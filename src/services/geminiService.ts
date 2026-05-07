@@ -43,7 +43,7 @@ export async function aiDesign(prompt: string, userContext: any): Promise<AIDesi
   `;
 
   const response = await gemini.models.generateContent({
-    model: "gemini-3.1-pro-preview",
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       systemInstruction,
@@ -139,7 +139,7 @@ export async function aiWriter(topic: string, keywords?: string) {
   `;
 
   const response = await gemini.models.generateContent({
-    model: "gemini-3.1-pro-preview",
+    model: "gemini-3-flash-preview",
     contents: prompt,
     config: {
       responseMimeType: "application/json",

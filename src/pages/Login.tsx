@@ -37,9 +37,8 @@ const Login: React.FC = () => {
           finalUsername = `${baseUsername}${Math.floor(Math.random() * 10000)}`;
         }
 
-        await safeWrite('users', user.uid, {
+        const publicData = {
           uid: user.uid,
-          email: user.email,
           username: finalUsername,
           displayName: user.displayName || finalUsername,
           photoURL: user.photoURL || null,
@@ -52,8 +51,17 @@ const Login: React.FC = () => {
           backgroundColor: '#ffffff',
           totalClicks: 0,
           plan: 'basic',
-          subscriptionStatus: 'active'
-        }, 'create');
+          subscriptionStatus: 'active',
+          isDeleted: false
+        };
+
+        const privateData = {
+          email: user.email,
+          updatedAt: new Date().toISOString()
+        };
+
+        await safeWrite('users', user.uid, publicData, 'create');
+        await safeWrite(`users/${user.uid}/private`, 'info', privateData, 'create');
       }
 
       toast.success('Welcome back!');
@@ -87,10 +95,9 @@ const Login: React.FC = () => {
           finalUsername = `${baseUsername}${Math.floor(Math.random() * 10000)}`;
         }
 
-        // Create user doc with all profile data merged
-        await safeWrite('users', user.uid, {
+        // Create user docs
+        const publicData = {
           uid: user.uid,
-          email: user.email,
           username: finalUsername,
           displayName: user.displayName || finalUsername,
           photoURL: user.photoURL || null,
@@ -101,8 +108,17 @@ const Login: React.FC = () => {
           buttonStyle: 'rounded',
           backgroundType: 'solid',
           backgroundColor: '#ffffff',
-          totalClicks: 0
-        }, 'create');
+          totalClicks: 0,
+          isDeleted: false
+        };
+
+        const privateData = {
+          email: user.email,
+          updatedAt: new Date().toISOString()
+        };
+
+        await safeWrite('users', user.uid, publicData, 'create');
+        await safeWrite(`users/${user.uid}/private`, 'info', privateData, 'create');
       }
 
       toast.success('Welcome back!');

@@ -55,11 +55,10 @@ const Signup: React.FC = () => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const uid = userCredential.user.uid;
 
-      // Create user doc with all profile data merged
+      // Create user docs
       try {
-        await safeWrite('users', uid, {
+        const publicData = {
           uid,
-          email,
           username: finalUsername,
           displayName: finalUsername,
           bio: 'Welcome to my Chip NG profile!',
@@ -73,8 +72,17 @@ const Signup: React.FC = () => {
           totalClicks: 0,
           plan: 'basic',
           subscriptionStatus: 'active',
-          onboardingCompleted: false
-        }, 'create');
+          onboardingCompleted: false,
+          isDeleted: false
+        };
+
+        const privateData = {
+          email,
+          updatedAt: new Date().toISOString()
+        };
+
+        await safeWrite('users', uid, publicData, 'create');
+        await safeWrite(`users/${uid}/private`, 'info', privateData, 'create');
       } catch (error) {
         handleFirestoreError(error, OperationType.CREATE, `users/${uid}`);
       }
@@ -116,11 +124,10 @@ const Signup: React.FC = () => {
           finalUsername = `${baseUsername}${Math.floor(Math.random() * 10000)}`;
         }
 
-        // Create user doc with all profile data merged
+        // Create user docs
         try {
-          await safeWrite('users', user.uid, {
+          const publicData = {
             uid: user.uid,
-            email: user.email,
             username: finalUsername,
             displayName: user.displayName || finalUsername,
             photoURL: user.photoURL || null,
@@ -134,8 +141,17 @@ const Signup: React.FC = () => {
             totalClicks: 0,
             plan: 'basic',
             subscriptionStatus: 'active',
-            onboardingCompleted: false
-          }, 'create');
+            onboardingCompleted: false,
+            isDeleted: false
+          };
+
+          const privateData = {
+            email: user.email,
+            updatedAt: new Date().toISOString()
+          };
+
+          await safeWrite('users', user.uid, publicData, 'create');
+          await safeWrite(`users/${user.uid}/private`, 'info', privateData, 'create');
         } catch (error) {
           handleFirestoreError(error, OperationType.CREATE, `users/${user.uid}`);
         }
