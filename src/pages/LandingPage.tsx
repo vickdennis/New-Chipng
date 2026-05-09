@@ -8,7 +8,9 @@ import Footer from '../components/Footer';
 import BlogSection from '../components/BlogSection';
 import SEO from '../components/SEO';
 import NFCBusinessCard from '../components/NFCBusinessCard';
+import HowItWorks from '../components/HowItWorks';
 import { DISPLAY_DOMAIN } from '../constants';
+import { Mail, MessageCircle } from 'lucide-react';
 
 const LandingPage: React.FC = () => {
   const [username, setUsername] = React.useState('');
@@ -114,8 +116,12 @@ const LandingPage: React.FC = () => {
           {/* 3D Card Section */}
           <NFCBusinessCard />
         </div>
+      </main>
 
-        {/* Bento Grid Features */}
+      {/* How it Works - Scroll Animations */}
+      <HowItWorks />
+
+      <main className="max-w-7xl mx-auto px-6">
         <div className="mt-40">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-4">Powerful from the ground up.</h2>
@@ -241,6 +247,43 @@ const LandingPage: React.FC = () => {
             {/* Decorative elements */}
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -mr-32 -mt-32" />
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-black/5 rounded-full blur-3xl -ml-32 -mb-32" />
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section id="contact" className="py-24 bg-zinc-50 dark:bg-zinc-900/30">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="bg-white dark:bg-zinc-900 rounded-[3rem] p-12 border border-zinc-100 dark:border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-12">
+            <div className="max-w-md">
+              <h2 className="text-4xl font-black tracking-tighter mb-4">Questions? <br /><span className="text-zinc-400">We're here to help.</span></h2>
+              <p className="text-zinc-500 font-medium mb-8">Get in touch with the @chipng team for support, business inquiries, or just to say hi.</p>
+              
+              <div className="space-y-4">
+                <div className="flex items-center gap-4 text-zinc-950 dark:text-white font-bold">
+                  <div className="w-10 h-10 bg-lime-400/20 text-lime-600 rounded-xl flex items-center justify-center">
+                    <Mail className="w-5 h-5" />
+                  </div>
+                  admin@chipng.com
+                </div>
+                <div className="flex items-center gap-4 text-zinc-950 dark:text-white font-bold">
+                  <div className="w-10 h-10 bg-blue-400/20 text-blue-600 rounded-xl flex items-center justify-center">
+                    <MessageCircle className="w-5 h-5" />
+                  </div>
+                  @chipng on Instagram
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex flex-col gap-4 w-full md:w-auto">
+              <a 
+                href="mailto:admin@chipng.com"
+                className="px-10 py-5 bg-zinc-950 text-white rounded-2xl font-bold text-center hover:bg-zinc-800 transition-all flex items-center justify-center gap-3"
+              >
+                Send us an Email <ArrowRight className="w-5 h-5" />
+              </a>
+              <p className="text-center text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Typical response time: &lt; 2 hours</p>
+            </div>
           </div>
         </div>
       </section>

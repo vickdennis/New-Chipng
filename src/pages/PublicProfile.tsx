@@ -28,6 +28,15 @@ import { cn } from '../lib/utils';
 
 
 
+const getFavicon = (url: string) => {
+  try {
+    const domain = new URL(url).hostname;
+    return `https://icon.horse/icon/${domain}?size=large`;
+  } catch (e) {
+    return null;
+  }
+};
+
 const PublicProfile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
   const [profile, setProfile] = useState<User | null>(null);
@@ -338,39 +347,41 @@ END:VCARD`;
       {/* Main Container */}
       <main className="w-full max-w-lg mx-auto pb-48">
         {/* Banner Section */}
-        <div className="relative h-[25vh] min-h-[200px] w-full overflow-hidden">
-          <motion.div 
-            style={{ opacity: coverOpacity }}
-            className="w-full h-full relative"
-          >
-            {profile.coverImage ? (
-              <img 
-                src={profile.coverImage} 
-                alt="" 
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
+        {(profile?.plan === 'pro' || profile?.plan === 'business') && (
+          <div className="relative h-[25vh] min-h-[200px] w-full overflow-hidden">
+            <motion.div 
+              style={{ opacity: coverOpacity }}
+              className="w-full h-full relative"
+            >
+              {profile.coverImage ? (
+                <img 
+                  src={profile.coverImage} 
+                  alt="" 
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className={cn("w-full h-full relative", theme.background === 'bg-white' ? 'bg-zinc-100' : 'bg-zinc-900')}>
+                   <div className="absolute inset-0 bg-lime-400/5 blur-3xl rounded-full translate-y-1/2" />
+                </div>
+              )}
+              <div className={cn(
+                "absolute inset-x-0 bottom-0 h-full z-10",
+                theme.background === 'bg-white' 
+                  ? "bg-gradient-to-t from-white via-white/95 via-white/20 to-transparent" 
+                  : theme.background === 'bg-black' || theme.background.includes('zinc-950')
+                    ? "bg-gradient-to-t from-black via-black/95 via-black/20 to-transparent"
+                    : "bg-gradient-to-t from-zinc-900 via-zinc-900/95 via-zinc-900/20 to-transparent"
+              )} 
+              style={{
+                background: profile.backgroundType === 'solid' 
+                  ? `linear-gradient(to top, ${profile.backgroundColor} 0%, ${profile.backgroundColor}F2 20%, ${profile.backgroundColor}33 60%, transparent 100%)`
+                  : undefined
+              }}
               />
-            ) : (
-              <div className={cn("w-full h-full relative", theme.background === 'bg-white' ? 'bg-zinc-100' : 'bg-zinc-900')}>
-                 <div className="absolute inset-0 bg-lime-400/5 blur-3xl rounded-full translate-y-1/2" />
-              </div>
-            )}
-            <div className={cn(
-              "absolute inset-x-0 bottom-0 h-full z-10",
-              theme.background === 'bg-white' 
-                ? "bg-gradient-to-t from-white via-white/95 via-white/20 to-transparent" 
-                : theme.background === 'bg-black' || theme.background.includes('zinc-950')
-                  ? "bg-gradient-to-t from-black via-black/95 via-black/20 to-transparent"
-                  : "bg-gradient-to-t from-zinc-900 via-zinc-900/95 via-zinc-900/20 to-transparent"
-            )} 
-            style={{
-              background: profile.backgroundType === 'solid' 
-                ? `linear-gradient(to top, ${profile.backgroundColor} 0%, ${profile.backgroundColor}F2 20%, ${profile.backgroundColor}33 60%, transparent 100%)`
-                : undefined
-            }}
-            />
-          </motion.div>
-        </div>
+            </motion.div>
+          </div>
+        )}
 
         {/* Profile Info Section */}
         <div className="relative z-10 px-6 -mt-20 flex flex-col items-center">
@@ -498,9 +509,9 @@ END:VCARD`;
                               className="w-32 h-32"
                             />
                           </div>
-                        ) : (link.thumbnail || link.icon) ? (
+                        ) : (link.thumbnail || link.icon || getFavicon(link.url)) ? (
                           <img 
-                            src={link.thumbnail || link.icon} 
+                            src={link.thumbnail || link.icon || getFavicon(link.url)!} 
                             alt={link.title} 
                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
                             referrerPolicy="no-referrer" 
@@ -551,8 +562,8 @@ END:VCARD`;
                            asLink={false}
                            className="w-full h-full"
                          />
-                       ) : (link.thumbnail || link.icon) ? (
-                         <img src={link.thumbnail || link.icon} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" referrerPolicy="no-referrer" />
+                       ) : (link.thumbnail || link.icon || getFavicon(link.url)) ? (
+                         <img src={link.thumbnail || link.icon || getFavicon(link.url)!} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-110" referrerPolicy="no-referrer" />
                        ) : (
                          <LinkIcon className="w-6 h-6" />
                        )}

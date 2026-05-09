@@ -18,7 +18,7 @@ const Footer: React.FC = () => {
       title: 'Company',
       links: [
         { name: 'About', path: '/#about' },
-        { name: 'Contact', path: '/#contact' },
+        { name: 'Contact Us', path: 'mailto:admin@chipng.com' },
         { name: 'Privacy', path: '/privacy' },
       ],
     },
@@ -38,10 +38,13 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-20">
           <div className="lg:col-span-1">
             <Logo size="sm" className="!flex-row !gap-3 mb-6" />
-            <p className="text-zinc-500 text-sm leading-relaxed max-w-xs">
+            <p className="text-zinc-500 text-sm leading-relaxed max-w-xs mb-6">
               Chip NG is the powerful link-in-bio tool for creators, entrepreneurs, and businesses. 
               Build your professional page in seconds.
             </p>
+            <div className="text-zinc-400 text-xs font-bold uppercase tracking-widest">
+              Admin: @chipng
+            </div>
           </div>
 
           {footerLinks.map((section) => (

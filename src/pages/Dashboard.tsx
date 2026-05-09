@@ -727,6 +727,11 @@ const Dashboard: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    if (type === 'cover' && !hasAccess('pro')) {
+      checkFeatureAccess('pro', 'Cover Image');
+      return;
+    }
+
     if (type === 'background' && !hasAccess('pro')) {
       checkFeatureAccess('pro', 'Custom Background');
       return;
@@ -1198,22 +1203,46 @@ const Dashboard: React.FC = () => {
                 className="px-6 flex flex-col items-center"
               >
                 {/* Cover Image Section */}
-                <div className="w-full mt-8 mb-6 space-y-4">
+                <div className={cn(
+                  "w-full mt-8 mb-6 space-y-4 relative",
+                  !hasAccess('pro') && "opacity-80"
+                )}>
                   <div className="flex items-center justify-between px-2">
                      <h3 className="text-[20px] font-black">Profile Header</h3>
-                     <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-3 py-1 rounded-full font-black uppercase tracking-widest border border-zinc-200 dark:border-zinc-700">Cover Image</span>
+                     <div className="flex items-center gap-2">
+                        {!hasAccess('pro') && (
+                          <span className="text-[10px] bg-amber-100 text-amber-700 px-3 py-1 rounded-full font-black flex items-center gap-1">
+                            <Crown className="w-3 h-3" /> PRO
+                          </span>
+                        )}
+                        <span className="text-[10px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 px-3 py-1 rounded-full font-black uppercase tracking-widest border border-zinc-200 dark:border-zinc-700">Cover Image</span>
+                     </div>
                   </div>
-                  <ImageUpload 
-                    folder="covers"
-                    userId={user?.uid || ''}
-                    initialImage={profile?.coverImage}
-                    onSuccess={(url) => handleUpdateProfile({ coverImage: url })}
-                    label="Your Banner Image"
-                    aspectRatio="video"
-                  />
+                  
+                  <div className="relative group/cover">
+                    <ImageUpload 
+                      folder="covers"
+                      userId={user?.uid || ''}
+                      initialImage={profile?.coverImage}
+                      onSuccess={(url) => handleUpdateProfile({ coverImage: url })}
+                      label="Your Banner Image"
+                      aspectRatio="video"
+                    />
+                    {!hasAccess('pro') && (
+                      <div className="absolute inset-0 z-10 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-[2px] rounded-[2.5rem] flex items-center justify-center cursor-pointer" onClick={() => checkFeatureAccess('pro', 'Cover Image')}>
+                        <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-2xl flex items-center gap-3 border border-zinc-100 dark:border-zinc-800">
+                           <Crown className="w-6 h-6 text-amber-500" />
+                           <span className="font-black text-sm">Upgrade to Pro to unlock Cover Images</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   
                   {/* Presets Gallery */}
-                  <div className="mt-4 flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                  <div className={cn(
+                    "mt-4 flex gap-3 overflow-x-auto no-scrollbar pb-2",
+                    !hasAccess('pro') && "grayscale opacity-50 pointer-events-none"
+                  )}>
                     {[
                       'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=800',
                       'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&q=80&w=800',
@@ -1224,7 +1253,7 @@ const Dashboard: React.FC = () => {
                       <button
                         key={idx}
                         onClick={() => {
-                          safeWrite('users', user?.uid || '', { coverImage: url }, 'update');
+                          handleUpdateProfile({ coverImage: url });
                           toast.success('Cover image updated!');
                         }}
                         className="w-16 h-10 rounded-xl overflow-hidden flex-shrink-0 border border-zinc-200 dark:border-zinc-800 hover:scale-105 transition-transform"
@@ -1458,9 +1487,26 @@ const Dashboard: React.FC = () => {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="px-6 py-6 space-y-6"
+                className="px-6 py-6 space-y-6 relative"
               >
-                <div className="grid grid-cols-2 gap-4">
+                {!hasAccess('pro') && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center p-6 mt-12">
+                    <div className="bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl p-12 rounded-[3rem] border border-zinc-100 dark:border-zinc-800 shadow-2xl text-center max-w-sm">
+                       <div className="w-20 h-20 bg-amber-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                          <Crown className="w-10 h-10 text-amber-600" />
+                       </div>
+                       <h3 className="text-2xl font-black mb-2">Detailed Analytics</h3>
+                       <p className="text-zinc-500 text-sm mb-8 font-medium leading-relaxed">Track your growth with deep insights into views, clicks, and conversion rates.</p>
+                       <button 
+                         onClick={() => navigate('/pricing')}
+                         className="w-full py-4 bg-zinc-950 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-zinc-900/20"
+                       >
+                         Upgrade to Pro
+                       </button>
+                    </div>
+                  </div>
+                )}
+                <div className={cn("grid grid-cols-2 gap-4", !hasAccess('pro') && "blur-md select-none opacity-40")}>
                   <div className="bg-white dark:bg-zinc-900 p-4 rounded-[24px] border border-[#F3F4F6] dark:border-zinc-800 shadow-sm">
                     <p className="text-[#6B7280] text-[12px] font-medium mb-1">Views</p>
                     <p className="text-[24px] font-bold text-zinc-900 dark:text-white">{profile?.totalClicks || 0}</p>
@@ -1473,7 +1519,7 @@ const Dashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-[24px] border border-[#F3F4F6] shadow-sm h-[300px]">
+                <div className={cn("bg-white p-6 rounded-[24px] border border-[#F3F4F6] shadow-sm h-[300px]", !hasAccess('pro') && "blur-md select-none opacity-40")}>
                   <h3 className="font-bold mb-6">Traffic Over Time</h3>
                   <ResponsiveContainer width="100%" height="80%">
                     <AreaChart data={mockAnalyticsData}>
@@ -2241,6 +2287,19 @@ const Dashboard: React.FC = () => {
                     </div>
                     
                     <div className="bg-gradient-to-br from-lime-400/10 to-blue-500/10 border border-lime-400/20 rounded-[2.5rem] p-8 space-y-6 relative overflow-hidden group">
+                       {!hasAccess('pro') && (
+                         <div className="absolute inset-0 z-20 bg-white/60 dark:bg-zinc-950/60 backdrop-blur-[2px] flex flex-col items-center justify-center p-8 text-center" onClick={() => checkFeatureAccess('pro', 'AI Designer')}>
+                            <Crown className="w-12 h-12 text-amber-500 mb-4" />
+                            <h4 className="text-xl font-black text-zinc-900 dark:text-white mb-2">Pro Exclusive</h4>
+                            <p className="text-zinc-600 dark:text-zinc-400 text-sm font-medium">Upgrade to use AI-powered profile design</p>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); navigate('/pricing'); }}
+                              className="mt-6 px-8 py-3 bg-zinc-950 text-white rounded-xl font-black text-xs uppercase tracking-widest"
+                            >
+                              Upgrade Now
+                            </button>
+                         </div>
+                       )}
                        <div className="absolute top-0 right-0 w-32 h-32 bg-lime-400/10 blur-[50px] rounded-full -mr-10 -mt-10 group-hover:scale-150 transition-transform duration-700" />
                        
                        <div className="relative z-10 space-y-4">
