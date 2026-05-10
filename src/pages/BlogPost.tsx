@@ -9,6 +9,17 @@ import {
 import { blogService } from '../services/blogService';
 import { BlogPost as BlogPostType } from '../types';
 import { format } from 'date-fns';
+
+const formatDate = (date: any, formatStr: string) => {
+  if (!date) return 'Recently';
+  try {
+    const d = date.toDate ? date.toDate() : new Date(date);
+    if (isNaN(d.getTime())) return 'Recently';
+    return format(d, formatStr);
+  } catch (e) {
+    return 'Recently';
+  }
+};
 import { toast } from 'sonner';
 import SEO from '../components/SEO';
 import Logo from '../components/Logo';
@@ -141,7 +152,7 @@ const BlogPost: React.FC = () => {
                 <div className="font-bold text-lg text-zinc-950 dark:text-white">{post.author}</div>
                 <div className="text-zinc-500 text-sm flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  {format(new Date(post.createdAt), 'MMMM dd, yyyy')}
+                  {formatDate(post.createdAt, 'MMMM dd, yyyy')}
                   <span>•</span>
                   <Clock className="w-4 h-4" />
                   {calculateReadingTime(post.content)}
@@ -229,7 +240,7 @@ const BlogPost: React.FC = () => {
                 >
                   <div className="flex items-center gap-4 text-zinc-500 text-xs font-bold uppercase tracking-widest mb-4">
                     <Calendar className="w-3.5 h-3.5" />
-                    {format(new Date(relatedPost.createdAt), 'MMM dd, yyyy')}
+                    {formatDate(relatedPost.createdAt, 'MMM dd, yyyy')}
                   </div>
                   <h3 className="text-xl font-bold mb-4 group-hover:text-lime-500 dark:group-hover:text-lime-400 transition-colors line-clamp-2 text-zinc-950 dark:text-white">
                     {relatedPost.title}

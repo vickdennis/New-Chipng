@@ -26,7 +26,7 @@ import {
   History as HistoryIcon, RotateCcw, Megaphone, Clock, BadgeCheck, ArrowUpRight,
   FileText, ShoppingCart, Tag, Filter, Edit, Package, DollarSign,
   Instagram, Twitter, Linkedin, Facebook, MessageCircle, MapPin, Github, Twitch, Mail, Ghost, MessageSquare, Youtube, Music2,
-  Sparkles, Wand2, Bot
+  Sparkles, Wand2, Bot, Zap, Users, ShieldCheck, ArrowRight
 } from 'lucide-react';
 import Logo from '../components/Logo';
 import ThemeToggle from '../components/ThemeToggle';
@@ -330,6 +330,17 @@ const PLATFORMS = {
   ]
 };
 
+const formatDate = (date: any, formatStr: string) => {
+  if (!date) return 'Just now';
+  try {
+    const d = date.toDate ? date.toDate() : new Date(date);
+    if (isNaN(d.getTime())) return 'Recently';
+    return format(d, formatStr);
+  } catch (e) {
+    return 'Recently';
+  }
+};
+
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserType | null>(null);
@@ -352,6 +363,7 @@ const Dashboard: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [activeTab, setActiveTab] = useState<'links' | 'appearance' | 'business' | 'analytics' | 'verification' | 'billing' | 'settings' | 'backup' | 'posts' | 'blogs' | 'shop'>('links');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [isAddPlatformModalOpen, setIsAddPlatformModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<keyof typeof PLATFORMS>('socials');
   const [searchQuery, setSearchQuery] = useState('');
@@ -571,8 +583,9 @@ const Dashboard: React.FC = () => {
     });
 
     // Trigger subscription expiry check on load
-    fetch('/api/cron/check-subscriptions', { method: 'POST' })
-      .catch(err => console.error('Expiry check failed:', err));
+    // Removed as it requires a specific backend route
+    // fetch('/api/cron/check-subscriptions', { method: 'POST' })
+    //   .catch(err => console.error('Expiry check failed:', err));
 
     return () => {
       unsubPublic();
@@ -1527,7 +1540,7 @@ const Dashboard: React.FC = () => {
                 )}
                 <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-6", !hasAccess('pro') && "blur-md select-none opacity-40")}>
                   <motion.div 
-                    whileHover={{ y: -4, shadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+                    whileHover={{ y: -4, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
                     className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group transition-all"
                   >
                     <div className="relative z-10">
@@ -1549,7 +1562,7 @@ const Dashboard: React.FC = () => {
                   </motion.div>
 
                   <motion.div 
-                    whileHover={{ y: -4, shadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+                    whileHover={{ y: -4, boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
                     className="bg-zinc-50 dark:bg-zinc-950 p-8 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group transition-all"
                   >
                     <div className="relative z-10">
@@ -1719,7 +1732,7 @@ const Dashboard: React.FC = () => {
                             <img src={shout.image} alt="" className="w-full h-48 object-cover rounded-2xl mb-2 cursor-pointer hover:brightness-95 transition-all" onClick={() => window.open(shout.image, '_blank')} />
                           )}
                           <div className="flex items-center justify-between mt-2">
-                             <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">{shout.createdAt ? format(new Date(shout.createdAt), 'MMM d, h:mm a') : 'Just now'}</span>
+                             <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">{formatDate(shout.createdAt, 'MMM d, h:mm a')}</span>
                           </div>
                         </div>
                       ))}
@@ -1849,7 +1862,7 @@ const Dashboard: React.FC = () => {
                                 )}>
                                   {post.published ? 'Published' : 'Draft'}
                                 </span>
-                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{format(new Date(post.createdAt), 'MMM d, yyyy')}</span>
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{formatDate(post.createdAt, 'MMM d, yyyy')}</span>
                               </div>
                               <h3 className="text-lg font-black tracking-tight text-zinc-900 dark:text-white truncate">{post.title}</h3>
                               <p className="text-sm text-zinc-500 line-clamp-1">{post.excerpt}</p>
@@ -1895,31 +1908,85 @@ const Dashboard: React.FC = () => {
                     <p className="text-[#6B7280] text-[14px] font-medium">Sell products directly from your profile.</p>
                   </div>
                   <button 
-                    onClick={() => {
-                      const name = window.prompt('Product Name:');
-                      const price = window.prompt('Price:');
-                      if (!name || !price) return;
-                      const now = new Date().toISOString();
-                      safeWrite('products', null, {
-                        userId: user?.uid,
-                        name,
-                        price: parseFloat(price),
-                        description: 'Product description...',
-                        image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=800',
-                        category: 'General',
-                        active: true,
-                        isDeleted: false,
-                        stock: 10,
-                        createdAt: now,
-                        updatedAt: now
-                      }, 'create').then(() => toast.success('Product added!'));
-                    }}
+                    onClick={() => setIsAddProductModalOpen(true)}
                     className="flex items-center gap-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 px-6 py-3 rounded-2xl font-bold hover:scale-105 transition-all shadow-xl"
                   >
                     <Plus className="w-5 h-5" />
                     Add Product
                   </button>
                 </div>
+
+                {isAddProductModalOpen && (
+                  <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 p-8 rounded-[2.5rem] shadow-xl space-y-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-black">Add New Product</h3>
+                      <button onClick={() => setIsAddProductModalOpen(false)} className="text-zinc-400 hover:text-zinc-900">
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase text-zinc-400">Product Name</label>
+                        <input 
+                          type="text" 
+                          id="p-name"
+                          placeholder="e.g. Graphic T-Shirt" 
+                          className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl p-4 text-sm focus:ring-1 ring-lime-400"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black uppercase text-zinc-400">Price (₦)</label>
+                        <input 
+                          type="number" 
+                          id="p-price"
+                          placeholder="e.g. 15000" 
+                          className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl p-4 text-sm focus:ring-1 ring-lime-400"
+                        />
+                      </div>
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="text-[10px] font-black uppercase text-zinc-400">Description</label>
+                        <textarea 
+                          id="p-desc"
+                          placeholder="Tell us about the product..." 
+                          className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl p-4 text-sm focus:ring-1 ring-lime-400 h-24"
+                        />
+                      </div>
+                    </div>
+                    <button 
+                      onClick={async () => {
+                        const name = (document.getElementById('p-name') as HTMLInputElement).value;
+                        const price = (document.getElementById('p-price') as HTMLInputElement).value;
+                        const desc = (document.getElementById('p-desc') as HTMLTextAreaElement).value;
+                        
+                        if (!name || !price) {
+                          toast.error('Name and price are required');
+                          return;
+                        }
+                        
+                        const now = new Date().toISOString();
+                        await safeWrite('products', null, {
+                          userId: user?.uid,
+                          name,
+                          price: parseFloat(price),
+                          description: desc || 'Product description...',
+                          image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=800',
+                          category: 'General',
+                          active: true,
+                          isDeleted: false,
+                          stock: 10,
+                          createdAt: now,
+                          updatedAt: now
+                        }, 'create');
+                        
+                        toast.success('Product added!');
+                        setIsAddProductModalOpen(false);
+                      }}
+                      className="w-full py-4 bg-lime-400 text-zinc-950 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-lime-100"
+                    >
+                      Save Product
+                    </button>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {products.length === 0 ? (
@@ -2162,6 +2229,25 @@ const Dashboard: React.FC = () => {
                              </div>
                            </div>
                            <div className="space-y-2">
+                             <label className="text-[10px] font-black tracking-widest uppercase text-zinc-400">Map Location (Coordinates)</label>
+                             <div className="grid grid-cols-2 gap-3">
+                               <input 
+                                 type="number"
+                                 value={profile?.location?.lat || ''}
+                                 onChange={(e) => handleUpdateProfile({ location: { ...profile?.location, lat: parseFloat(e.target.value), lng: profile?.location?.lng || 0 } })}
+                                 placeholder="Latitude"
+                                 className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl p-3 text-[10px] outline-none focus:ring-1 ring-lime-400"
+                               />
+                               <input 
+                                 type="number"
+                                 value={profile?.location?.lng || ''}
+                                 onChange={(e) => handleUpdateProfile({ location: { ...profile?.location, lng: parseFloat(e.target.value), lat: profile?.location?.lat || 0 } })}
+                                 placeholder="Longitude"
+                                 className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl p-3 text-[10px] outline-none focus:ring-1 ring-lime-400"
+                               />
+                             </div>
+                           </div>
+                           <div className="space-y-2">
                              <label className="text-[10px] font-black tracking-widest uppercase text-zinc-400">Google Maps URL</label>
                              <div className="relative">
                                <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 w-4 h-4" />
@@ -2184,32 +2270,6 @@ const Dashboard: React.FC = () => {
                           <button onClick={() => setShowUpgradeModal(true)} className="mt-2 text-xs font-black text-lime-600 hover:underline">Upgrade Now</button>
                         </div>
                       )}
-
-                      <div className={`space-y-3 ${!hasAccess('pro') ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <input 
-                          type="text"
-                          value={profile?.address || ''}
-                          onChange={(e) => handleUpdateProfile({ address: e.target.value })}
-                          placeholder="Store Address (e.g. 123 Main St, Lagos)"
-                          className="w-full p-3 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-xs outline-none"
-                        />
-                        <div className="grid grid-cols-2 gap-3">
-                           <input 
-                              type="number"
-                              value={profile?.location?.lat || ''}
-                              onChange={(e) => handleUpdateProfile({ location: { ...profile?.location, lat: parseFloat(e.target.value), lng: profile?.location?.lng || 0 } })}
-                              placeholder="Latitude"
-                              className="w-full p-3 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[10px] outline-none"
-                           />
-                           <input 
-                              type="number"
-                              value={profile?.location?.lng || ''}
-                              onChange={(e) => handleUpdateProfile({ location: { ...profile?.location, lng: parseFloat(e.target.value), lat: profile?.location?.lat || 0 } })}
-                              placeholder="Longitude"
-                              className="w-full p-3 bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl text-[10px] outline-none"
-                           />
-                        </div>
-                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -2796,7 +2856,7 @@ const Dashboard: React.FC = () => {
                       <h3 className="text-4xl font-black capitalize">{profile?.plan || 'Basic'}</h3>
                       <p className="text-zinc-500 text-sm mt-1">
                         {profile?.plan === 'pro' || profile?.plan === 'business' 
-                          ? `Renews on ${profile.premiumUntil ? format(new Date(profile.premiumUntil), 'MMM d, yyyy') : 'soon'}`
+                          ? `Renews on ${formatDate(profile.premiumUntil, 'MMM d, yyyy')}`
                           : 'Unlock more features with Pro'}
                       </p>
                     </div>
@@ -2846,7 +2906,7 @@ const Dashboard: React.FC = () => {
                           </div>
                           <div className="text-right">
                             <p className="font-black text-sm dark:text-white">₦{tx.amount.toLocaleString()}</p>
-                            <p className="text-[10px] text-zinc-400 font-bold">{tx.createdAt ? format(new Date(tx.createdAt), 'MMM d, yyyy') : 'Just now'}</p>
+                            <p className="text-[10px] text-zinc-400 font-bold">{formatDate(tx.createdAt, 'MMM d, yyyy')}</p>
                           </div>
                         </div>
                       ))}
@@ -3277,7 +3337,7 @@ const Dashboard: React.FC = () => {
                             </div>
                             <p className="text-[11px] text-zinc-400 font-bold uppercase tracking-wider mt-0.5 flex items-center gap-1.5">
                               <Clock className="w-3 h-3" />
-                              {backup.timestamp?.toDate ? format(backup.timestamp.toDate(), 'MMM d, h:mm a') : 'Just now'}
+                              {formatDate(backup.timestamp, 'MMM d, h:mm a')}
                             </p>
                           </div>
                         </div>

@@ -55,6 +55,7 @@ export interface User {
   contactEmail?: string;
   emailContactEnabled?: boolean;
   mapEnabled?: boolean;
+  googleMapsUrl?: string;
   profileLayout?: LayoutType;
   profileFont?: FontType;
   textColor?: string;

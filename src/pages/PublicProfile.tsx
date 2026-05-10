@@ -37,6 +37,17 @@ const getFavicon = (url: string) => {
   }
 };
 
+const formatDate = (date: any, formatStr: string) => {
+  if (!date) return 'Recently';
+  try {
+    const d = date.toDate ? date.toDate() : new Date(date);
+    if (isNaN(d.getTime())) return 'Recently';
+    return format(d, formatStr);
+  } catch (e) {
+    return 'Recently';
+  }
+};
+
 const PublicProfile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
   const [profile, setProfile] = useState<User | null>(null);
@@ -619,7 +630,7 @@ END:VCARD`;
                          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[#A3E635]">Verified Shout</span>
                       </div>
                       <span className="text-[9px] font-bold uppercase text-zinc-600 tracking-widest">
-                        {shout.createdAt ? format(new Date(shout.createdAt), 'MMM d') : 'Recently'}
+                        {formatDate(shout.createdAt, 'MMM d')}
                       </span>
                     </div>
                   </motion.div>
@@ -652,7 +663,7 @@ END:VCARD`;
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500" />
                     <div className="absolute bottom-6 left-6 opacity-0 group-hover:opacity-100 transition-all translate-y-4 group-hover:translate-y-0">
-                       <span className="text-[10px] font-black uppercase text-[#A3E635] tracking-widest">Snapshot • {format(new Date(item.createdAt), 'yyyy')}</span>
+                       <span className="text-[10px] font-black uppercase text-[#A3E635] tracking-widest">Snapshot • {formatDate(item.createdAt, 'yyyy')}</span>
                     </div>
                   </motion.div>
                 ))}
@@ -721,7 +732,7 @@ END:VCARD`;
                       </div>
                       <div className="flex flex-col justify-center min-w-0">
                         <div className="text-[10px] font-black text-[#A3E635] uppercase tracking-widest mb-1">
-                          {format(new Date(blog.createdAt), 'MMM d, yyyy')}
+                          {formatDate(blog.createdAt, 'MMM d, yyyy')}
                         </div>
                         <h3 className="font-bold text-lg group-hover:text-[#A3E635] transition-colors line-clamp-1">{blog.title}</h3>
                         <p className="text-zinc-500 text-xs line-clamp-1 mt-1 font-medium">{blog.excerpt}</p>
@@ -733,10 +744,11 @@ END:VCARD`;
             </section>
           )}
 
-          {/* Business Section (Pro/Business Plan) */}
-          {(profile.appointmentsEnabled || profile.address) && (
+          {/* Business Section (Pro/Business Plan Gated) */}
+          {((profile.appointmentsEnabled && (profile.plan === 'pro' || profile.plan === 'business')) || 
+            (profile.address && profile.mapEnabled && (profile.plan === 'pro' || profile.plan === 'business'))) && (
             <section className="space-y-10 py-12">
-               {profile.appointmentsEnabled && profile.appointments && profile.appointments.length > 0 && (
+               {profile.appointmentsEnabled && (profile.plan === 'pro' || profile.plan === 'business') && profile.appointments && profile.appointments.length > 0 && (
                  <div className="space-y-6">
                     <div className="flex items-center gap-4 px-2">
                       <div className="w-12 h-12 bg-[#A3E635]/10 rounded-2xl flex items-center justify-center">
@@ -768,7 +780,7 @@ END:VCARD`;
                  </div>
                )}
 
-               {profile.address && profile.mapEnabled && (
+               {profile.address && profile.mapEnabled && (profile.plan === 'pro' || profile.plan === 'business') && (
                  <div className="space-y-6">
                     <div className="flex items-center gap-4 px-2">
                        <div className="w-12 h-12 bg-[#A3E635]/10 rounded-2xl flex items-center justify-center">
@@ -779,9 +791,9 @@ END:VCARD`;
 
                     <div className="rounded-[3rem] overflow-hidden border border-white/5 bg-zinc-900 shadow-2xl">
                        <div className="aspect-[16/10] bg-zinc-800 relative">
-                          {/* Mock Map using Static Image if lat/lng present, otherwise just address */}
+                          {/* Map using API Key from environment or fallback */}
                           <iframe
-                            src={`https://www.google.com/maps/embed/v1/place?key=YOUR_API_KEY_OR_MOCK&q=${encodeURIComponent(profile.address)}`}
+                            src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSy...fallback'}&q=${encodeURIComponent(profile.address)}`}
                             className="w-full h-full border-0 grayscale invert opacity-70 contrast-125"
                             allowFullScreen
                             loading="lazy"

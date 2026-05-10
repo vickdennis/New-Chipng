@@ -19,6 +19,7 @@ import {
   ResponsiveContainer, BarChart, Bar, Cell
 } from 'recharts';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 import { User, Product, Link as LinkType } from '../types';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
@@ -26,6 +27,17 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { rollbackToVersion, BackupData, safeWrite, createBackup } from '../services/backupService';
 import { uploadImage } from '../services/imageService';
+
+const formatDate = (date: any, formatStr: string = 'PPpp') => {
+  if (!date) return 'Just now';
+  try {
+    const d = date.toDate ? date.toDate() : new Date(date);
+    if (isNaN(d.getTime())) return 'Recently';
+    return format(d, formatStr);
+  } catch (e) {
+    return 'Recently';
+  }
+};
 
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
@@ -989,7 +1001,7 @@ const AdminPanel: React.FC = () => {
                           <div className="flex items-center gap-3">
                             <History className="w-4 h-4 text-zinc-400" />
                             <div className="font-bold dark:text-white">
-                              {backup.timestamp?.toDate ? backup.timestamp.toDate().toLocaleString() : new Date(backup.timestamp).toLocaleString()}
+                              {formatDate(backup.timestamp)}
                             </div>
                           </div>
                         </td>

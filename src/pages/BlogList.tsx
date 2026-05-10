@@ -8,6 +8,17 @@ import {
 import { blogService } from '../services/blogService';
 import { BlogPost } from '../types';
 import { format } from 'date-fns';
+
+const formatDate = (date: any, formatStr: string) => {
+  if (!date) return 'Recently';
+  try {
+    const d = date.toDate ? date.toDate() : new Date(date);
+    if (isNaN(d.getTime())) return 'Recently';
+    return format(d, formatStr);
+  } catch (e) {
+    return 'Recently';
+  }
+};
 import SEO from '../components/SEO';
 import Logo from '../components/Logo';
 import { motion } from 'motion/react';
@@ -176,7 +187,7 @@ const BlogList: React.FC = () => {
                   <div className="flex items-center gap-4 text-zinc-500 text-xs font-bold uppercase tracking-widest mb-4">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="w-3.5 h-3.5" />
-                      {format(new Date(post.createdAt), 'MMM dd, yyyy')}
+                      {formatDate(post.createdAt, 'MMM dd, yyyy')}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5" />

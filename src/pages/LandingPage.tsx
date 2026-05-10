@@ -134,7 +134,7 @@ const LandingPage: React.FC = () => {
                initial={{ opacity: 0, scale: 0.95 }}
                whileInView={{ opacity: 1, scale: 1 }}
                viewport={{ once: true }}
-               whileHover={{ y: -8, shadow: "0 20px 40px rgba(0,0,0,0.1)" }}
+               whileHover={{ y: -8, boxShadow: "0 20px 40px rgba(0,0,0,0.1)" }}
                transition={{ type: "spring", stiffness: 300, damping: 20 }}
                className="md:col-span-3 md:row-span-2 bg-zinc-950 rounded-[3rem] p-12 flex flex-col justify-between overflow-hidden relative group border border-zinc-800/50 shadow-2xl"
              >
