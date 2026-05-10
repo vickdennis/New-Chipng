@@ -436,7 +436,8 @@ const Dashboard: React.FC = () => {
           } else if (call.name === 'addLink') {
             await handleAddLinkWithData(call.args);
           } else if (call.name === 'updateLink') {
-            await handleUpdateLink(call.args.id, call.args);
+            const { id, ...updates } = call.args;
+            await handleUpdateLink(id, updates);
           } else if (call.name === 'deleteLink') {
             await handleDeleteLink(call.args.id);
           } else if (call.name === 'applyTheme') {
@@ -460,8 +461,11 @@ const Dashboard: React.FC = () => {
         userId: user.uid,
         ...data,
         active: true,
+        isDeleted: false,
         position: links.length,
-        clicks: 0
+        clicks: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }, 'create');
     } catch (error) {
            console.error('Error adding AI link:', error);
@@ -590,8 +594,11 @@ const Dashboard: React.FC = () => {
         title: 'New Link',
         url: 'https://',
         active: true,
+        isDeleted: false,
         position: links.length,
-        clicks: 0
+        clicks: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }, 'create');
       toast.success('Link added');
     } catch (error) {
@@ -629,12 +636,15 @@ const Dashboard: React.FC = () => {
     if (!linkToDuplicate || !user) return;
     try {
       const { id: _, ...linkData } = linkToDuplicate;
+      const now = new Date().toISOString();
       await safeWrite('links', null, {
         ...linkData,
         title: `${linkData.title} (Copy)`,
         position: links.length,
         clicks: 0,
-        createdAt: new Date().toISOString()
+        isDeleted: false,
+        createdAt: now,
+        updatedAt: now
       }, 'create');
       toast.success('Link duplicated');
     } catch (error) {
@@ -1590,11 +1600,14 @@ const Dashboard: React.FC = () => {
                               imageUrl = data.url;
                             }
 
+                            const now = new Date().toISOString();
                             await safeWrite('shouts', null, {
                               userId: user?.uid,
                               content,
                               image: imageUrl,
-                              createdAt: new Date().toISOString()
+                              isDeleted: false,
+                              createdAt: now,
+                              updatedAt: now
                             }, 'create');
 
                             (document.getElementById('shout-content') as HTMLTextAreaElement).value = '';
@@ -1664,11 +1677,14 @@ const Dashboard: React.FC = () => {
                             const res = await fetch('/api/upload', { method: 'POST', body: formData });
                             const data = await res.json();
 
+                            const now = new Date().toISOString();
                             await safeWrite('media', null, {
                               userId: user?.uid,
                               url: data.url,
                               type: file.type.startsWith('video') ? 'video' : 'image',
-                              createdAt: new Date().toISOString()
+                              isDeleted: false,
+                              createdAt: now,
+                              updatedAt: now
                             }, 'create');
                             toast.success('Media uploaded!');
                           } catch (err) {
@@ -1812,6 +1828,7 @@ const Dashboard: React.FC = () => {
                       const name = window.prompt('Product Name:');
                       const price = window.prompt('Price:');
                       if (!name || !price) return;
+                      const now = new Date().toISOString();
                       safeWrite('products', null, {
                         userId: user?.uid,
                         name,
@@ -1820,7 +1837,10 @@ const Dashboard: React.FC = () => {
                         image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=800',
                         category: 'General',
                         active: true,
-                        stock: 10
+                        isDeleted: false,
+                        stock: 10,
+                        createdAt: now,
+                        updatedAt: now
                       }, 'create').then(() => toast.success('Product added!'));
                     }}
                     className="flex items-center gap-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 px-6 py-3 rounded-2xl font-bold hover:scale-105 transition-all shadow-xl"

@@ -40,6 +40,7 @@ const AdminBlogEditor: React.FC = () => {
     tags: [],
     author: user?.displayName || user?.email || 'Admin',
     published: false,
+    isDeleted: false,
     seoTitle: '',
     seoDescription: '',
     seoKeywords: []

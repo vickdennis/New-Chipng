@@ -16,6 +16,7 @@ export interface Product {
   category: string;
   stock: number;
   active: boolean;
+  isDeleted: boolean;
   createdAt: string;
 }
 
@@ -154,6 +155,7 @@ export interface BlogPost {
   createdAt: string;
   updatedAt: string;
   published: boolean;
+  isDeleted: boolean;
   seoTitle?: string;
   seoDescription?: string;
   seoKeywords?: string[];

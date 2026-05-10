@@ -99,6 +99,7 @@ export const blogService = {
         ...post,
         createdAt: now,
         updatedAt: now,
+        isDeleted: false,
         views: 0,
       };
       

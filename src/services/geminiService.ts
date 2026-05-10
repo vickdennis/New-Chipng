@@ -38,8 +38,11 @@ export async function aiDesign(prompt: string, userContext: any): Promise<AIDesi
     You have access to functions to: updateProfile, addLink, updateLink, deleteLink, applyTheme.
     
     IMPORTANT: When updating properties, use the correct field names:
-    - Profiles: displayName, bio, username, textColor, photoURL, coverImage, backgroundColor, theme, font, buttonStyle.
+    - Profiles: displayName, bio, username, textColor (Hex), photoURL, coverImage, backgroundColor (Hex), theme, font, buttonStyle.
+    - Themes: minimal, neon, glassmorphism, dark, sunset, ocean, forest, royal, coffee, midnight, lavender, emerald, cyberpunk, retro, nordic, sakura, gold, brutalist, clay, matrix, vibrant, pastel, monochrome, deepsea, desert, galaxy, candy, industrial, vintage, aqua, midnight-purple.
     - Links: title, url, icon, active.
+    
+    When a user asks for a specific "vibe" or "style", try to apply a matching theme and update colors to match.
   `;
 
   const response = await gemini.models.generateContent({
