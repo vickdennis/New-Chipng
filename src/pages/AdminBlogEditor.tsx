@@ -175,7 +175,12 @@ const AdminBlogEditor: React.FC = () => {
           await blogService.createBlogPost({ ...dataToSave, userId: user?.uid });
           toast.success('Post created successfully');
         }
-        navigate(user?.role === 'admin' ? '/admin/blog' : '/dashboard');
+        // Redirect to dashboard with blog tab active if not admin
+        if (user?.role === 'admin') {
+          navigate('/admin/blog');
+        } else {
+          navigate('/dashboard', { state: { activeTab: 'blogs' } });
+        }
       } catch (saveError: any) {
         console.error('Save error:', saveError);
         toast.error(`Failed to save post: ${saveError.message || 'Permission denied'}`);
@@ -231,7 +236,11 @@ const AdminBlogEditor: React.FC = () => {
         <header className="flex items-center justify-between mb-12">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Link to="/admin/blog" className="p-3 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all text-zinc-950 dark:text-white">
+              <Link 
+                to={user?.role === 'admin' ? "/admin/blog" : "/dashboard"} 
+                state={user?.role !== 'admin' ? { activeTab: 'blogs' } : undefined}
+                className="p-3 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all text-zinc-950 dark:text-white"
+              >
                 <ArrowLeft className="w-6 h-6" />
               </Link>
               <ThemeToggle />

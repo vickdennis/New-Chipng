@@ -38,7 +38,7 @@ import { format, isAfter, isBefore, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { Link, Transaction, THEMES, ThemeType, ButtonStyle, User as UserType, PlanType, Appointment, Shout, Media, BlogPost, Product } from '../types';
 import { auth } from '../firebase';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, useLocation, Link as RouterLink } from 'react-router-dom';
 import { DISPLAY_DOMAIN } from '../constants';
 import UpgradeModal from '../components/UpgradeModal';
 import ImageUpload from '../components/ImageUpload';
@@ -371,6 +371,15 @@ const Dashboard: React.FC = () => {
   const [aiResponse, setAiResponse] = useState<string | null>(null);
   const [isAiTyping, setIsAiTyping] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.state && (location.state as any).activeTab) {
+      setActiveTab((location.state as any).activeTab);
+      // Clean up state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, navigate]);
 
   const fetchHistory = async (collection: string, id: string) => {
     const history = await getBackupHistory(collection, id);
