@@ -1526,15 +1526,18 @@ const Dashboard: React.FC = () => {
                   </div>
                 )}
                 <div className={cn("grid grid-cols-2 gap-4", !hasAccess('pro') && "blur-md select-none opacity-40")}>
-                  <div className="bg-white dark:bg-zinc-900 p-4 rounded-[24px] border border-[#F3F4F6] dark:border-zinc-800 shadow-sm">
-                    <p className="text-[#6B7280] text-[12px] font-medium mb-1">Views</p>
-                    <p className="text-[24px] font-bold text-zinc-900 dark:text-white">{profile?.totalClicks || 0}</p>
-                    <p className="text-[10px] text-green-500 font-bold">+100% lifetime</p>
+                  <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm group hover:border-lime-500/30 transition-colors">
+                    <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-2">Total Engagement</p>
+                    <p className="text-3xl font-display font-black text-zinc-950 dark:text-white mb-1">{profile?.totalClicks || 0}</p>
+                    <div className="flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3 text-emerald-500" />
+                      <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Growth Active</p>
+                    </div>
                   </div>
-                  <div className="bg-white dark:bg-zinc-900 p-4 rounded-[24px] border border-[#F3F4F6] dark:border-zinc-800 shadow-sm">
-                    <p className="text-[#6B7280] text-[12px] font-medium mb-1">Link Clicks</p>
-                    <p className="text-[24px] font-bold text-zinc-900 dark:text-white">{links.reduce((sum, l) => sum + (l.clicks || 0), 0)}</p>
-                    <p className="text-[10px] text-zinc-400 font-bold">{links.length} Active links</p>
+                  <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm group hover:border-lime-500/30 transition-colors">
+                    <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-2">Network Reach</p>
+                    <p className="text-3xl font-display font-black text-zinc-950 dark:text-white mb-1">{links.reduce((sum, l) => sum + (l.clicks || 0), 0)}</p>
+                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{links.length} Active Nodes</p>
                   </div>
                 </div>
 

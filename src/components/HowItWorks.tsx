@@ -62,8 +62,8 @@ const HowItWorksStep = ({ step, index, progress }: { step: typeof steps[0], inde
             </motion.div>
             <div>
               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-lime-500 mb-2 block">Step 0{index + 1}</span>
-              <h3 className="text-3xl md:text-4xl font-black tracking-tighter mb-3 md:mb-4 leading-none">{step.title}</h3>
-              <p className="text-zinc-500 text-sm md:text-base font-medium leading-relaxed max-w-[280px] md:max-w-sm mx-auto">{step.description}</p>
+              <h3 className="text-3xl md:text-5xl font-display font-black tracking-tighter mb-4 leading-none text-zinc-950 dark:text-white">{step.title}</h3>
+              <p className="text-zinc-500 text-sm md:text-base font-medium leading-relaxed max-w-[300px] md:max-w-sm mx-auto">{step.description}</p>
             </div>
             
             {/* Visual Decor */}
@@ -178,10 +178,10 @@ const HowItWorks: React.FC = () => {
           transition={{ duration: 0.8 }}
           className="text-center px-6"
         >
-          <h2 className="text-4xl md:text-7xl lg:text-8xl font-black tracking-tighter text-center leading-[0.9]">
+          <h2 className="text-4xl md:text-7xl lg:text-9xl font-display font-black tracking-tighter text-center leading-[0.85] text-zinc-950 dark:text-white">
             How it <br className="md:hidden" /><span className="text-lime-500">Works.</span>
           </h2>
-          <p className="text-zinc-500 font-bold mt-4 md:mt-6 uppercase tracking-widest text-[10px] md:text-sm">Experience the magic in 4 steps</p>
+          <p className="text-zinc-500 font-black mt-6 uppercase tracking-[0.3em] text-[10px] md:text-sm">Protocol 01: Onboarding Flow</p>
         </motion.div>
       </div>
 

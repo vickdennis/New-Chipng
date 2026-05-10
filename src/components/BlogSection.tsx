@@ -75,7 +75,7 @@ const BlogSection: React.FC = () => {
           </motion.div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
           {posts.map((post, i) => (
             <motion.article 
               key={post.id}
@@ -83,54 +83,58 @@ const BlogSection: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="group bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] overflow-hidden hover:border-lime-500/50 dark:hover:border-lime-400/50 transition-all flex flex-col"
+              className="group flex flex-col h-full bg-white dark:bg-zinc-950"
             >
-              <Link to={`/blog/${post.slug}`} className="block relative aspect-[16/10] overflow-hidden">
+              <Link to={`/blog/${post.slug}`} className="block relative aspect-[4/3] overflow-hidden rounded-[2rem] border border-zinc-100 dark:border-zinc-800 mb-8">
                 {post.coverImage ? (
                   <img 
                     src={post.coverImage} 
                     alt={post.title} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000 ease-out"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
-                  <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-700">
-                    <FileText className="w-20 h-20" />
+                  <div className="w-full h-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-300 dark:text-zinc-800">
+                    <FileText className="w-16 h-16" />
                   </div>
                 )}
+                
+                {/* Floating Tags */}
                 <div className="absolute top-6 left-6 flex flex-wrap gap-2">
-                  {post.tags?.slice(0, 2).map(tag => (
-                    <span key={tag} className="bg-zinc-950/80 backdrop-blur-md text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-white/10">
+                  {post.tags?.slice(0, 1).map(tag => (
+                    <span key={tag} className="bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md text-zinc-950 dark:text-white px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border border-black/5 dark:border-white/10 shadow-sm">
                       {tag}
                     </span>
                   ))}
                 </div>
               </Link>
 
-              <div className="p-8 flex-1 flex flex-col">
-                <div className="flex items-center gap-4 text-zinc-500 text-xs font-bold uppercase tracking-widest mb-4">
-                  <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" />
-                    {format(new Date(post.createdAt), 'MMM dd, yyyy')}
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" />
-                    {calculateReadingTime(post.content)}
-                  </div>
+              <div className="flex flex-col flex-1">
+                <div className="flex items-center gap-3 text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-4">
+                  <span>{format(new Date(post.createdAt), 'MMMM dd, yyyy')}</span>
+                  <span className="w-1 h-1 rounded-full bg-lime-500" />
+                  <span>{calculateReadingTime(post.content)}</span>
                 </div>
 
-                <Link to={`/blog/${post.slug}`} className="block group-hover:text-lime-500 dark:group-hover:text-lime-400 transition-colors">
-                  <h3 className="text-2xl font-bold mb-4 tracking-tight line-clamp-2 text-zinc-950 dark:text-white">{post.title}</h3>
+                <Link to={`/blog/${post.slug}`}>
+                  <h3 className="text-2xl font-black mb-4 tracking-tighter leading-none text-zinc-950 dark:text-white group-hover:text-lime-500 transition-colors duration-300 line-clamp-2">
+                    {post.title}
+                  </h3>
                 </Link>
                 
-                <p className="text-zinc-600 dark:text-zinc-500 mb-8 line-clamp-3 flex-1">{post.excerpt}</p>
+                <p className="text-zinc-500 dark:text-zinc-400 mb-8 line-clamp-3 flex-1 text-sm leading-relaxed font-medium">
+                  {post.excerpt}
+                </p>
 
                 <Link 
                   to={`/blog/${post.slug}`}
-                  className="inline-flex items-center gap-2 text-zinc-950 dark:text-white font-bold group-hover:text-lime-500 dark:group-hover:text-lime-400 transition-all"
+                  className="inline-flex items-center gap-3 text-zinc-950 dark:text-white font-black text-xs uppercase tracking-widest group/btn"
                 >
-                  Read More
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  <span className="relative">
+                    Read Publication
+                    <div className="absolute -bottom-1 left-0 w-0 h-[2px] bg-lime-500 group-hover/btn:w-full transition-all duration-300" />
+                  </span>
+                  <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                 </Link>
               </div>
             </motion.article>

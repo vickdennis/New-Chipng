@@ -92,9 +92,9 @@ const Logo: React.FC<LogoProps> = ({
   return (
     <div className={`flex flex-col items-center justify-center gap-2 ${className}`}>
       <Icon />
-      <div className={`flex items-center gap-1 font-sans tracking-tighter ${textSize}`}>
-        <span className="font-black uppercase">Chip</span>
-        <span className="font-light uppercase opacity-70">NG</span>
+      <div className={`flex items-center gap-1 font-display tracking-tighter ${textSize}`}>
+        <span className="font-black uppercase text-zinc-950 dark:text-white">Chip</span>
+        <span className="font-light uppercase text-lime-500">NG</span>
       </div>
     </div>
   );

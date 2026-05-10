@@ -50,20 +50,20 @@ const LandingPage: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-6xl md:text-8xl font-bold tracking-tighter mb-8 leading-[0.9]"
+            className="text-6xl md:text-8xl font-display font-black tracking-tighter mb-8 leading-[0.9] text-zinc-950 dark:text-white"
           >
             Everything you are. <br />
-            <span className="text-zinc-400 dark:text-zinc-500">In one simple link.</span>
+            <span className="text-zinc-400 dark:text-zinc-700">In one simple link.</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-xl text-zinc-600 dark:text-zinc-400 mb-12 max-w-2xl"
+            className="text-xl text-zinc-500 font-medium mb-12 max-w-2xl leading-relaxed"
           >
             Chip NG is the powerful link-in-bio tool for creators, entrepreneurs, and businesses. 
-            Build your professional page in seconds.
+            Build your professional identity in seconds.
           </motion.p>
 
           <motion.div
@@ -124,83 +124,105 @@ const LandingPage: React.FC = () => {
       <main className="max-w-7xl mx-auto px-6">
         <div className="mt-40">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-4">Powerful from the ground up.</h2>
-            <p className="text-zinc-500 text-lg">Every feature built with precision for Nigerian creators.</p>
+            <h2 className="text-4xl md:text-7xl font-display font-black tracking-tighter mb-4 text-zinc-950 dark:text-white leading-none">Powerful from the <br className="hidden md:block" /> ground up.</h2>
+            <p className="text-zinc-500 text-lg font-medium">Every feature built with precision for Nigerian creators.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 md:grid-rows-2 gap-6 h-auto md:h-[800px]">
-             {/* Big Feature 1 */}
+          <div className="grid grid-cols-1 md:grid-cols-6 md:grid-rows-2 gap-4 h-auto md:h-[700px]">
+             {/* Main Hero Card - Spans 3 cols, 2 rows */}
              <motion.div 
                whileHover={{ y: -5 }}
-               className="md:col-span-2 md:row-span-2 bg-zinc-900 rounded-[3rem] p-12 flex flex-col justify-between overflow-hidden relative group"
+               transition={{ type: "spring", stiffness: 300, damping: 20 }}
+               className="md:col-span-3 md:row-span-2 bg-zinc-900 rounded-[2.5rem] p-10 flex flex-col justify-between overflow-hidden relative group border border-zinc-800"
              >
-                <div className="relative z-10">
-                  <div className="w-16 h-16 bg-lime-400 rounded-2xl flex items-center justify-center mb-8">
-                    <Smartphone className="w-8 h-8 text-black" />
+                <div className="relative z-10 h-full flex flex-col">
+                  <div className="w-14 h-14 bg-gradient-to-br from-lime-400 to-lime-500 rounded-2xl flex items-center justify-center mb-8 shadow-lg shadow-lime-500/20">
+                    <Smartphone className="w-7 h-7 text-zinc-950" />
                   </div>
-                  <h3 className="text-4xl font-black text-white mb-4 tracking-tight leading-none">The Digital <br /> Business Card.</h3>
-                  <p className="text-zinc-400 text-lg max-w-xs">Share your entire world with a single tap. The only card you'll ever need.</p>
+                  <div className="flex-1">
+                    <h3 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tighter leading-none">
+                      The Next Gen <br /> 
+                      <span className="text-lime-400">Digital Card.</span>
+                    </h3>
+                    <p className="text-zinc-400 text-lg max-w-sm leading-relaxed">
+                      Beyond a link-in-bio. It's a professional ecosystem for creators to share, sell, and connect instantly.
+                    </p>
+                  </div>
+                  
+                  <div className="mt-auto pt-10">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="px-4 py-2 bg-white/5 backdrop-blur-md rounded-xl text-[10px] font-black text-white border border-white/10 uppercase tracking-[0.2em]">NFC Enabled</span>
+                      <span className="px-4 py-2 bg-white/5 backdrop-blur-md rounded-xl text-[10px] font-black text-white border border-white/10 uppercase tracking-[0.2em]">Offline Ready</span>
+                    </div>
+                  </div>
                 </div>
                 
-                {/* Visual element */}
-                <div className="absolute top-0 right-0 w-full h-full pointer-events-none opacity-20 group-hover:opacity-40 transition-opacity">
-                   <div className="absolute top-1/2 left-1/2 -translate-y-1/4 w-[400px] h-[600px] bg-lime-400 blur-[100px] rounded-full" />
-                </div>
-
-                <div className="relative z-10 mt-12">
-                   <div className="flex gap-4">
-                      <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/10 uppercase tracking-widest">NFC Ready</div>
-                      <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/10 uppercase tracking-widest">QR Integrated</div>
-                   </div>
+                {/* Abstract Visual Decor */}
+                <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-lime-400/10 blur-[100px] rounded-full group-hover:bg-lime-400/20 transition-colors duration-500" />
+                <div className="absolute top-10 right-10 flex gap-1 opacity-20">
+                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
                 </div>
              </motion.div>
 
-             {/* Small Feature 1 */}
+             {/* Shop Manager Card - Spans 3 cols, 1 row */}
              <motion.div 
                whileHover={{ y: -5 }}
-               className="md:col-span-2 bg-lime-400 rounded-[3rem] p-10 flex items-center justify-between overflow-hidden relative group"
+               transition={{ type: "spring", stiffness: 300, damping: 20 }}
+               className="md:col-span-3 bg-white dark:bg-zinc-900 rounded-[2.5rem] p-10 flex items-center justify-between overflow-hidden relative group border border-zinc-200 dark:border-zinc-800 shadow-sm"
              >
                 <div className="relative z-10">
-                   <h3 className="text-3xl font-black text-black tracking-tight mb-2">Shop Manager</h3>
-                   <p className="text-black/60 font-medium max-w-[200px]">Sell anything, anywhere. Integrated payments ready.</p>
+                   <h3 className="text-2xl font-black text-zinc-950 dark:text-white tracking-tighter mb-2">Commerce Studio</h3>
+                   <p className="text-zinc-500 font-medium max-w-[240px] text-sm">Convert your followers into customers with integrated payment processing.</p>
+                   <div className="mt-4 flex items-center gap-2">
+                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Live in Nigeria</span>
+                   </div>
                 </div>
-                <div className="w-32 h-32 bg-black/10 rounded-[2rem] flex items-center justify-center rotate-12 -mr-4 group-hover:rotate-0 transition-transform">
-                   <Zap className="w-16 h-16 text-black" />
+                <div className="relative">
+                  <div className="w-28 h-28 bg-lime-400/10 dark:bg-lime-400/5 rounded-3xl flex items-center justify-center rotate-6 group-hover:rotate-0 transition-transform duration-500">
+                     <Zap className="w-12 h-12 text-lime-500" strokeWidth={2.5} />
+                  </div>
+                  {/* Decorative card peak */}
+                  <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-lg -rotate-12 group-hover:rotate-0 transition-transform -z-10" />
                 </div>
              </motion.div>
 
-             {/* Small Feature 2 */}
+             {/* Analytics Card - Spans 1.5 cols, 1 row */}
              <motion.div 
                whileHover={{ y: -5 }}
-               className="bg-zinc-100 dark:bg-zinc-900 rounded-[3rem] p-8 flex flex-col justify-center border border-zinc-200 dark:border-zinc-800"
+               transition={{ type: "spring", stiffness: 300, damping: 20 }}
+               className="md:col-span-1.5 bg-zinc-50 dark:bg-zinc-900 rounded-[2.5rem] p-8 flex flex-col justify-center border border-zinc-200 dark:border-zinc-800"
              >
-                <div className="w-12 h-12 bg-white dark:bg-zinc-800 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+                <div className="w-12 h-12 bg-white dark:bg-zinc-800 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-zinc-100 dark:border-zinc-700">
                    <Shield className="w-6 h-6 text-lime-500" />
                 </div>
-                <h4 className="text-xl font-bold mb-2">Secure Payouts</h4>
-                <p className="text-sm text-zinc-500">Your earnings are protected and paid out on time, every time.</p>
+                <h4 className="text-lg font-black tracking-tight mb-2 text-zinc-950 dark:text-white leading-tight">Fraud Protection</h4>
+                <p className="text-xs text-zinc-500 leading-relaxed">Enterprise-grade security for every link and transaction.</p>
              </motion.div>
 
-             {/* Small Feature 3 */}
+             {/* Speed Card - Spans 1.5 cols, 1 row */}
              <motion.div 
                whileHover={{ y: -5 }}
-               className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[3rem] p-8 flex flex-col justify-center shadow-2xl shadow-zinc-200/50 dark:shadow-none"
+               transition={{ type: "spring", stiffness: 300, damping: 20 }}
+               className="md:col-span-1.5 bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-8 flex flex-col justify-center shadow-2xl shadow-zinc-200/50 dark:shadow-none bg-[radial-gradient(circle_at_top_right,rgba(163,230,53,0.1),transparent_50%)]"
              >
-                <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-900 rounded-2xl flex items-center justify-center mb-6">
-                   <ArrowRight className="w-6 h-6 text-zinc-400" />
+                <div className="w-12 h-12 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center mb-6 border border-zinc-200 dark:border-zinc-800">
+                   <ArrowRight className="w-6 h-6 text-lime-500" />
                 </div>
-                <h4 className="text-xl font-bold mb-2">Cloud Synced</h4>
-                <p className="text-sm text-zinc-500">Update your links once, it reflects everywhere instantly.</p>
+                <h4 className="text-lg font-black tracking-tight mb-2 text-zinc-950 dark:text-white leading-tight">Instant Sync</h4>
+                <p className="text-xs text-zinc-500 leading-relaxed">Changes go live globally in under 100 milliseconds.</p>
              </motion.div>
           </div>
         </div>
 
         {/* Traditional Features Grid */}
-        <div id="features" className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-40">
+        <div id="features" className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-40">
           {[
-            { icon: Zap, title: "Lightning Fast", desc: "Optimized for speed. Your profile loads in milliseconds." },
-            { icon: Smartphone, title: "Mobile First", desc: "Designed to look stunning on every device." },
-            { icon: Shield, title: "Secure & Reliable", desc: "Built on enterprise-grade infrastructure." }
+            { icon: Zap, title: "Optimized Performance", desc: "Engineered for speed. Your profile loads in milliseconds, ensuring you never miss a connection." },
+            { icon: Smartphone, title: "Adaptive Experience", desc: "A fluid interface that feels native on every screen, from mobile to ultra-wide displays." },
+            { icon: Shield, title: "Data Integrity", desc: "Built with military-grade encryption and real-time backups to keep your digital identity safe." }
           ].map((feature, i) => (
             <motion.div
               key={i}
@@ -208,13 +230,13 @@ const LandingPage: React.FC = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.1 }}
-              className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-8 rounded-[2.5rem] hover:border-zinc-300 dark:hover:border-zinc-700 transition-all"
+              className="bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800/50 p-10 rounded-[2.5rem] hover:border-lime-500/30 dark:hover:border-lime-400/30 transition-all duration-500 group"
             >
-              <div className="w-12 h-12 bg-zinc-200 dark:bg-zinc-800 rounded-2xl flex items-center justify-center mb-6">
-                <feature.icon className="text-lime-600 dark:text-lime-400 w-6 h-6" />
+              <div className="w-14 h-14 bg-white dark:bg-zinc-900 rounded-2xl flex items-center justify-center mb-8 shadow-sm border border-zinc-100 dark:border-zinc-800 group-hover:scale-110 transition-transform">
+                <feature.icon className="text-lime-500 w-7 h-7" />
               </div>
-              <h3 className="text-xl font-bold mb-4">{feature.title}</h3>
-              <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">{feature.desc}</p>
+              <h3 className="text-xl font-black tracking-tight mb-4 text-zinc-950 dark:text-white uppercase tracking-wider">{feature.title}</h3>
+              <p className="text-zinc-500 dark:text-zinc-400 leading-relaxed text-sm font-medium">{feature.desc}</p>
             </motion.div>
           ))}
         </div>
@@ -226,64 +248,86 @@ const LandingPage: React.FC = () => {
       {/* CTA Section */}
       <section className="py-32 bg-white dark:bg-zinc-950">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="bg-lime-400 rounded-[3rem] p-12 md:p-24 text-zinc-950 text-center relative overflow-hidden">
+          <div className="bg-lime-400 rounded-[3rem] p-12 md:p-32 text-zinc-950 text-center relative overflow-hidden shadow-[0_40px_100px_-20px_rgba(163,230,53,0.3)]">
             <div className="relative z-10">
-              <h2 className="text-4xl md:text-7xl font-bold tracking-tighter mb-8 leading-none">
-                Ready to claim your <br />
-                digital identity?
+              <h2 className="text-5xl md:text-8xl font-display font-black tracking-tighter mb-8 leading-[0.8]">
+                Ready to claim <br />
+                your identity?
               </h2>
-              <p className="text-zinc-900 text-xl mb-12 max-w-xl mx-auto font-medium">
-                Join thousands of creators and businesses who use Chip NG to share their world.
+              <p className="text-zinc-900 text-xl md:text-2xl mb-12 max-w-xl mx-auto font-bold tracking-tight">
+                Join 10,000+ creators and professional businesses scaling with Chip NG.
               </p>
-              <Link 
-                to="/signup"
-                className="inline-flex items-center gap-2 bg-zinc-950 text-white px-10 py-5 rounded-2xl font-bold text-lg hover:scale-105 transition-all shadow-2xl shadow-zinc-950/20"
-              >
-                Get Started for Free
-                <ArrowRight className="w-6 h-6" />
-              </Link>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Link 
+                  to="/signup"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-zinc-950 text-white px-10 py-6 rounded-2xl font-black text-lg hover:scale-105 transition-all shadow-2xl"
+                >
+                  Get Started for Free
+                  <ArrowRight className="w-6 h-6" />
+                </Link>
+                <Link 
+                  to="/pricing"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-white/40 backdrop-blur-md text-zinc-950 px-10 py-6 rounded-2xl font-black text-lg hover:bg-white/60 transition-all"
+                >
+                  View Pricing
+                </Link>
+              </div>
             </div>
             
             {/* Decorative elements */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -mr-32 -mt-32" />
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-black/5 rounded-full blur-3xl -ml-32 -mb-32" />
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white/20 rounded-full blur-3xl -mr-48 -mt-48" />
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-black/5 rounded-full blur-3xl -ml-48 -mb-48" />
           </div>
         </div>
       </section>
 
       {/* Contact Section */}
-      <section id="contact" className="py-24 bg-zinc-50 dark:bg-zinc-900/30">
+      <section id="contact" className="py-24 bg-zinc-50/50 dark:bg-zinc-900/10">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="bg-white dark:bg-zinc-900 rounded-[3rem] p-12 border border-zinc-100 dark:border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-12">
-            <div className="max-w-md">
-              <h2 className="text-4xl font-black tracking-tighter mb-4">Questions? <br /><span className="text-zinc-400">We're here to help.</span></h2>
-              <p className="text-zinc-500 font-medium mb-8">Get in touch with the @chipng team for support, business inquiries, or just to say hi.</p>
+          <div className="bg-white dark:bg-zinc-900 rounded-[3rem] p-12 border border-zinc-200 dark:border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-12 relative overflow-hidden group">
+            <div className="max-w-md relative z-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-lime-400 text-zinc-950 text-[10px] font-black uppercase tracking-widest rounded-full mb-6">
+                Direct Support
+              </div>
+              <h2 className="text-4xl md:text-5xl font-black tracking-tighter mb-4 leading-none text-zinc-950 dark:text-white">
+                Questions? <br />
+                <span className="text-zinc-400 dark:text-zinc-600">Built for relationships.</span>
+              </h2>
+              <p className="text-zinc-500 font-medium mb-10 leading-relaxed">
+                Connect with our dedicated support team. We're here to help you build your digital legacy.
+              </p>
               
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 text-zinc-950 dark:text-white font-bold">
-                  <div className="w-10 h-10 bg-lime-400/20 text-lime-600 rounded-xl flex items-center justify-center">
-                    <Mail className="w-5 h-5" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-zinc-400 text-xs font-black uppercase tracking-widest">
+                    <Mail className="w-4 h-4" /> Email
                   </div>
-                  admin@chipng.com
+                  <div className="text-zinc-950 dark:text-white font-bold group-hover:text-lime-500 transition-colors">admin@chipng.com</div>
                 </div>
-                <div className="flex items-center gap-4 text-zinc-950 dark:text-white font-bold">
-                  <div className="w-10 h-10 bg-blue-400/20 text-blue-600 rounded-xl flex items-center justify-center">
-                    <MessageCircle className="w-5 h-5" />
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-zinc-400 text-xs font-black uppercase tracking-widest">
+                    <MessageCircle className="w-4 h-4" /> Social
                   </div>
-                  @chipng on Instagram
+                  <div className="text-zinc-950 dark:text-white font-bold">@chipng</div>
                 </div>
               </div>
             </div>
             
-            <div className="flex flex-col gap-4 w-full md:w-auto">
+            <div className="flex flex-col gap-4 w-full md:w-auto relative z-10">
               <a 
                 href="mailto:admin@chipng.com"
-                className="px-10 py-5 bg-zinc-950 text-white rounded-2xl font-bold text-center hover:bg-zinc-800 transition-all flex items-center justify-center gap-3"
+                className="px-10 py-6 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-black text-center hover:scale-[1.02] transition-all flex items-center justify-center gap-3 shadow-2xl"
               >
-                Send us an Email <ArrowRight className="w-5 h-5" />
+                Start a Conversation <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </a>
-              <p className="text-center text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Typical response time: &lt; 2 hours</p>
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                <p className="text-center text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Response in &lt; 2 hours</p>
+              </div>
             </div>
+
+            {/* Background design elements */}
+            <div className="absolute top-0 right-0 w-1/2 h-full bg-[radial-gradient(circle_at_center,rgba(163,230,53,0.03),transparent_70%)] pointer-events-none" />
           </div>
         </div>
       </section>
