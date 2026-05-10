@@ -460,7 +460,9 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         backgrounds: 'background-images',
         products: 'shop-images',
         blogs: 'blog-images',
-        'link-icons': 'link-icons'
+        'link-icons': 'link-icons',
+        shouts: 'shouts',
+        media: 'media'
       };
       
       const folder = folderMap[pathType] || 'misc';

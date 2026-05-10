@@ -128,91 +128,102 @@ const LandingPage: React.FC = () => {
             <p className="text-zinc-500 text-lg font-medium">Every feature built with precision for Nigerian creators.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-6 md:grid-rows-2 gap-4 h-auto md:h-[700px]">
+          <div className="grid grid-cols-1 md:grid-cols-6 md:grid-rows-2 gap-6 h-auto md:h-[750px] mb-20">
              {/* Main Hero Card - Spans 3 cols, 2 rows */}
              <motion.div 
-               whileHover={{ y: -5 }}
+               initial={{ opacity: 0, scale: 0.95 }}
+               whileInView={{ opacity: 1, scale: 1 }}
+               viewport={{ once: true }}
+               whileHover={{ y: -8, shadow: "0 20px 40px rgba(0,0,0,0.1)" }}
                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-               className="md:col-span-3 md:row-span-2 bg-zinc-900 rounded-[2.5rem] p-10 flex flex-col justify-between overflow-hidden relative group border border-zinc-800"
+               className="md:col-span-3 md:row-span-2 bg-zinc-950 rounded-[3rem] p-12 flex flex-col justify-between overflow-hidden relative group border border-zinc-800/50 shadow-2xl"
              >
-                <div className="relative z-10 h-full flex flex-col">
-                  <div className="w-14 h-14 bg-gradient-to-br from-lime-400 to-lime-500 rounded-2xl flex items-center justify-center mb-8 shadow-lg shadow-lime-500/20">
-                    <Smartphone className="w-7 h-7 text-zinc-950" />
+                <div className="relative z-10 h-full flex flex-col gap-6">
+                  <div className="w-16 h-16 bg-lime-400 rounded-3xl flex items-center justify-center shadow-[0_0_40px_rgba(163,230,53,0.3)] group-hover:rotate-[10deg] transition-transform duration-500">
+                    <Smartphone className="w-8 h-8 text-black" />
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tighter leading-none">
+                  <div className="flex-1 space-y-6">
+                    <h3 className="text-5xl md:text-6xl font-black text-white tracking-tighter leading-[0.85]">
                       The Next Gen <br /> 
-                      <span className="text-lime-400">Digital Card.</span>
+                      <span className="text-zinc-600">Digital Card.</span>
                     </h3>
-                    <p className="text-zinc-400 text-lg max-w-sm leading-relaxed">
-                      Beyond a link-in-bio. It's a professional ecosystem for creators to share, sell, and connect instantly.
+                    <p className="text-zinc-400 text-lg max-w-sm leading-relaxed font-medium">
+                      Beyond a simple link. It's a high-performance ecosystem for modern creators to share, monetize, and scale globally.
                     </p>
                   </div>
                   
-                  <div className="mt-auto pt-10">
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-4 py-2 bg-white/5 backdrop-blur-md rounded-xl text-[10px] font-black text-white border border-white/10 uppercase tracking-[0.2em]">NFC Enabled</span>
-                      <span className="px-4 py-2 bg-white/5 backdrop-blur-md rounded-xl text-[10px] font-black text-white border border-white/10 uppercase tracking-[0.2em]">Offline Ready</span>
+                  <div className="mt-auto">
+                    <div className="flex flex-wrap gap-3">
+                      {['NFC Enabled', 'Instant Pay', 'SEO Ready'].map(tag => (
+                        <span key={tag} className="px-5 py-2.5 bg-white/5 backdrop-blur-xl rounded-2xl text-[10px] font-black text-zinc-300 border border-white/10 uppercase tracking-[0.2em] shadow-sm">
+                          {tag}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>
                 
-                {/* Abstract Visual Decor */}
-                <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-lime-400/10 blur-[100px] rounded-full group-hover:bg-lime-400/20 transition-colors duration-500" />
-                <div className="absolute top-10 right-10 flex gap-1 opacity-20">
-                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                </div>
+                {/* Visual Accent */}
+                <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_30%,rgba(163,230,53,0.1),transparent_60%)] pointer-events-none" />
+                <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-lime-400/5 blur-[120px] rounded-full group-hover:bg-lime-400/10 transition-colors duration-700" />
              </motion.div>
 
-             {/* Shop Manager Card - Spans 3 cols, 1 row */}
+             {/* Commerce Studio Card - Spans 3 cols, 1 row */}
              <motion.div 
-               whileHover={{ y: -5 }}
+               initial={{ opacity: 0, y: 20 }}
+               whileInView={{ opacity: 1, y: 0 }}
+               viewport={{ once: true }}
+               whileHover={{ y: -8 }}
                transition={{ type: "spring", stiffness: 300, damping: 20 }}
-               className="md:col-span-3 bg-white dark:bg-zinc-900 rounded-[2.5rem] p-10 flex items-center justify-between overflow-hidden relative group border border-zinc-200 dark:border-zinc-800 shadow-sm"
+               className="md:col-span-3 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[3rem] p-12 flex items-center justify-between overflow-hidden relative group shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)]"
              >
-                <div className="relative z-10">
-                   <h3 className="text-2xl font-black text-zinc-950 dark:text-white tracking-tighter mb-2">Commerce Studio</h3>
-                   <p className="text-zinc-500 font-medium max-w-[240px] text-sm">Convert your followers into customers with integrated payment processing.</p>
-                   <div className="mt-4 flex items-center gap-2">
-                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Live in Nigeria</span>
+                <div className="relative z-10 space-y-4">
+                   <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/10 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-widest border border-emerald-500/20">
+                     Live in Nigeria
                    </div>
+                   <h3 className="text-3xl font-black text-zinc-950 dark:text-white tracking-tighter leading-none">Commerce Studio</h3>
+                   <p className="text-zinc-500 font-medium max-w-[280px] text-sm leading-relaxed italic">"Convert followers into loyal customers with 1-click checkout."</p>
                 </div>
-                <div className="relative">
-                  <div className="w-28 h-28 bg-lime-400/10 dark:bg-lime-400/5 rounded-3xl flex items-center justify-center rotate-6 group-hover:rotate-0 transition-transform duration-500">
-                     <Zap className="w-12 h-12 text-lime-500" strokeWidth={2.5} />
+                <div className="relative w-32 h-32 flex-shrink-0">
+                  <div className="absolute inset-0 bg-lime-400/10 dark:bg-lime-400/5 rounded-[2.5rem] rotate-12 group-hover:rotate-0 transition-transform duration-700 blur-sm" />
+                  <div className="w-full h-full bg-white dark:bg-zinc-800 rounded-[2.5rem] flex items-center justify-center border border-zinc-100 dark:border-zinc-700 shadow-xl relative z-10 group-hover:scale-110 transition-transform">
+                     <Zap className="w-14 h-14 text-lime-500 fill-lime-500/20" strokeWidth={1.5} />
                   </div>
-                  {/* Decorative card peak */}
-                  <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-lg -rotate-12 group-hover:rotate-0 transition-transform -z-10" />
                 </div>
              </motion.div>
 
-             {/* Analytics Card - Spans 1.5 cols, 1 row */}
+             {/* Security Card */}
              <motion.div 
-               whileHover={{ y: -5 }}
-               transition={{ type: "spring", stiffness: 300, damping: 20 }}
-               className="md:col-span-1.5 bg-zinc-50 dark:bg-zinc-900 rounded-[2.5rem] p-8 flex flex-col justify-center border border-zinc-200 dark:border-zinc-800"
+               initial={{ opacity: 0, x: -20 }}
+               whileInView={{ opacity: 1, x: 0 }}
+               viewport={{ once: true }}
+               whileHover={{ y: -8 }}
+               className="md:col-span-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[3rem] p-10 flex flex-col justify-end gap-4 shadow-sm"
              >
-                <div className="w-12 h-12 bg-white dark:bg-zinc-800 rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-zinc-100 dark:border-zinc-700">
-                   <Shield className="w-6 h-6 text-lime-500" />
+                <div className="w-14 h-14 bg-white dark:bg-zinc-950 rounded-[1.5rem] flex items-center justify-center mb-4 shadow-lg border border-zinc-100 dark:border-zinc-800">
+                   <Shield className="w-7 h-7 text-lime-500" />
                 </div>
-                <h4 className="text-lg font-black tracking-tight mb-2 text-zinc-950 dark:text-white leading-tight">Fraud Protection</h4>
-                <p className="text-xs text-zinc-500 leading-relaxed">Enterprise-grade security for every link and transaction.</p>
+                <div>
+                   <h4 className="text-xl font-black tracking-tight text-zinc-950 dark:text-white leading-none mb-2">Vault Security</h4>
+                   <p className="text-xs text-zinc-500 font-medium leading-relaxed">Enterprise-grade protection for your brand and data.</p>
+                </div>
              </motion.div>
 
-             {/* Speed Card - Spans 1.5 cols, 1 row */}
+             {/* Speed Card */}
              <motion.div 
-               whileHover={{ y: -5 }}
-               transition={{ type: "spring", stiffness: 300, damping: 20 }}
-               className="md:col-span-1.5 bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] p-8 flex flex-col justify-center shadow-2xl shadow-zinc-200/50 dark:shadow-none bg-[radial-gradient(circle_at_top_right,rgba(163,230,53,0.1),transparent_50%)]"
+               initial={{ opacity: 0, x: 20 }}
+               whileInView={{ opacity: 1, x: 0 }}
+               viewport={{ once: true }}
+               whileHover={{ y: -8 }}
+               className="md:col-span-1.5 bg-lime-400 rounded-[3rem] p-10 flex flex-col justify-end gap-4 shadow-2xl shadow-lime-400/20"
              >
-                <div className="w-12 h-12 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center mb-6 border border-zinc-200 dark:border-zinc-800">
-                   <ArrowRight className="w-6 h-6 text-lime-500" />
+                <div className="w-14 h-14 bg-zinc-950 rounded-[1.5rem] flex items-center justify-center mb-4 shadow-2xl">
+                   <Zap className="w-7 h-7 text-lime-400 fill-lime-400" />
                 </div>
-                <h4 className="text-lg font-black tracking-tight mb-2 text-zinc-950 dark:text-white leading-tight">Instant Sync</h4>
-                <p className="text-xs text-zinc-500 leading-relaxed">Changes go live globally in under 100 milliseconds.</p>
+                <div>
+                   <h4 className="text-xl font-black tracking-tight text-black leading-none mb-2">Vortex Engine</h4>
+                   <p className="text-xs text-zinc-950/60 font-black leading-relaxed">Sub-100ms load times globally. Guaranteed.</p>
+                </div>
              </motion.div>
           </div>
         </div>

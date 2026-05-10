@@ -1525,20 +1525,49 @@ const Dashboard: React.FC = () => {
                     </div>
                   </div>
                 )}
-                <div className={cn("grid grid-cols-2 gap-4", !hasAccess('pro') && "blur-md select-none opacity-40")}>
-                  <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm group hover:border-lime-500/30 transition-colors">
-                    <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-2">Total Engagement</p>
-                    <p className="text-3xl font-display font-black text-zinc-950 dark:text-white mb-1">{profile?.totalClicks || 0}</p>
-                    <div className="flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3 text-emerald-500" />
-                      <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest">Growth Active</p>
+                <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-6", !hasAccess('pro') && "blur-md select-none opacity-40")}>
+                  <motion.div 
+                    whileHover={{ y: -4, shadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+                    className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group transition-all"
+                  >
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="text-zinc-500 font-bold uppercase tracking-widest text-[10px]">Total Engagement</div>
+                        <div className="p-2 bg-lime-400/10 rounded-xl text-lime-600 dark:text-lime-400">
+                          <TrendingUp className="w-5 h-5" />
+                        </div>
+                      </div>
+                      <div className="text-4xl font-black text-zinc-950 dark:text-white tracking-tighter">
+                        {profile?.totalClicks || 0}
+                      </div>
+                      <div className="mt-2 text-[10px] text-emerald-500 font-bold flex items-center gap-1 uppercase tracking-widest">
+                        <Zap className="w-3 h-3" />
+                        Growth Active
+                      </div>
                     </div>
-                  </div>
-                  <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-zinc-100 dark:border-zinc-800 shadow-sm group hover:border-lime-500/30 transition-colors">
-                    <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-2">Network Reach</p>
-                    <p className="text-3xl font-display font-black text-zinc-950 dark:text-white mb-1">{links.reduce((sum, l) => sum + (l.clicks || 0), 0)}</p>
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{links.length} Active Nodes</p>
-                  </div>
+                    <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-lime-400/5 rounded-full group-hover:scale-150 transition-transform duration-700" />
+                  </motion.div>
+
+                  <motion.div 
+                    whileHover={{ y: -4, shadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)' }}
+                    className="bg-zinc-50 dark:bg-zinc-950 p-8 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group transition-all"
+                  >
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="text-zinc-500 font-bold uppercase tracking-widest text-[10px]">Network Reach</div>
+                        <div className="p-2 bg-purple-500/10 rounded-xl text-purple-600 dark:text-purple-400">
+                          <Users className="w-5 h-5" />
+                        </div>
+                      </div>
+                      <div className="text-4xl font-black text-zinc-950 dark:text-white tracking-tighter">
+                        {links.reduce((sum, l) => sum + (l.clicks || 0), 0)}
+                      </div>
+                      <div className="mt-2 text-[10px] text-zinc-400 font-bold uppercase tracking-widest">
+                        {links.length} Active Nodes
+                      </div>
+                    </div>
+                    <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-purple-400/5 rounded-full group-hover:scale-150 transition-transform duration-700" />
+                  </motion.div>
                 </div>
 
                 <div className={cn("bg-white p-6 rounded-[24px] border border-[#F3F4F6] shadow-sm h-[300px]", !hasAccess('pro') && "blur-md select-none opacity-40")}>
@@ -1580,7 +1609,19 @@ const Dashboard: React.FC = () => {
                       <label className="flex items-center gap-2 text-zinc-500 cursor-pointer hover:text-zinc-900 dark:hover:text-white transition-colors text-sm font-bold">
                         <ImageIcon className="w-5 h-5" />
                         <span>Add Image</span>
-                        <input type="file" className="hidden" accept="image/*" id="shout-image" />
+                        <input 
+                          type="file" 
+                          className="hidden" 
+                          accept="image/*" 
+                          id="shout-image" 
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const label = e.target.parentElement?.querySelector('span');
+                              if (label) label.textContent = file.name;
+                            }
+                          }}
+                        />
                       </label>
                       <button 
                         onClick={async () => {
@@ -1592,15 +1633,14 @@ const Dashboard: React.FC = () => {
                             return;
                           }
 
+                          const button = (document.getElementById('post-shout-btn') as HTMLButtonElement);
+                          button.disabled = true;
+                          const toastId = toast.loading('Posting your shout...');
+
                           try {
                             let imageUrl = '';
-                            if (imageFile) {
-                              const formData = new FormData();
-                              formData.append('file', imageFile);
-                              formData.append('path', `shouts/${user?.uid}/${Date.now()}_${imageFile.name}`);
-                              const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                              const data = await res.json();
-                              imageUrl = data.url;
+                            if (imageFile && user) {
+                              imageUrl = await uploadImage(imageFile, user.uid, 'shouts');
                             }
 
                             const now = new Date().toISOString();
@@ -1615,12 +1655,19 @@ const Dashboard: React.FC = () => {
 
                             (document.getElementById('shout-content') as HTMLTextAreaElement).value = '';
                             (document.getElementById('shout-image') as HTMLInputElement).value = '';
-                            toast.success('Shout posted!');
+                            const label = document.querySelector('label[for="shout-image"] span');
+                            if (label) label.textContent = 'Add Image';
+                            
+                            toast.success('Shout posted!', { id: toastId });
                           } catch (err) {
-                            toast.error('Failed to post shout');
+                            console.error('Shout error:', err);
+                            toast.error('Failed to post shout', { id: toastId });
+                          } finally {
+                            button.disabled = false;
                           }
                         }}
-                        className="px-6 py-2 bg-[#A3E635] text-white rounded-xl font-bold active:scale-95 transition-transform"
+                        id="post-shout-btn"
+                        className="px-6 py-2 bg-[#A3E635] text-white rounded-xl font-bold active:scale-95 transition-transform disabled:opacity-50"
                       >
                         Post
                       </button>
@@ -1639,20 +1686,41 @@ const Dashboard: React.FC = () => {
                   ) : (
                     <div className="space-y-4">
                       {shouts.map(shout => (
-                        <div key={shout.id} className="bg-white dark:bg-zinc-950 p-4 rounded-[2rem] border border-[#F3F4F6] dark:border-zinc-800 shadow-sm group">
-                          <div className="flex justify-between items-start mb-2">
+                        <div key={shout.id} className="bg-white dark:bg-zinc-950 p-4 rounded-[2rem] border border-[#F3F4F6] dark:border-zinc-800 shadow-sm group relative overflow-hidden">
+                          <div className="flex justify-between items-start mb-2 pr-10">
                              <p className="text-[14px] text-zinc-900 dark:text-white font-medium">{shout.content}</p>
-                             <button 
-                               onClick={() => safeWrite('shouts', shout.id, null, 'delete')}
-                               className="p-2 opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-full transition-all"
-                             >
-                                <Trash2 className="w-4 h-4" />
-                             </button>
+                             <div className="absolute top-4 right-4 flex flex-col gap-2">
+                               <button 
+                                 onClick={() => {
+                                   if (window.confirm('Are you sure you want to delete this shout?')) {
+                                     safeWrite('shouts', shout.id, null, 'delete');
+                                     toast.success('Shout deleted');
+                                   }
+                                 }}
+                                 className="p-2 opacity-0 group-hover:opacity-100 bg-white dark:bg-zinc-900 border border-red-100 dark:border-red-900/30 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-all shadow-sm"
+                                 title="Delete Shout"
+                               >
+                                  <Trash2 className="w-4 h-4" />
+                               </button>
+                               <button 
+                                 onClick={() => {
+                                   const link = `${window.location.origin}/${profile?.username}`;
+                                   navigator.clipboard.writeText(link);
+                                   toast.success('Profile link copied to share your shout!');
+                                 }}
+                                 className="p-2 opacity-0 group-hover:opacity-100 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 text-zinc-400 hover:text-zinc-950 dark:hover:text-white rounded-xl transition-all shadow-sm"
+                                 title="Copy Link"
+                               >
+                                  <Copy className="w-4 h-4" />
+                               </button>
+                             </div>
                           </div>
                           {shout.image && (
-                            <img src={shout.image} alt="" className="w-full h-48 object-cover rounded-2xl mb-2" />
+                            <img src={shout.image} alt="" className="w-full h-48 object-cover rounded-2xl mb-2 cursor-pointer hover:brightness-95 transition-all" onClick={() => window.open(shout.image, '_blank')} />
                           )}
-                          <span className="text-[10px] text-zinc-400 font-bold uppercase">{shout.createdAt ? format(new Date(shout.createdAt), 'MMM d, h:mm a') : 'Just now'}</span>
+                          <div className="flex items-center justify-between mt-2">
+                             <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">{shout.createdAt ? format(new Date(shout.createdAt), 'MMM d, h:mm a') : 'Just now'}</span>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1662,8 +1730,11 @@ const Dashboard: React.FC = () => {
                 {/* Media Gallery */}
                 <div className="space-y-4 pt-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-bold text-zinc-900 dark:text-white">Media Gallery</h3>
-                    <label className="p-2 bg-lime-50 text-[#A3E635] rounded-xl cursor-pointer hover:bg-lime-100 transition-colors">
+                    <div>
+                      <h3 className="font-bold text-zinc-900 dark:text-white">Media Gallery</h3>
+                      <p className="text-xs text-zinc-500">Visuals for your profile feed</p>
+                    </div>
+                    <label className="p-3 bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 rounded-2xl cursor-pointer hover:scale-105 transition-all shadow-lg active:scale-95">
                       <Plus className="w-5 h-5" />
                       <input 
                         type="file" 
@@ -1671,27 +1742,24 @@ const Dashboard: React.FC = () => {
                         accept="image/*,video/*" 
                         onChange={async (e) => {
                           const file = e.target.files?.[0];
-                          if (!file) return;
+                          if (!file || !user) return;
                           
+                          const toastId = toast.loading('Uploading media...');
                           try {
-                            const formData = new FormData();
-                            formData.append('file', file);
-                            formData.append('path', `media/${user?.uid}/${Date.now()}_${file.name}`);
-                            const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                            const data = await res.json();
+                            const url = await uploadImage(file, user.uid, 'media');
 
                             const now = new Date().toISOString();
                             await safeWrite('media', null, {
                               userId: user?.uid,
-                              url: data.url,
+                              url: url,
                               type: file.type.startsWith('video') ? 'video' : 'image',
                               isDeleted: false,
                               createdAt: now,
                               updatedAt: now
                             }, 'create');
-                            toast.success('Media uploaded!');
-                          } catch (err) {
-                            toast.error('Failed to upload media');
+                            toast.success('Media uploaded!', { id: toastId });
+                          } catch (err: any) {
+                            toast.error(err.message || 'Failed to upload media', { id: toastId });
                           }
                         }}
                       />
@@ -2006,25 +2074,48 @@ const Dashboard: React.FC = () => {
                               </button>
                             </div>
                           ))}
-                          <button 
-                            onClick={() => {
-                              const title = prompt('Appointment Title:');
-                              const dateTime = prompt('Date/Time (e.g. Mon-Fri, 9am-5pm):');
-                              const contactLink = prompt('Contact Link (WhatsApp/Calendly):');
-                              if (title && dateTime && contactLink) {
-                                const newAppts = [...(profile.appointments || []), {
-                                  id: Math.random().toString(36).substr(2, 9),
-                                  title,
-                                  dateTime,
-                                  contactLink
-                                }];
-                                handleUpdateProfile({ appointments: newAppts });
-                              }
-                            }}
-                            className="w-full py-3 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold text-zinc-500 hover:border-lime-400 hover:text-lime-500 transition-all"
-                          >
-                            + Add Availability Slot
-                          </button>
+                          <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-3xl border border-dashed border-zinc-200 dark:border-zinc-800 space-y-4">
+                            <h5 className="text-xs font-black uppercase tracking-widest text-zinc-400">Add New Service</h5>
+                            <div className="grid grid-cols-1 gap-3">
+                              <input 
+                                type="text" id="new-appt-title" placeholder="Service Name (e.g. 1:1 Consultation)" 
+                                className="bg-white dark:bg-zinc-800 border-none rounded-xl p-3 text-xs outline-none focus:ring-1 ring-lime-400" 
+                              />
+                              <input 
+                                type="text" id="new-appt-time" placeholder="Availability (e.g. 30 mins)" 
+                                className="bg-white dark:bg-zinc-800 border-none rounded-xl p-3 text-xs outline-none focus:ring-1 ring-lime-400" 
+                              />
+                              <input 
+                                type="text" id="new-appt-link" placeholder="Booking URL (Calendly, WhatsApp)" 
+                                className="bg-white dark:bg-zinc-800 border-none rounded-xl p-3 text-xs outline-none focus:ring-1 ring-lime-400" 
+                              />
+                            </div>
+                            <button 
+                              onClick={() => {
+                                const title = (document.getElementById('new-appt-title') as HTMLInputElement).value;
+                                const dateTime = (document.getElementById('new-appt-time') as HTMLInputElement).value;
+                                const contactLink = (document.getElementById('new-appt-link') as HTMLInputElement).value;
+                                
+                                if (title && dateTime && contactLink) {
+                                  const newAppts = [...(profile.appointments || []), {
+                                    id: Math.random().toString(36).substr(2, 9),
+                                    title,
+                                    dateTime,
+                                    contactLink
+                                  }];
+                                  handleUpdateProfile({ appointments: newAppts });
+                                  (document.getElementById('new-appt-title') as HTMLInputElement).value = '';
+                                  (document.getElementById('new-appt-time') as HTMLInputElement).value = '';
+                                  (document.getElementById('new-appt-link') as HTMLInputElement).value = '';
+                                } else {
+                                  toast.error('Please fill all fields');
+                                }
+                              }}
+                              className="w-full py-3 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-xl text-xs font-black uppercase tracking-widest hover:scale-[1.02] transition-transform"
+                            >
+                              Add Service
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -2054,6 +2145,38 @@ const Dashboard: React.FC = () => {
                           <div className={`w-4 h-4 bg-white rounded-full transition-transform ${profile?.mapEnabled ? 'translate-x-6' : 'translate-x-0'}`} />
                         </button>
                       </div>
+
+                      {profile?.mapEnabled && (
+                        <div className="space-y-4 pt-4 border-t border-zinc-50 dark:border-zinc-800">
+                           <div className="space-y-2">
+                             <label className="text-[10px] font-black tracking-widest uppercase text-zinc-400">Business Address</label>
+                             <div className="relative">
+                               <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 w-4 h-4" />
+                               <input 
+                                 type="text"
+                                 value={profile?.address || ''}
+                                 onChange={(e) => handleUpdateProfile({ address: e.target.value })}
+                                 placeholder="e.g. 123 Victoria Island, Lagos"
+                                 className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl pl-12 pr-4 py-3 text-xs outline-none focus:ring-1 ring-lime-400"
+                               />
+                             </div>
+                           </div>
+                           <div className="space-y-2">
+                             <label className="text-[10px] font-black tracking-widest uppercase text-zinc-400">Google Maps URL</label>
+                             <div className="relative">
+                               <Globe className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 w-4 h-4" />
+                               <input 
+                                 type="text"
+                                 value={profile?.googleMapsUrl || ''}
+                                 onChange={(e) => handleUpdateProfile({ googleMapsUrl: e.target.value })}
+                                 placeholder="https://goo.gl/maps/..."
+                                 className="w-full bg-zinc-50 dark:bg-zinc-800 border-none rounded-xl pl-12 pr-4 py-3 text-xs outline-none focus:ring-1 ring-lime-400"
+                               />
+                             </div>
+                           </div>
+                        </div>
+                      )}
+                    </div>
                       
                       {(!hasAccess('pro')) && (
                         <div className="p-4 bg-lime-400/5 rounded-2xl border border-lime-400/20">
@@ -2105,9 +2228,8 @@ const Dashboard: React.FC = () => {
                       <p className="text-xs text-zinc-500 mt-1">Sell digital or physical products.</p>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            )}
+                </motion.div>
+              )}
 
             {activeTab === 'appearance' && (
               <motion.div 
@@ -2496,28 +2618,50 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm space-y-4">
+                  <div className="p-6 bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-lime-50 dark:bg-lime-900/20 rounded-xl flex items-center justify-center">
-                          <User className="w-5 h-5 text-lime-600" />
+                        <div className="w-12 h-12 bg-lime-400/10 rounded-2xl flex items-center justify-center">
+                          <User className="w-6 h-6 text-lime-600" />
                         </div>
                         <div>
-                          <h3 className="font-bold text-sm dark:text-white">Profile Control</h3>
-                          <p className="text-xs text-zinc-500">Restore your personal profile settings.</p>
+                          <h3 className="font-black text-[16px] dark:text-white tracking-tight">Identity Profile</h3>
+                          <p className="text-xs text-zinc-500 font-medium tracking-tight">Restore your core profile settings and bio.</p>
                         </div>
                       </div>
                       <button 
                         onClick={() => profile && fetchHistory('users', profile.uid)}
-                        className="px-4 py-2 bg-[#A3E635] text-white text-xs font-bold rounded-lg shadow-lg shadow-lime-200"
+                        className="px-6 py-2.5 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 text-xs font-black uppercase tracking-widest rounded-xl shadow-lg active:scale-95 transition-all"
                       >
-                        View History
+                        Rollback
                       </button>
                     </div>
                   </div>
 
-                  <div className="p-6 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm space-y-4 overflow-hidden">
-                    <h3 className="font-bold text-sm dark:text-white mb-2">Tracked Content Links</h3>
+                  <div className="p-6 bg-white dark:bg-zinc-950 border border-zinc-100 dark:border-zinc-800 rounded-[2.5rem] shadow-sm space-y-4 overflow-hidden">
+                    <h3 className="font-black text-[16px] dark:text-white tracking-tight mb-2">Network Nodes</h3>
+                    <div className="divide-y divide-zinc-50 dark:divide-zinc-900">
+                       {links.map(link => (
+                         <div key={link.id} className="py-4 flex items-center justify-between group">
+                            <div className="flex items-center gap-3">
+                               <div className="w-10 h-10 bg-zinc-50 dark:bg-zinc-900 rounded-xl flex items-center justify-center border border-zinc-100 dark:border-zinc-800">
+                                  {link.icon ? <img src={link.icon} className="w-6 h-6 object-contain" /> : <Globe className="w-5 h-5 text-zinc-400" />}
+                               </div>
+                               <div>
+                                  <h4 className="text-xs font-black dark:text-white truncate max-w-[150px]">{link.title || 'Untitled'}</h4>
+                                  <p className="text-[10px] font-mono text-zinc-400 truncate max-w-[150px]">{link.url}</p>
+                               </div>
+                            </div>
+                            <button 
+                              onClick={() => fetchHistory('links', link.id)}
+                              className="px-4 py-2 bg-zinc-100 dark:bg-zinc-900 text-zinc-950 dark:text-white text-xs font-bold rounded-lg hover:bg-lime-400 hover:text-white transition-all opacity-0 group-hover:opacity-100"
+                            >
+                               History
+                            </button>
+                         </div>
+                       ))}
+                    </div>
+                  </div>
                     <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                       {links.length === 0 ? (
                         <p className="text-xs text-zinc-400 py-4 text-center italic">No links added yet to track history.</p>
@@ -2539,9 +2683,8 @@ const Dashboard: React.FC = () => {
                       ))}
                     </div>
                   </div>
-                </div>
 
-                <div className="p-6 bg-blue-50/50 dark:bg-blue-900/10 rounded-[2.5rem] border border-blue-100/50 dark:border-blue-800/50 flex items-start gap-4">
+                  <div className="p-6 bg-blue-50/50 dark:bg-blue-900/10 rounded-[2.5rem] border border-blue-100/50 dark:border-blue-800/50 flex items-start gap-4">
                   <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-2xl flex items-center justify-center flex-shrink-0">
                     <RotateCcw className="w-6 h-6 text-blue-600" />
                   </div>
@@ -2564,51 +2707,73 @@ const Dashboard: React.FC = () => {
                 className="px-6 py-8 space-y-8"
               >
                 <div className="space-y-4 text-center">
-                  <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto shadow-sm">
-                    <BadgeCheck className="w-12 h-12 text-[#1D9BF0] fill-[#1D9BF0] stroke-white stroke-1" />
+                  <div className="relative inline-block">
+                    <div className="w-24 h-24 bg-gradient-to-br from-blue-400 to-blue-600 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl shadow-blue-500/20 rotate-3 hover:rotate-0 transition-transform duration-500">
+                      <BadgeCheck className="w-12 h-12 text-white fill-white/20 stroke-1" />
+                    </div>
+                    {/* Floating dots decoration */}
+                    <div className="absolute -top-2 -right-2 w-4 h-4 bg-lime-400 rounded-full blur-[2px] animate-pulse" />
+                    <div className="absolute -bottom-2 -left-2 w-3 h-3 bg-blue-300 rounded-full blur-[1px]" />
                   </div>
-                  <h2 className="text-[24px] font-black">Get Verified</h2>
-                  <p className="text-zinc-500 text-[14px]">
-                    Stand out with a blue tick verification badge on your profile.
+                  <h2 className="text-[32px] font-black tracking-tighter leading-none dark:text-white">Profile Verification</h2>
+                  <p className="text-zinc-500 text-[14px] max-w-[280px] mx-auto leading-relaxed">
+                    Establish trust and authority with the <span className="text-[#1D9BF0] font-black">Official Verification Badge</span> on your Chip NG profile.
                   </p>
                 </div>
 
-                <div className="bg-white p-6 rounded-[2.5rem] border border-zinc-100 shadow-sm space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 bg-green-50 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Check className="w-4 h-4 text-green-500" />
+                <div className="bg-white dark:bg-zinc-950 p-8 rounded-[3rem] border border-zinc-100 dark:border-zinc-800 shadow-xl space-y-8 relative overflow-hidden group transition-all">
+                  {/* Glassy background elements */}
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl rounded-full" />
+                  
+                  <div className="space-y-5 relative z-10">
+                    {[
+                      { icon: ShieldCheck, text: "Official Blue Tick Badge", desc: "Gain instant credibility with followers." },
+                      { icon: TrendingUp, text: "Priority Discovery", desc: "Appear higher in Chip search results." },
+                      { icon: Zap, text: "Exclusive Features", desc: "Early access to upcoming design tools." }
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex gap-4 group/item">
+                        <div className="w-10 h-10 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover/item:bg-blue-50 dark:group-hover/item:bg-blue-900/20 transition-colors">
+                          <item.icon className="w-5 h-5 text-zinc-400 group-hover/item:text-blue-500 transition-colors" />
+                        </div>
+                        <div>
+                          <p className="text-[14px] font-black text-zinc-950 dark:text-white leading-tight">{item.text}</p>
+                          <p className="text-xs text-zinc-500 mt-0.5">{item.desc}</p>
+                        </div>
                       </div>
-                      <p className="text-[14px] font-medium text-zinc-600">Boost your credibility and trust</p>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-6 h-6 bg-green-50 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Check className="w-4 h-4 text-green-500" />
-                      </div>
-                      <p className="text-[14px] font-medium text-zinc-600">Priority support and early access</p>
-                    </div>
+                    ))}
                   </div>
 
-                  <div className="pt-4 border-t border-zinc-50">
-                    <div className="flex justify-between items-center mb-6">
-                      <span className="text-[14px] font-bold text-zinc-400">One-time fee</span>
-                      <span className="text-[20px] font-black">₦2,000</span>
+                  <div className="pt-8 border-t border-zinc-100 dark:border-zinc-900 relative z-10">
+                    <div className="flex justify-between items-end mb-8">
+                       <div>
+                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 block mb-1">Lifetime Pass</span>
+                         <span className="text-[28px] font-black tracking-tighter text-zinc-950 dark:text-white leading-none">₦2,000</span>
+                       </div>
+                       <div className="text-right">
+                         <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest block">One-time payment</span>
+                       </div>
                     </div>
 
                     {profile?.isVerified ? (
-                      <div className="w-full py-4 bg-zinc-50 text-zinc-400 rounded-2xl font-black text-center flex items-center justify-center gap-2">
-                        <BadgeCheck className="w-5 h-5" />
-                        Verified Account
+                      <div className="w-full py-5 bg-zinc-100 dark:bg-zinc-900 text-zinc-400 rounded-2xl font-black text-center flex items-center justify-center gap-3 border border-zinc-200 dark:border-zinc-800">
+                        <BadgeCheck className="w-6 h-6 text-blue-500 fill-blue-500/20" />
+                        Verification Active
                       </div>
                     ) : (
                       <button 
                         onClick={triggerVerification}
-                        className="w-full py-4 bg-black text-white rounded-2xl font-black shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all"
+                        className="w-full py-5 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-zinc-950/10"
                       >
-                        Get Verified Now
+                         Secure Verification <ArrowRight className="w-4 h-4" />
                       </button>
                     )}
                   </div>
+                </div>
+
+                <div className="text-center px-4">
+                  <p className="text-[10px] text-zinc-400 font-medium leading-relaxed">
+                    Chip NG verification is processed securely via Paystack. Your verified status is permanent and applies globally across all network nodes.
+                  </p>
                 </div>
               </motion.div>
             )}

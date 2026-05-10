@@ -3,7 +3,7 @@ import { storage } from '../firebase';
 import { toast } from 'sonner';
 import axios from 'axios';
 
-export type UploadPath = 'profiles' | 'covers' | 'backgrounds' | 'products' | 'blogs' | 'link-icons';
+export type UploadPath = 'profiles' | 'covers' | 'backgrounds' | 'products' | 'blogs' | 'link-icons' | 'shouts' | 'media';
 
 /**
  * Universal image upload function for Firebase Storage
@@ -15,7 +15,7 @@ export const uploadImage = async (
   onProgress?: (progress: number) => void
 ): Promise<string> => {
   if (!file) throw new Error('No file provided');
-  if (!file.type.startsWith('image/')) throw new Error('File must be an image');
+  if (!file.type.startsWith('image/') && !file.type.startsWith('video/')) throw new Error('File must be an image or video');
 
   // Generate unique filename
   const timestamp = Date.now();
@@ -31,7 +31,9 @@ export const uploadImage = async (
     backgrounds: `background-images/${userId}/${filename}`,
     products: `shop-images/${userId}/${filename}`,
     blogs: `blog-images/${userId}/${filename}`,
-    'link-icons': `link-icons/${userId}/${filename}`
+    'link-icons': `link-icons/${userId}/${filename}`,
+    shouts: `shouts/${userId}/${filename}`,
+    media: `media/${userId}/${filename}`
   };
 
   const storagePath = pathMap[pathType];
