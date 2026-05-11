@@ -373,7 +373,7 @@ END:VCARD`;
                 />
               ) : (
                 <div className={cn("w-full h-full relative", theme.background === 'bg-white' ? 'bg-zinc-100' : 'bg-zinc-900')}>
-                   <div className="absolute inset-0 bg-lime-400/5 blur-3xl rounded-full translate-y-1/2" />
+                   <div className="absolute inset-0 bg-[var(--accent-color)]/5 blur-3xl rounded-full translate-y-1/2" />
                 </div>
               )}
               <div className={cn(
@@ -429,7 +429,7 @@ END:VCARD`;
               )}
             </h1>
             <div className="flex items-center justify-center gap-2">
-              <span className={cn("font-black text-lg", theme.background === 'bg-white' ? 'text-zinc-400' : 'text-lime-400')}>@{profile.username}</span>
+              <span className={cn("font-black text-lg", theme.background === 'bg-white' ? 'text-zinc-400' : 'text-[var(--accent-color)]')}>@{profile.username}</span>
             </div>
           </div>
 
@@ -506,7 +506,7 @@ END:VCARD`;
                       className={cn(
                         "group relative block rounded-[2.8rem] overflow-hidden shadow-2xl transition-all active:scale-[0.98] border",
                         theme.button,
-                        "hover:border-lime-400/50"
+                        "hover:border-[var(--accent-color)]/50"
                       )}
                     >
                       <div className="aspect-[16/10] relative overflow-hidden">
@@ -535,8 +535,8 @@ END:VCARD`;
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent group-hover:opacity-20 transition-opacity" />
                         
                         <div className="absolute inset-0 p-8 flex flex-col justify-end">
-                           <div className="inline-flex py-1 px-3 bg-lime-400 text-black text-[10px] font-black uppercase tracking-widest rounded-full self-start mb-3">Featured</div>
-                           <h3 className="text-3xl font-black leading-tight text-white group-hover:text-lime-400 transition-colors">{link.title}</h3>
+                           <div className="inline-flex py-1 px-3 bg-[var(--accent-color)] text-black text-[10px] font-black uppercase tracking-widest rounded-full self-start mb-3">Featured</div>
+                           <h3 className="text-3xl font-black leading-tight text-white group-hover:text-[var(--accent-color)] transition-colors">{link.title}</h3>
                            <p className="text-white/60 text-sm font-medium mt-1 truncate group-hover:text-white transition-colors">{link.url.replace(/^https?:\/\//, '')}</p>
                         </div>
                         

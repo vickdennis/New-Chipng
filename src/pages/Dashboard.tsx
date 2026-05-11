@@ -495,9 +495,9 @@ const Dashboard: React.FC = () => {
       if (userDoc.exists()) {
         const publicData = userDoc.data() as UserType;
         setProfile(prev => {
-          const merged = { ...publicData, ...(prev || {}) };
-          // Keep private fields if they already exist in state
-          return merged;
+          // Merge logic: public data from source of truth should take priority, 
+          // but we want to preserve private fields already in state
+          return { ...(prev || {}), ...publicData };
         });
         setProfileForm(prev => ({
           ...prev,
@@ -3003,23 +3003,17 @@ const Dashboard: React.FC = () => {
                       {/* Mock Social Icons */}
                      <div className="flex gap-2.5 justify-center relative z-10 w-full overflow-hidden px-4">
                         {profile?.socialLinks && Object.keys(profile.socialLinks).length > 0 ? 
-                          Object.entries(profile.socialLinks).slice(0, 6).map(([platform, username]) => {
-                            const platformInfo = Object.values(PLATFORMS).flat().find(p => p.id === platform.toLowerCase());
-                            const IconComponent = platformInfo?.icon || BrandIcons[platform.toLowerCase() as keyof typeof BrandIcons] || Globe;
-                            const color = platformInfo?.color || '#6366f1';
-                            
-                            return (
-                              <div 
-                                key={platform} 
-                                className="w-8 h-8 rounded-xl bg-white/10 dark:bg-black/20 backdrop-blur-sm border border-white/5 flex items-center justify-center shrink-0 shadow-lg"
-                                style={{ color: color }}
-                              >
-                                <div className="w-4 h-4">
-                                  <IconComponent className="w-full h-full" />
-                                </div>
-                              </div>
-                            );
-                          })
+                          Object.entries(profile.socialLinks).slice(0, 6).map(([platform, username]) => (
+                            <div key={platform} className="shrink-0">
+                              <SocialIcon 
+                                platform={platform} 
+                                username={username as string} 
+                                style={profile?.iconStyle || 'colored'} 
+                                asLink={false}
+                                className="w-8 h-8 rounded-xl"
+                              />
+                            </div>
+                          ))
                         : [1,2,3].map(i => (
                             <div key={i} className="w-8 h-8 rounded-xl bg-zinc-900 border border-white/5 flex items-center justify-center shrink-0">
                                <Globe className="w-4 h-4 text-zinc-800" />
@@ -3030,7 +3024,7 @@ const Dashboard: React.FC = () => {
 
                     <p className={cn(
                       "text-[10px] text-center font-medium leading-relaxed px-4 relative z-10 opacity-70",
-                      profile && THEMES[profile.theme]?.text ? "text-inherit" : "text-zinc-500"
+                      profile && (THEMES[profile.theme]?.text || profile.textColor) ? "text-inherit" : "text-zinc-500"
                     )}>
                       {profile?.bio || 'Bio preview will appear here...'}
                     </p>
@@ -3046,6 +3040,7 @@ const Dashboard: React.FC = () => {
                                ? "bg-white border-black border-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-black"
                                : "bg-white/10 dark:bg-black/20 backdrop-blur-md border-white/10 text-inherit hover:bg-white/20"
                            )}
+                           style={profile?.buttonStyle !== 'square' ? { borderColor: `${profile?.brandColor || '#A3E635'}40` } : {}}
                          >
                             {link.title}
                          </div>
