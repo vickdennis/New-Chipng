@@ -1206,28 +1206,6 @@ const Dashboard: React.FC = () => {
         {/* Editor Wrapper */}
         <div className="flex-1 max-w-4xl w-full mx-auto p-6 md:p-12 space-y-12 pb-40">
           
-          {/* Mobile Bottom Navigation */}
-          <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] bg-zinc-950/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-white/10 p-2 rounded-[2rem] z-50 flex items-center justify-around shadow-2xl">
-            {[
-              { id: 'links', icon: LinkIcon, label: 'Links' },
-              { id: 'posts', icon: ImageIcon, label: 'Media' },
-              { id: 'blogs', icon: FileText, label: 'Blog' },
-              { id: 'analytics', icon: TrendingUp, label: 'Stats' },
-              { id: 'settings', icon: Settings, label: 'Setup' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={cn(
-                  "flex flex-col items-center gap-1 min-w-[56px] py-1 transition-all rounded-2xl",
-                  activeTab === tab.id ? "bg-white/10 text-lime-400" : "text-zinc-500"
-                )}
-              >
-                <tab.icon className="w-5 h-5" />
-                <span className="text-[9px] font-black uppercase tracking-tight">{tab.label}</span>
-              </button>
-            ))}
-          </div>
           {/* Dashboard Header */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
             <div>
@@ -3108,24 +3086,31 @@ const Dashboard: React.FC = () => {
       </main>
 
       {/* Floating Bottom Nav (Mobile Only) */}
-      <nav className="fixed lg:hidden bottom-8 left-1/2 -translate-x-1/2 bg-black text-white px-2 py-2 rounded-full flex items-center gap-1 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[110] ring-1 ring-white/10">
+      <nav className="fixed lg:hidden bottom-8 left-1/2 -translate-x-1/2 bg-zinc-950/90 backdrop-blur-xl text-white px-3 py-3 rounded-[2.5rem] flex items-center justify-between gap-1 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[110] ring-1 ring-white/10 min-w-[340px]">
         {[
-          { id: 'links', icon: LayoutGrid, label: 'Edit' },
-          { id: 'analytics', icon: TrendingUp, label: 'Stats' },
+          { id: 'links', icon: LayoutGrid, label: 'Links' },
+          { id: 'posts', icon: ImageIcon, label: 'Media' },
+          { id: 'blogs', icon: FileText, label: 'Blog' },
           { id: 'appearance', icon: Palette, label: 'Style' },
+          { id: 'analytics', icon: TrendingUp, label: 'Stats' },
         ].map((item) => (
           <button
             key={item.id}
             onClick={() => setActiveTab(item.id as any)}
             className={cn(
-              "p-4 rounded-full transition-all flex items-center gap-2",
+              "flex flex-col items-center justify-center transition-all p-2 rounded-2xl min-w-[60px]",
               activeTab === item.id 
-                ? "bg-lime-400 text-zinc-950 shadow-xl scale-110" 
+                ? "bg-lime-400 text-zinc-950 shadow-xl" 
                 : "text-zinc-500 hover:text-white"
             )}
           >
             <item.icon className="w-5 h-5" />
-            {activeTab === item.id && <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>}
+            <span className={cn(
+              "text-[8px] font-black uppercase tracking-tight mt-1",
+              activeTab === item.id ? "text-zinc-950" : "text-zinc-500"
+            )}>
+              {item.label}
+            </span>
           </button>
         ))}
       </nav>
