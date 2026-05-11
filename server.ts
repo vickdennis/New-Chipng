@@ -338,6 +338,13 @@ async function startServer() {
 
   app.use(cors());
   app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
+  // Request logger
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+  });
 
   // Paystack Webhook
   app.post("/api/paystack-webhook", async (req, res) => {
@@ -514,7 +521,7 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
 
       const { prompt, userContext } = req.body;
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         systemInstruction: `
           You are the Chip NG "AI Designer", a professional profile engineer. 
           Your goal is to help users set up their perfect link-in-bio profile instantly.
@@ -636,7 +643,7 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
 
       const { topic, keywords } = req.body;
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-3-flash-preview",
+        model: "gemini-1.5-flash",
         generationConfig: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -819,6 +826,15 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       console.error('Migration error:', error);
       res.status(500).json({ status: 'error', message: error.message });
     }
+  });
+
+  // API Catch-all for unmatched routes or wrong methods
+  app.all("/api/*", (req, res) => {
+    res.status(404).json({ 
+      error: `API route ${req.method} ${req.url} not found`,
+      method: req.method,
+      path: req.url 
+    });
   });
 
   // Vite middleware for development
