@@ -37,35 +37,19 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile }) => {
     >
       {/* Cover Image */}
       {profile.coverImage && (
-        <div className="absolute top-[-64px] left-[-24px] right-[-24px] h-48 md:h-64 z-0 overflow-hidden rounded-b-[3rem]">
+        <div className="absolute top-[-64px] left-[-24px] right-[-24px] h-64 md:h-80 z-0 overflow-hidden">
           <img 
             src={profile.coverImage} 
             alt="Cover" 
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 dark:to-zinc-950" />
         </div>
       )}
 
-      {/* Avatar with Glow Effect */}
-      <div className={`relative mb-6 group ${profile.coverImage ? 'mt-32 md:mt-44' : ''}`}>
-        <div className="absolute -inset-1 bg-gradient-to-r from-lime-400 to-emerald-500 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-        <div className="relative w-28 h-28 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-white inline-block shadow-2xl">
-          {profile.photoURL ? (
-            <img 
-              src={profile.photoURL} 
-              alt={profile.username} 
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="w-full h-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400">
-              <Link2 className="w-12 h-12" />
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Identity Placeholder Spacing (instead of avatar) */}
+      <div className={profile.coverImage ? 'mt-48 md:mt-60' : 'mt-8'} />
 
       {/* Identity */}
       <div className="flex flex-col items-center gap-1">

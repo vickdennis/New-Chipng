@@ -8,16 +8,6 @@ const NFCBusinessCard: React.FC = () => {
   const [rotateX, setRotateX] = useState(0);
   const [rotateY, setRotateY] = useState(0);
 
-  const { scrollYProgress } = useScroll();
-  
-  // Parallax rotation on scroll
-  const scrollRotate = useTransform(scrollYProgress, [0, 0.5], [0, 360]);
-  const scrollY = useTransform(scrollYProgress, [0, 0.5], [0, -100]);
-  const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.8]);
-
-  const springConfig = { damping: 20, stiffness: 100 };
-  const smoothRotate = useSpring(scrollRotate, springConfig);
-
   const [isFlipped, setIsFlipped] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
 
@@ -59,9 +49,6 @@ const NFCBusinessCard: React.FC = () => {
         style={{
           rotateX: rotateX,
           rotateY: rotateY,
-          y: scrollY,
-          scale: scale,
-          rotateZ: isFlipped ? 0 : smoothRotate,
         }}
         animate={{ 
           rotateY: isFlipped ? 180 : rotateY,
@@ -103,11 +90,6 @@ const NFCBusinessCard: React.FC = () => {
 
           <div className="flex justify-between items-end">
             <div className="flex -space-x-2">
-              {[1,2,3].map(i => (
-                <div key={i} className="w-8 h-8 rounded-full border-2 border-zinc-900 bg-zinc-800 flex items-center justify-center overflow-hidden">
-                  <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i + 10}`} alt="User" />
-                </div>
-              ))}
               <div className="w-8 h-8 rounded-full border-2 border-zinc-900 bg-lime-400 flex items-center justify-center text-[10px] font-bold text-zinc-950">
                 +10k
               </div>

@@ -118,7 +118,7 @@ const LandingPage: React.FC = () => {
         </div>
       </main>
 
-      {/* How it Works - Scroll Animations */}
+      {/* How it Works - Simple Grid */}
       <HowItWorks />
 
       <main className="max-w-7xl mx-auto px-6">
@@ -130,12 +130,7 @@ const LandingPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-6 md:grid-rows-2 gap-6 h-auto md:h-[750px] mb-20">
              {/* Main Hero Card - Spans 3 cols, 2 rows */}
-             <motion.div 
-               initial={{ opacity: 0, scale: 0.95 }}
-               whileInView={{ opacity: 1, scale: 1 }}
-               viewport={{ once: true }}
-               whileHover={{ y: -8, boxShadow: "0 20px 40px rgba(0,0,0,0.1)" }}
-               transition={{ type: "spring", stiffness: 300, damping: 20 }}
+             <div 
                className="md:col-span-3 md:row-span-2 bg-zinc-950 rounded-[3rem] p-12 flex flex-col justify-between overflow-hidden relative group border border-zinc-800/50 shadow-2xl"
              >
                 <div className="relative z-10 h-full flex flex-col gap-6">
@@ -166,15 +161,10 @@ const LandingPage: React.FC = () => {
                 {/* Visual Accent */}
                 <div className="absolute top-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_30%,rgba(163,230,53,0.1),transparent_60%)] pointer-events-none" />
                 <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-lime-400/5 blur-[120px] rounded-full group-hover:bg-lime-400/10 transition-colors duration-700" />
-             </motion.div>
+             </div>
 
              {/* Commerce Studio Card - Spans 3 cols, 1 row */}
-             <motion.div 
-               initial={{ opacity: 0, y: 20 }}
-               whileInView={{ opacity: 1, y: 0 }}
-               viewport={{ once: true }}
-               whileHover={{ y: -8 }}
-               transition={{ type: "spring", stiffness: 300, damping: 20 }}
+             <div 
                className="md:col-span-3 bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[3rem] p-12 flex items-center justify-between overflow-hidden relative group shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)]"
              >
                 <div className="relative z-10 space-y-4">
@@ -190,14 +180,10 @@ const LandingPage: React.FC = () => {
                      <Zap className="w-14 h-14 text-lime-500 fill-lime-500/20" strokeWidth={1.5} />
                   </div>
                 </div>
-             </motion.div>
+             </div>
 
              {/* Security Card */}
-             <motion.div 
-               initial={{ opacity: 0, x: -20 }}
-               whileInView={{ opacity: 1, x: 0 }}
-               viewport={{ once: true }}
-               whileHover={{ y: -8 }}
+             <div 
                className="md:col-span-1.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-[3rem] p-10 flex flex-col justify-end gap-4 shadow-sm"
              >
                 <div className="w-14 h-14 bg-white dark:bg-zinc-950 rounded-[1.5rem] flex items-center justify-center mb-4 shadow-lg border border-zinc-100 dark:border-zinc-800">
@@ -207,14 +193,10 @@ const LandingPage: React.FC = () => {
                    <h4 className="text-xl font-black tracking-tight text-zinc-950 dark:text-white leading-none mb-2">Vault Security</h4>
                    <p className="text-xs text-zinc-500 font-medium leading-relaxed">Enterprise-grade protection for your brand and data.</p>
                 </div>
-             </motion.div>
+             </div>
 
              {/* Speed Card */}
-             <motion.div 
-               initial={{ opacity: 0, x: 20 }}
-               whileInView={{ opacity: 1, x: 0 }}
-               viewport={{ once: true }}
-               whileHover={{ y: -8 }}
+             <div 
                className="md:col-span-1.5 bg-lime-400 rounded-[3rem] p-10 flex flex-col justify-end gap-4 shadow-2xl shadow-lime-400/20"
              >
                 <div className="w-14 h-14 bg-zinc-950 rounded-[1.5rem] flex items-center justify-center mb-4 shadow-2xl">
@@ -224,7 +206,7 @@ const LandingPage: React.FC = () => {
                    <h4 className="text-xl font-black tracking-tight text-black leading-none mb-2">Vortex Engine</h4>
                    <p className="text-xs text-zinc-950/60 font-black leading-relaxed">Sub-100ms load times globally. Guaranteed.</p>
                 </div>
-             </motion.div>
+             </div>
           </div>
         </div>
 
@@ -235,12 +217,8 @@ const LandingPage: React.FC = () => {
             { icon: Smartphone, title: "Adaptive Experience", desc: "A fluid interface that feels native on every screen, from mobile to ultra-wide displays." },
             { icon: Shield, title: "Data Integrity", desc: "Built with military-grade encryption and real-time backups to keep your digital identity safe." }
           ].map((feature, i) => (
-            <motion.div
+            <div
               key={i}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
               className="bg-zinc-50/50 dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800/50 p-10 rounded-[2.5rem] hover:border-lime-500/30 dark:hover:border-lime-400/30 transition-all duration-500 group"
             >
               <div className="w-14 h-14 bg-white dark:bg-zinc-900 rounded-2xl flex items-center justify-center mb-8 shadow-sm border border-zinc-100 dark:border-zinc-800 group-hover:scale-110 transition-transform">
@@ -248,7 +226,7 @@ const LandingPage: React.FC = () => {
               </div>
               <h3 className="text-xl font-black tracking-tight mb-4 text-zinc-950 dark:text-white uppercase tracking-wider">{feature.title}</h3>
               <p className="text-zinc-500 dark:text-zinc-400 leading-relaxed text-sm font-medium">{feature.desc}</p>
-            </motion.div>
+            </div>
           ))}
         </div>
       </main>

@@ -116,96 +116,33 @@ const HowItWorksStep = ({ step, index, progress }: { step: typeof steps[0], inde
 };
 
 const HowItWorks: React.FC = () => {
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"]
-  });
-
-  const bgGradient = useTransform(
-    scrollYProgress,
-    [0, 0.25, 0.5, 0.75, 1],
-    [
-      "radial-gradient(circle at 50% 50%, rgba(163, 230, 53, 0.05), transparent 70%)",
-      "radial-gradient(circle at 20% 80%, rgba(59, 130, 246, 0.05), transparent 70%)",
-      "radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.05), transparent 70%)",
-      "radial-gradient(circle at 50% 50%, rgba(249, 115, 22, 0.05), transparent 70%)",
-      "radial-gradient(circle at 50% 50%, rgba(163, 230, 53, 0.05), transparent 70%)"
-    ]
-  );
-
   return (
-    <section ref={containerRef} className="relative h-[500vh] bg-white dark:bg-zinc-950 overflow-visible">
-      {/* Interactive Background */}
-      <motion.div 
-        style={{ background: bgGradient }}
-        className="fixed inset-0 pointer-events-none z-0"
-      />
-
-      {/* Progress Line - Vertical on desktop, bottom-fixed on mobile */}
-      <div className="fixed right-6 md:right-12 top-1/2 -translate-y-1/2 flex flex-col gap-3 md:gap-4 z-50">
-        {steps.map((_, i) => {
-          const stepStart = i / steps.length;
-          const stepEnd = (i + 1) / steps.length;
-          
-          const isActive = useTransform(
-            scrollYProgress,
-            [stepStart, stepStart + 0.05, stepEnd - 0.05, stepEnd],
-            [0.2, 1, 1, 0.2]
-          );
-
-          const scale = useTransform(
-            scrollYProgress,
-            [stepStart, stepStart + 0.05, stepEnd - 0.05, stepEnd],
-            [1, 1.5, 1.5, 1]
-          );
-
-          return (
-            <motion.div 
-              key={i}
-              style={{ opacity: isActive, scale }}
-              className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-lime-500 shadow-[0_0_10px_rgba(163,230,53,0.5)]"
-            />
-          );
-        })}
-      </div>
-
-      {/* Sticky Header */}
-      <div className="sticky top-0 h-screen flex flex-col items-center justify-start pt-20 md:pt-32 pointer-events-none z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="text-center px-6"
-        >
-          <h2 className="text-4xl md:text-7xl lg:text-9xl font-display font-black tracking-tighter text-center leading-[0.85] text-zinc-950 dark:text-white">
-            How it <br className="md:hidden" /><span className="text-lime-500">Works.</span>
+    <section className="relative py-32 bg-white dark:bg-zinc-950 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="text-center mb-20">
+          <h2 className="text-5xl md:text-8xl font-display font-black tracking-tighter text-center leading-[0.85] text-zinc-950 dark:text-white">
+            How it <span className="text-lime-500">Works.</span>
           </h2>
           <p className="text-zinc-500 font-black mt-6 uppercase tracking-[0.3em] text-[10px] md:text-sm">Protocol 01: Onboarding Flow</p>
-        </motion.div>
-      </div>
+        </div>
 
-      {/* Steps Content */}
-      <div className="sticky top-0 h-screen overflow-hidden">
-        {steps.map((step, index) => {
-          const stepStart = index / steps.length;
-          const stepEnd = (index + 1) / steps.length;
-          
-          const stepProgress = useTransform(
-            scrollYProgress,
-            [stepStart, stepEnd],
-            [0, 1]
-          );
-
-          return (
-            <HowItWorksStep 
-              key={index} 
-              step={step} 
-              index={index} 
-              progress={stepProgress} 
-            />
-          );
-        })}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {steps.map((step, index) => (
+            <div 
+              key={index}
+              className="bg-zinc-50 dark:bg-zinc-900 rounded-[2.5rem] border border-zinc-100 dark:border-zinc-800 p-10 flex flex-col items-center text-center gap-6 group hover:border-lime-500/30 transition-all duration-300"
+            >
+              <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center text-white shadow-2xl", step.color, step.shadow)}>
+                 <step.icon className="w-8 h-8" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-lime-500 mb-2 block">Step 0{index + 1}</span>
+                <h3 className="text-2xl font-display font-black tracking-tighter mb-4 leading-none text-zinc-950 dark:text-white">{step.title}</h3>
+                <p className="text-zinc-500 text-sm font-medium leading-relaxed">{step.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

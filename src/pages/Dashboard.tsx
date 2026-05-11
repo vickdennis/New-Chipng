@@ -1181,7 +1181,21 @@ const Dashboard: React.FC = () => {
         {/* Top Floating Navbar (Mobile + Tablet) */}
         <header className="lg:hidden h-20 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-100 dark:border-zinc-800 px-6 flex items-center justify-between sticky top-0 z-40">
            <Logo size="sm" />
-           <div className="flex gap-4">
+           <div className="flex gap-4 items-center">
+             <button 
+               onClick={() => setActiveTab('appearance')} 
+               className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-xl"
+               title="AI Designer"
+             >
+               <Wand2 className="w-5 h-5 text-lime-500" />
+             </button>
+             <button 
+               onClick={copyLink} 
+               className="p-2 bg-zinc-950 dark:bg-white rounded-xl"
+               title="Copy Link"
+             >
+               {copied ? <Check className="w-5 h-5 text-lime-400" /> : <Copy className="w-5 h-5 text-white dark:text-zinc-950" />}
+             </button>
              <ThemeToggle />
              <button onClick={() => auth.signOut()} className="p-2 border border-zinc-100 dark:border-zinc-800 rounded-xl">
                <LogOut className="w-5 h-5 text-zinc-400" />
@@ -1191,6 +1205,29 @@ const Dashboard: React.FC = () => {
 
         {/* Editor Wrapper */}
         <div className="flex-1 max-w-4xl w-full mx-auto p-6 md:p-12 space-y-12 pb-40">
+          
+          {/* Mobile Bottom Navigation */}
+          <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] bg-zinc-950/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-white/10 p-2 rounded-[2rem] z-50 flex items-center justify-around shadow-2xl">
+            {[
+              { id: 'links', icon: LinkIcon, label: 'Links' },
+              { id: 'posts', icon: ImageIcon, label: 'Media' },
+              { id: 'blogs', icon: FileText, label: 'Blog' },
+              { id: 'analytics', icon: TrendingUp, label: 'Stats' },
+              { id: 'settings', icon: Settings, label: 'Setup' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={cn(
+                  "flex flex-col items-center gap-1 min-w-[56px] py-1 transition-all rounded-2xl",
+                  activeTab === tab.id ? "bg-white/10 text-lime-400" : "text-zinc-500"
+                )}
+              >
+                <tab.icon className="w-5 h-5" />
+                <span className="text-[9px] font-black uppercase tracking-tight">{tab.label}</span>
+              </button>
+            ))}
+          </div>
           {/* Dashboard Header */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
             <div>
