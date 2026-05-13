@@ -87,9 +87,19 @@ service cloud.firestore {
 
     function isValidBackup(data) {
       return data.keys().hasAll(['originalId', 'collectionName', 'data', 'action', 'performedBy', 'timestamp']) &&
+             data.keys().size() == 6 &&
              data.originalId is string && data.collectionName is string &&
              data.action in ['create', 'update', 'delete', 'rollback'] &&
              data.performedBy is string && data.timestamp is timestamp;
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['userId', 'amount', 'plan', 'status', 'reference']) &&
+             data.userId is string &&
+             data.amount is number &&
+             data.plan is string &&
+             data.status is string &&
+             data.reference is string;
     }
 
     function isValidAdmin(data) {
@@ -199,14 +209,24 @@ service cloud.firestore {
 
     match /transactions/{id} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
-      allow create: if false; // Only server writes
+      allow create: if false; // Only server writes via Admin SDK (bypasses rules)
       allow update: if false;
       allow delete: if false;
+    }
+
+    match /transactions_backup/{id} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isValidBackup(incoming());
     }
 
     match /orders/{id} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow create: if false; // Only server writes
+    }
+
+    match /orders_backup/{id} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isValidBackup(incoming());
     }
 
     match /admins/{userId} {

@@ -181,7 +181,7 @@ function fromRest(doc: any) {
 }
 
 // Helper for backend safe write with backups (Admin SDK First)
-async function backendSafeWrite(collectionName: string, documentId: string, data: any, action: 'update' | 'create' | 'delete', performedBy: string = 'system') {
+async function backendSafeWrite(collectionName: string, documentId: string | null, data: any, action: 'update' | 'create' | 'delete', performedBy: string = 'system') {
   try {
     const now = new Date().toISOString();
     
@@ -190,6 +190,7 @@ async function backendSafeWrite(collectionName: string, documentId: string, data
        const finalId = docRef.id;
 
        // 1. Backup before modification
+       // For update/delete, we backup the existing document
        if (action === 'update' || action === 'delete') {
          const docSnap = await docRef.get();
          if (docSnap.exists) {
@@ -216,15 +217,26 @@ async function backendSafeWrite(collectionName: string, documentId: string, data
            createdAt: admin.firestore.FieldValue.serverTimestamp(),
            updatedAt: admin.firestore.FieldValue.serverTimestamp() 
          });
+         
+         // 3. Post-create backup for audit trail
+         const backupId = `back_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+         await db.collection(`${collectionName}_backup`).doc(backupId).set({
+           originalId: finalId,
+           collectionName,
+           data,
+           action: 'create',
+           timestamp: admin.firestore.FieldValue.serverTimestamp(),
+           performedBy
+         });
        }
-       return true;
+       return finalId;
     }
 
     // Fallback logic (original REST implementation)
     // Backup before modification (for update and delete)
     if (action === 'update' || action === 'delete') {
       try {
-        const docSnap = await restFirestore('get', collectionName, documentId);
+        const docSnap = await restFirestore('get', collectionName, documentId!);
         if (docSnap) {
           const backupId = `back_${Date.now()}_${Math.random().toString(36).substring(7)}`;
           await restFirestore('patch', `${collectionName}_backup`, backupId, {
@@ -241,17 +253,32 @@ async function backendSafeWrite(collectionName: string, documentId: string, data
       }
     }
 
+    let finalId = documentId;
     if (action === 'delete') {
-      await restFirestore('patch', collectionName, documentId, { isDeleted: true, deletedAt: now, updatedAt: now });
+      await restFirestore('patch', collectionName, documentId!, { isDeleted: true, deletedAt: now, updatedAt: now });
     } else if (action === 'update') {
-      await restFirestore('patch', collectionName, documentId, { ...data, updatedAt: now });
+      await restFirestore('patch', collectionName, documentId!, { ...data, updatedAt: now });
     } else {
-      await restFirestore('patch', collectionName, documentId, { ...data, createdAt: now, updatedAt: now });
+      // For REST create, we'd ideally get a new ID but the helper is simple
+      const tempId = documentId || `doc_${Date.now()}`;
+      await restFirestore('patch', collectionName, tempId, { ...data, createdAt: now, updatedAt: now });
+      finalId = tempId;
+      
+      // POST-create backup
+      const backupId = `back_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      await restFirestore('patch', `${collectionName}_backup`, backupId, {
+        originalId: tempId,
+        collectionName,
+        data,
+        action: 'create',
+        timestamp: now,
+        performedBy
+      });
     }
-    return true;
+    return finalId;
   } catch (error: any) {
     console.error(`backendSafeWrite failed for ${collectionName}:`, error.message);
-    return false;
+    return null;
   }
 }
 
@@ -263,30 +290,48 @@ async function rollbackDocument(collectionName: string, documentId: string, back
     let originalBackupId = backupId;
 
     if (backupId) {
-      const snap = await restFirestore('get', backupCollection, backupId);
-      backupData = fromRest(snap);
+      if (db) {
+        const snap = await db.collection(backupCollection).doc(backupId).get();
+        backupData = snap.data();
+      } else {
+        const snap = await restFirestore('get', backupCollection, backupId);
+        backupData = fromRest(snap);
+      }
     } else {
-      const queryPayload = {
-        structuredQuery: {
-          from: [{ collectionId: backupCollection }],
-          where: {
-            fieldFilter: {
-              field: { fieldPath: 'originalId' },
-              op: 'EQUAL',
-              value: { stringValue: documentId }
-            }
-          },
-          orderBy: [{
-            field: { fieldPath: 'timestamp' },
-            direction: 'DESCENDING'
-          }],
-          limit: 1
+      // Find latest backup
+      if (db) {
+        const snap = await db.collection(backupCollection)
+          .where('originalId', '==', documentId)
+          .orderBy('timestamp', 'desc')
+          .limit(1)
+          .get();
+        if (!snap.empty) {
+          backupData = snap.docs[0].data();
+          originalBackupId = snap.docs[0].id;
         }
-      };
-      const results = await restFirestore('post', backupCollection, undefined, undefined, queryPayload);
-      if (results && results[0]?.document) {
-        backupData = fromRest(results[0].document);
-        originalBackupId = backupData.id;
+      } else {
+        const queryPayload = {
+          structuredQuery: {
+            from: [{ collectionId: backupCollection }],
+            where: {
+              fieldFilter: {
+                field: { fieldPath: 'originalId' },
+                op: 'EQUAL',
+                value: { stringValue: documentId }
+              }
+            },
+            orderBy: [{
+              field: { fieldPath: 'timestamp' },
+              direction: 'DESCENDING'
+            }],
+            limit: 1
+          }
+        };
+        const results = await restFirestore('post', backupCollection, undefined, undefined, queryPayload);
+        if (results && results[0]?.document) {
+          backupData = fromRest(results[0].document);
+          originalBackupId = backupData.id;
+        }
       }
     }
 
@@ -297,32 +342,55 @@ async function rollbackDocument(collectionName: string, documentId: string, back
     const now = new Date().toISOString();
 
     // Create a special rollback backup before restoring
-    try {
-      const currentSnap = await restFirestore('get', collectionName, documentId);
-      if (currentSnap) {
-        await restFirestore('patch', backupCollection, `rollback_${Date.now()}`, {
+    const backupAction = 'rollback';
+    if (db) {
+      const docRef = db.collection(collectionName).doc(documentId);
+      const docSnap = await docRef.get();
+      if (docSnap.exists) {
+        await db.collection(backupCollection).doc(`rollback_${Date.now()}`).set({
           originalId: documentId,
           collectionName,
-          data: fromRest(currentSnap),
-          action: 'rollback',
-          timestamp: now,
+          data: docSnap.data(),
+          action: backupAction,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
           performedBy: 'system-rollback'
         });
       }
-    } catch (e) {}
+      
+      await docRef.set({
+        ...backupData.data,
+        isDeleted: false,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        restoredFrom: originalBackupId,
+        restoredAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: false });
+    } else {
+      try {
+        const currentSnap = await restFirestore('get', collectionName, documentId);
+        if (currentSnap) {
+          await restFirestore('patch', backupCollection, `rollback_${Date.now()}`, {
+            originalId: documentId,
+            collectionName,
+            data: fromRest(currentSnap),
+            action: backupAction,
+            timestamp: now,
+            performedBy: 'system-rollback'
+          });
+        }
+      } catch (e) {}
 
-    // Restore the data
-    await restFirestore('patch', collectionName, documentId, {
-      ...backupData.data,
-      isDeleted: false,
-      updatedAt: now,
-      restoredFrom: originalBackupId,
-      restoredAt: now
-    });
+      await restFirestore('patch', collectionName, documentId, {
+        ...backupData.data,
+        isDeleted: false,
+        updatedAt: now,
+        restoredFrom: originalBackupId!,
+        restoredAt: now
+      });
+    }
 
     return true;
   } catch (error: any) {
-    console.error(`Backend REST Rollback failed for ${collectionName}/${documentId}:`, error.message);
+    console.error(`Backend Rollback failed for ${collectionName}/${documentId}:`, error.message);
     throw error;
   }
 }
@@ -504,8 +572,13 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         return res.status(400).json({ error: "Missing required fields" });
       }
 
+      // Use backendSafeWrite for complete auditability as per requirements
+      // First get current value to increment
       const docRef = db.collection(collectionName).doc(id);
-      await docRef.update({ [field]: admin.firestore.FieldValue.increment(1) });
+      const snap = await docRef.get();
+      const currentVal = snap.exists ? (snap.data()?.[field] || 0) : 0;
+      
+      await backendSafeWrite(collectionName, id, { [field]: currentVal + 1 }, 'update', 'analytics-tracker');
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -707,15 +780,15 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
       if (paystackData.status === 'success') {
         const amount = (paystackData.amount / 100);
         
-        await db.collection('transactions').add({
+        // Record transaction with backup audit trail
+        await backendSafeWrite('transactions', null, {
           userId: userId || 'guest',
           reference: reference,
           paystack_id: paystackData.id,
           amount,
           plan: isVerification ? 'verification' : (isOrder ? 'order' : (plan || 'pro')),
-          status: 'success',
-          createdAt: new Date().toISOString()
-        });
+          status: 'success'
+        }, 'create', 'paystack-verify');
 
         if (isVerification && userId) {
           await backendSafeWrite('users', userId, { isVerified: true }, 'update', 'paystack-verify');
@@ -790,10 +863,9 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
   app.post("/api/admin/migrate-users", async (req, res) => {
     try {
       const usersSnap = await db.collection('users').get();
-      const batch = db.batch();
       let count = 0;
 
-      usersSnap.forEach((doc: any) => {
+      for (const doc of usersSnap.docs) {
         const data = doc.data();
         const updates: any = {};
         
@@ -812,13 +884,11 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml`;
         }
 
         if (Object.keys(updates).length > 0) {
-          batch.update(doc.ref, updates);
+          // Use backendSafeWrite for every document to ensure backups are created 
+          // before the migration modifies each user
+          await backendSafeWrite('users', doc.id, updates, 'update', 'admin-migration');
           count++;
         }
-      });
-
-      if (count > 0) {
-        await batch.commit();
       }
 
       res.json({ status: 'success', migratedCount: count });

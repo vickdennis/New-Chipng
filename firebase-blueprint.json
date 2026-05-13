@@ -179,6 +179,18 @@
     "/transactions/{transactionId}": {
       "schema": "Transaction",
       "description": "Collection of payments."
+    },
+    "/transactions_backup/{backupId}": {
+      "schema": "Backup",
+      "description": "Backups for transactions."
+    },
+    "/orders/{orderId}": {
+      "schema": "object",
+      "description": "Collection of marketplace orders."
+    },
+    "/orders_backup/{backupId}": {
+      "schema": "Backup",
+      "description": "Backups for local orders."
     }
   }
 }
