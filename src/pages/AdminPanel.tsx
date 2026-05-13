@@ -47,7 +47,7 @@ const AdminPanel: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'users' | 'revenue' | 'brand' | 'blog' | 'shop' | 'backups'>('users');
-  const [backupCollection, setBackupCollection] = useState<'users' | 'blogs' | 'links'>('users');
+  const [backupCollection, setBackupCollection] = useState<'users' | 'blogs' | 'links' | 'shouts' | 'media' | 'products' | 'admins'>('users');
   const [selectedBackup, setSelectedBackup] = useState<BackupData | null>(null);
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -969,12 +969,12 @@ const AdminPanel: React.FC = () => {
                 <h2 className="text-2xl font-bold dark:text-white">System Backups</h2>
                 <p className="text-zinc-500">View history and rollback data changes</p>
               </div>
-              <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-2xl">
-                {(['users', 'blogs', 'links'] as const).map((col) => (
+              <div className="flex bg-zinc-100 dark:bg-zinc-900 p-1 rounded-2xl overflow-x-auto no-scrollbar">
+                {(['users', 'blogs', 'links', 'shouts', 'media', 'products', 'admins'] as const).map((col) => (
                   <button
                     key={col}
                     onClick={() => setBackupCollection(col)}
-                    className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${backupCollection === col ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white shadow-sm' : 'text-zinc-500'}`}
+                    className={`px-6 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${backupCollection === col ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white shadow-sm' : 'text-zinc-500'}`}
                   >
                     {col.charAt(0).toUpperCase() + col.slice(1)}
                   </button>

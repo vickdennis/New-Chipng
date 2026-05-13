@@ -92,6 +92,12 @@ service cloud.firestore {
              data.performedBy is string && data.timestamp is timestamp;
     }
 
+    function isValidAdmin(data) {
+      return data.keys().hasAll(['email', 'createdAt', 'updatedAt', 'isDeleted']) &&
+             data.email is string && data.isDeleted is bool;
+    }
+
+
     // ---------------------------------------------------------
     // PILLAR 4 & 8: COLLECTION MATCH BLOCKS & SECURE LISTS
     // ---------------------------------------------------------
@@ -205,7 +211,13 @@ service cloud.firestore {
 
     match /admins/{userId} {
       allow read: if isSignedIn();
-      allow write: if false;
+      allow create: if (request.auth.token.email == 'vickthorden@gmail.com' && isOwner(userId)) || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    match /admins_backup/{id} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn() && isValidBackup(incoming());
     }
   }
 }

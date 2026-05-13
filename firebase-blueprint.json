@@ -128,6 +128,14 @@
       "schema": "Backup",
       "description": "Backups for user profiles."
     },
+    "/admins/{adminId}": {
+      "schema": "object",
+      "description": "List of administrator users."
+    },
+    "/admins_backup/{backupId}": {
+      "schema": "Backup",
+      "description": "Backups for admins list."
+    },
     "/links/{linkId}": {
       "schema": "Link",
       "description": "User profile links."

@@ -10,11 +10,11 @@ import fs from "fs";
 import crypto from "crypto";
 import axios from "axios";
 import multer from "multer";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 dotenv.config();
 
-const genAI = process.env.GEMINI_API_KEY ? new GoogleGenAI(process.env.GEMINI_API_KEY) : null;
+const genAI = process.env.GEMINI_API_KEY ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY) : null;
 
 // Initialize Multer for memory storage
 const upload = multer({ 

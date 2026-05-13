@@ -64,7 +64,7 @@ const Login: React.FC = () => {
         await safeWrite(`users/${user.uid}/private`, 'info', privateData, 'create');
         
         if (publicData.role === 'admin') {
-          await setDoc(doc(db, 'admins', user.uid), { email: user.email, createdAt: serverTimestamp() });
+          await safeWrite('admins', user.uid, { email: user.email }, 'create');
         }
       }
 
@@ -125,7 +125,7 @@ const Login: React.FC = () => {
         await safeWrite(`users/${user.uid}/private`, 'info', privateData, 'create');
 
         if (publicData.role === 'admin') {
-          await setDoc(doc(db, 'admins', user.uid), { email: user.email, createdAt: serverTimestamp() });
+          await safeWrite('admins', user.uid, { email: user.email }, 'create');
         }
       }
 
